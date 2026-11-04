@@ -27,6 +27,7 @@ from homeassistant.helpers import (
     device_registry as dr,
     entity_registry as er,
     intent,
+    issue_registry as ir,
 )
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
@@ -50,6 +51,7 @@ from .const import (
     DOMAIN,
     MAX_CONVERSATIONS,
     MAX_TOOL_ROUNDS,
+    SLOW_WARMUP_S,
     WARMUP_INTERVAL_MIN,
     WARMUP_TIMEOUT,
 )
@@ -123,15 +125,24 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
                 max_tokens=1, timeout=WARMUP_TIMEOUT)
             self._cached_prompt = digest
             took = time.monotonic() - start
-            if took > 60:
+            if took > SLOW_WARMUP_S:
                 _LOGGER.warning(
                     "Prompt cache warm-up for %d entities took %.0f s. The CPU of "
-                    "the llama-server host is slow for this prompt size; expose "
-                    "fewer entities or run llama-server on a faster machine",
+                    "the llama-server host is slow for this prompt size (no AVX2?); "
+                    "expose fewer entities or run llama-server on a faster machine",
                     len(exposed), took)
+                ir.async_create_issue(
+                    self.hass, DOMAIN, f"slow_inference_{self.entry.entry_id}",
+                    is_fixable=False, severity=ir.IssueSeverity.WARNING,
+                    translation_key="slow_inference",
+                    translation_placeholders={
+                        "seconds": f"{took:.0f}", "entities": str(len(exposed)),
+                        "url": self.entry.data[CONF_URL]})
             else:
                 _LOGGER.info("Prompt cache warmed (%d entities) in %.0f s",
                              len(exposed), took)
+                ir.async_delete_issue(
+                    self.hass, DOMAIN, f"slow_inference_{self.entry.entry_id}")
         except (aiohttp.ClientError, asyncio.TimeoutError, HomeAssistantError,
                 KeyError, ValueError) as err:
             _LOGGER.warning("Prompt cache warm-up failed after %.0f s: %s: %s",

@@ -28,5 +28,11 @@
         }
       }
     }
+  },
+  "issues": {
+    "slow_inference": {
+      "title": "llama-server ist für {entities} Entitäten zu langsam",
+      "description": "Das Laden der Geräteliste in das Modell hat {seconds} s gedauert (Server: {url}). Meist fehlt der CPU AVX2, dann dauert jeder Sprachbefehl 30 Sekunden oder länger.\n\nllama-server auf einem Rechner mit AVX2 oder GPU betreiben und dessen URL in einem neuen Eintrag „HA LLM Agent“ angeben, oder weniger Entitäten für Assist freigeben."
+    }
   }
 }

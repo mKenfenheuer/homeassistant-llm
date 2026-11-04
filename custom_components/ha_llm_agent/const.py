@@ -23,3 +23,4 @@ MAX_TOOL_ROUNDS = 4
 MAX_CONVERSATIONS = 50
 WARMUP_TIMEOUT = 1800          # first prefill on a slow CPU can take minutes
 WARMUP_INTERVAL_MIN = 5        # re-check the device list every N minutes
+SLOW_WARMUP_S = 60             # above: repair issue "slow inference"

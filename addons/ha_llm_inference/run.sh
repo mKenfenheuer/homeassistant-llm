@@ -21,6 +21,39 @@ CTX="$(opt ctx_size)"
 THREADS="$(opt threads)"
 EXTRA="$(opt extra_args)"
 
+# --- CPU check: without AVX2 llama.cpp falls back to slow generic kernels
+if ! grep -qw avx2 /proc/cpuinfo; then
+    CPU_MODEL="$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')"
+    echo "[WARNING] ============================================================"
+    echo "[WARNING] Die CPU (${CPU_MODEL:-unbekannt}) unterstützt kein AVX2."
+    echo "[WARNING] llama.cpp rechnet dann etwa 30-mal langsamer: die erste Anfrage"
+    echo "[WARNING] dauert bei 100 Entitäten rund 20 Minuten, jeder Befehl 30-60 s."
+    echo "[WARNING] Empfehlung: llama-server auf einem Rechner mit AVX2 oder GPU."
+    echo "[WARNING] ============================================================"
+    if [ -n "${SUPERVISOR_TOKEN:-}" ]; then
+        python3 - "$CPU_MODEL" <<'PY' || echo "[WARNING] Benachrichtigung an Home Assistant fehlgeschlagen"
+import json, os, sys, urllib.request
+cpu = sys.argv[1] or "unbekannt"
+body = {
+    "notification_id": "ha_llm_inference_no_avx2",
+    "title": "HA LLM Inference: CPU ohne AVX2",
+    "message": (
+        f"Die CPU dieses Hosts ({cpu}) unterstützt kein AVX2. llama.cpp rechnet "
+        "dann etwa 30-mal langsamer: Die erste Anfrage dauert bei 100 Entitäten "
+        "rund 20 Minuten, jeder weitere Befehl 30 bis 60 Sekunden.\n\n"
+        "Empfehlung: llama-server auf einem Rechner mit AVX2 oder GPU betreiben "
+        "und dessen URL in der Integration HA LLM Agent eintragen."),
+}
+req = urllib.request.Request(
+    "http://supervisor/core/api/services/persistent_notification/create",
+    data=json.dumps(body).encode(), method="POST",
+    headers={"Authorization": "Bearer " + os.environ["SUPERVISOR_TOKEN"],
+             "Content-Type": "application/json"})
+urllib.request.urlopen(req, timeout=10).read()
+PY
+    fi
+fi
+
 # default location: /share/ha_llm/<file name from the URL>
 if [ -z "$MODEL_PATH" ]; then
     [ -n "$MODEL_URL" ] || fail "model_url oder model_path muss gesetzt sein."
