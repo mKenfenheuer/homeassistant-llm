@@ -1,0 +1,25 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Local LLM server",
+        "description": "URL of the llama.cpp server (add-on \"HA LLM Inference\" or your own llama-server).",
+        "data": {"url": "Server URL"}
+      }
+    },
+    "error": {"cannot_connect": "Cannot reach llama-server at this URL (GET /health)."},
+    "abort": {"already_configured": "This server is already configured."}
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "temperature": "Temperature",
+          "max_history": "Previous turns kept per conversation",
+          "timeout": "Request timeout",
+          "max_entities": "Maximum number of entities sent to the model"
+        }
+      }
+    }
+  }
+}

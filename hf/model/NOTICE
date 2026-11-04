@@ -1,0 +1,4 @@
+Qwen is licensed under the Qwen RESEARCH LICENSE AGREEMENT, Copyright (c) Alibaba Cloud. All Rights Reserved.
+
+Modified files: the model weights in this repository were fine-tuned with LoRA
+(merged into the base weights), converted to GGUF and quantized to Q4_K_M.

@@ -1,0 +1,12 @@
+{
+  "domain": "ha_llm_agent",
+  "name": "HA LLM Agent (lokal)",
+  "after_dependencies": ["assist_pipeline"],
+  "codeowners": [],
+  "config_flow": true,
+  "dependencies": ["conversation"],
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "requirements": [],
+  "version": "0.2.0"
+}

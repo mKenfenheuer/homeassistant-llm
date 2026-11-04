@@ -1,0 +1,24 @@
+configuration:
+  model_url:
+    name: Modell-URL
+    description: Download-Adresse der GGUF-Datei (Hugging Face). Wird beim ersten Start nach /share/ha_llm/ geladen.
+  model_sha256:
+    name: SHA-256 des Modells
+    description: Prüfsumme der GGUF-Datei. Leer lassen, um die Prüfung zu überspringen.
+  model_path:
+    name: Lokale Modelldatei
+    description: Optional. Eigener Pfad zu einer GGUF-Datei, z. B. /share/ha_llm/eigenes.gguf. Leer = Dateiname aus der URL.
+  hf_token:
+    name: Hugging-Face-Token
+    description: Nur für private Hugging-Face-Repositories nötig.
+  ctx_size:
+    name: Kontextlänge
+    description: Tokens pro Anfrage. 8192 reicht für etwa 250 Entitäten.
+  threads:
+    name: CPU-Threads
+    description: 0 = automatisch
+  extra_args:
+    name: Zusätzliche Argumente
+    description: Weitere llama-server-Parameter, z. B. --mlock
+network:
+  8080/tcp: OpenAI-kompatible API (nur für Zugriff außerhalb von Home Assistant)

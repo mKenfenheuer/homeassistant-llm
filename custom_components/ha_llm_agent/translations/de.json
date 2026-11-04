@@ -1,0 +1,25 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Lokaler LLM-Server",
+        "description": "URL des llama.cpp-Servers (Add-on \"HA LLM Inference\" oder eigener llama-server).",
+        "data": {"url": "Server-URL"}
+      }
+    },
+    "error": {"cannot_connect": "llama-server ist unter dieser URL nicht erreichbar (GET /health)."},
+    "abort": {"already_configured": "Dieser Server ist bereits eingerichtet."}
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "temperature": "Temperatur",
+          "max_history": "Gespeicherte Vorgänger-Anfragen pro Unterhaltung",
+          "timeout": "Zeitlimit pro Anfrage",
+          "max_entities": "Maximale Anzahl Entitäten im Prompt"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,134 @@
+# ha-llm-training
+
+Dieses Projekt trainiert ein kleines deutsches Sprachmodell für Home Assistant.
+Das Modell steuert Geräte und beantwortet Fragen zu ihrem Zustand. Basis ist
+Qwen2.5-3B-Instruct mit LoRA (Built with Qwen, Qwen RESEARCH LICENSE,
+nur nicht-kommerzielle Nutzung). Für den Betrieb läuft es als GGUF (Q4_K_M,
+1,8 GB) in einem Home-Assistant-Add-on auf der CPU.
+
+## Aufbau
+
+| Pfad | Inhalt |
+|------|--------|
+| `custom_components/ha_llm_agent/` | Integration „HA LLM Agent (lokal)“, Gesprächsagent für Assist |
+| `custom_components/ha_llm_agent/llm_schema.py` | Prompt, Werkzeuge und Zustandsformat, gemeinsam für Training und Laufzeit |
+| `addons/ha_llm_inference/` | Add-on „HA LLM Inference“ mit llama.cpp-Server (CPU) |
+| `src/gen_dataset.py` | Generator für Trainings- und Testdaten |
+| `src/train_sft.py` | LoRA-Training, speichert Adapter und zusammengeführtes Modell |
+| `src/eval_model.py` | Bewertung eines llama-servers auf dem Testdatensatz |
+| `src/ha_e2e_test.py` | Ende-zu-Ende-Test gegen eine Home-Assistant-Instanz |
+| `legacy/` | Erster Versuch (Dataset, Add-on, Integration), nur zur Ansicht |
+
+## Wie das Modell arbeitet
+
+Die Integration baut bei jeder Anfrage einen Systemprompt mit allen Entitäten,
+die für Assist freigegeben sind (`entity_id | Name | Bereich`). Steht das
+Sprachgerät in einem Bereich, ergänzt sie diesen Bereich. Das Modell hat zwei
+Werkzeuge:
+
+- `control` ruft echte Home-Assistant-Dienste auf, z. B.
+  `{"service": "light.turn_on", "entity_id": ["light.kueche"], "data": {"brightness_pct": 30}}`.
+- `get_state` liefert Zustand und wichtige Attribute, z. B. Temperatur,
+  Position oder Helligkeit.
+
+Die Integration prüft jeden Aufruf. Sie erlaubt nur Dienste aus
+`llm_schema.SERVICES`, nur freigegebene Entitäten und nur die dort genannten
+Parameter.
+
+Der Trainingsdatensatz entsteht vollständig aus Vorlagen. Jede Probe nutzt ein
+neu gewürfeltes Haus mit eigenen Räumen, Namen und teils kryptischen
+`entity_id`s wie `light.shelly1_3c61a5`. Das Modell lernt dadurch die Zuordnung
+über die Geräteliste und merkt sich kein festes Haus. Die Daten decken Befehle,
+Gruppen („alle Rollläden“), kombinierte Befehle, Fragen mit `get_state`,
+Rückfragen im Gespräch, unbekannte Geräte und Fehlermeldungen ab.
+
+## Training
+
+```bash
+./run_train.sh       # 6.000 Trainings- und 300 Testproben, LoRA r=32, 2 Epochen
+./run_export.sh      # output/merged -> model/qwen2.5-3b-ha-Q4_K_M.gguf
+./run_test.sh        # Bewertung auf data/eval.jsonl (GPU, Docker)
+```
+
+Das Training braucht rund 19 GB VRAM und auf der RTX 3090 etwa drei Stunden.
+Konvertierung und Quantisierung laufen im offiziellen Image
+`ghcr.io/ggml-org/llama.cpp:full-cuda`, ein eigener llama.cpp-Build ist nicht
+nötig.
+
+Wer `llm_schema.py` ändert, muss neu trainieren. Training und Integration
+lesen dieselbe Datei, damit der Prompt zur Laufzeit exakt dem Training
+entspricht.
+
+## Installation in Home Assistant
+
+Das Git-Repository dient gleichzeitig als Add-on-Repository und als
+HACS-Repository. Das Modell liegt auf Hugging Face, das Add-on lädt es beim
+ersten Start.
+
+**Add-on** Einstellungen → Apps → App-Store → Menü → Repositories, die URL
+dieses Git-Repositorys eintragen. Danach „HA LLM Inference“ installieren und
+starten. Der erste Start lädt das Modell (1,9 GB) von
+[mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF](https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF)
+nach `/share/ha_llm/`. Im Log erscheint danach `listening on http://0.0.0.0:8080`.
+
+**Integration** In HACS → Menü → Benutzerdefinierte Repositories die URL
+dieses Git-Repositorys mit Typ „Integration“ eintragen, „HA LLM Agent (lokal)“
+herunterladen und Home Assistant neu starten. Ohne HACS den Ordner
+`custom_components/ha_llm_agent` nach `/config/custom_components/` kopieren.
+
+**Einrichtung** „HA LLM Agent (lokal)“ hinzufügen. Die Integration erkennt das
+installierte Add-on und trägt dessen URL vor, z. B.
+`http://a1b2c3d4-ha-llm-inference:8080`. Läuft llama-server woanders, die URL
+von Hand eintragen.
+
+**Assist** Unter Einstellungen → Sprachassistenten den Agenten „Lokales LLM“
+als Gesprächsagenten wählen. Welche Geräte das Modell sieht, steuert die
+Freigabe unter „Entitäten freigeben“.
+
+## Hugging Face
+
+| Inhalt | Repository |
+|--------|------------|
+| Modell (GGUF, Q4_K_M) | [mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF](https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF) |
+| Datensatz | [mkenfenheuer/homeassistant-tool-calling-de](https://huggingface.co/datasets/mkenfenheuer/homeassistant-tool-calling-de) |
+
+Upload eines neuen Stands: `HF_TOKEN` in `.env` eintragen, dann
+`set -a; . ./.env; set +a; .venv/bin/python src/upload_hf.py
+mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF mkenfenheuer/homeassistant-tool-calling-de`.
+Nach einem neuen Modell `model_sha256` in `addons/ha_llm_inference/config.yaml`
+anpassen und die Add-on-Version erhöhen.
+
+## Test
+
+`src/ha_e2e_test.py` schickt deutsche Sätze an die Conversation-API und prüft
+danach die echten Zustände. Für den Test lief Home Assistant 2026.10.4 im
+Container mit der Demo-Integration. Die Demo-Geräte haben deutsche Namen und
+Bereiche erhalten.
+
+```bash
+HA_URL=http://localhost:18123 HA_TOKEN=... python3 src/ha_e2e_test.py
+```
+
+## Ergebnisse (Stand 04.11.2026)
+
+**Testdatensatz** 300 Proben aus Häusern, die im Training nicht vorkamen
+(`./run_test.sh`):
+
+| Modell | Werkzeugaufrufe korrekt | Antworten korrekt |
+|--------|------------------------|-------------------|
+| Qwen2.5-3B-Instruct ohne Training (60 Proben) | 61,7 % | 50,0 % |
+| qwen2.5-3b-ha (LoRA, 2 Epochen) | 98,3 % | 100 % |
+
+**Home Assistant** Der Ende-zu-Ende-Test mit Add-on (CPU, 8 Threads) und
+Integration besteht 23 von 23 Fällen. Die Antwortzeit liegt im Median bei
+2,8 Sekunden, die erste Anfrage braucht wegen des leeren Caches 7,6 Sekunden.
+
+## Grenzen
+
+- Das Modell kennt nur die Dienste in `llm_schema.SERVICES`. Automationen
+  anlegen, Timer oder Wetterberichte beherrscht es nicht.
+- Auf der CPU dauert die erste Anfrage nach einer Änderung der Geräteliste
+  länger, weil llama-server den Systemprompt neu verarbeitet. Danach nutzt der
+  Server den Cache.
+- Ab etwa 250 Entitäten reicht die Kontextlänge von 8.192 Tokens nicht mehr.
+  Die Integration kürzt dann die Liste (Option „Maximale Anzahl Entitäten“).

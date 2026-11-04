@@ -1,0 +1,33 @@
+name: HA LLM Inference
+version: "0.3.0"
+slug: ha_llm_inference
+description: llama.cpp-Server (CPU) für das deutsche Home-Assistant-Sprachmodell
+arch:
+  - amd64
+  - aarch64
+startup: services
+boot: auto
+ports:
+  8080/tcp: null
+ports_description:
+  8080/tcp: OpenAI-kompatible API (nur für Zugriff außerhalb von Home Assistant)
+map:
+  - type: share
+    read_only: false
+watchdog: http://[HOST]:[PORT:8080]/health
+options:
+  model_url: https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-Q4_K_M.gguf
+  model_sha256: 134b113ee4914735e6d119bc418ca489f04d55acac0d519510fc6896d81a8467
+  model_path: ""
+  hf_token: ""
+  ctx_size: 8192
+  threads: 0
+  extra_args: ""
+schema:
+  model_url: str?
+  model_sha256: str?
+  model_path: str?
+  hf_token: password?
+  ctx_size: int(2048,32768)
+  threads: int(0,128)
+  extra_args: str?

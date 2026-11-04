@@ -1,0 +1,11 @@
+# virtual env, training artefacts and models (too large for git)
+/.venv/
+/output/
+/model/
+*.gguf
+*.safetensors
+__pycache__/
+# generated datasets (reproducible with run_train.sh, published on Hugging Face)
+/data/
+# secrets
+.env
