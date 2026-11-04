@@ -1,5 +1,5 @@
 name: HA LLM Inference
-version: "0.3.1"
+version: "0.4.0"
 slug: ha_llm_inference
 description: llama.cpp-Server (CPU) für das deutsche Home-Assistant-Sprachmodell
 arch:
@@ -18,8 +18,8 @@ watchdog: http://[HOST]:[PORT:8080]/health
 # only used to post a notification if the CPU has no AVX2
 homeassistant_api: true
 options:
-  model_url: https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-Q4_K_M.gguf
-  model_sha256: 134b113ee4914735e6d119bc418ca489f04d55acac0d519510fc6896d81a8467
+  model_url: ""
+  model_sha256: ""
   model_path: ""
   hf_token: ""
   ctx_size: 8192

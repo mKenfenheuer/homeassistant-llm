@@ -55,9 +55,21 @@ ROOMS = [
     ("Ankleide", "in der Ankleide", "Ankleide", ["ankleide", "dressing_room"]),
     ("Eingang", "im Eingang", "Eingangs", ["eingang", "entrance"]),
     ("Treppenhaus", "im Treppenhaus", "Treppenhaus", ["treppenhaus", "stairs"]),
+    ("Außenbereich", "im Außenbereich", "Außen", ["aussen", "outdoor"]),
+    ("Abstellraum", "im Abstellraum", "Abstellraum", ["abstellraum", "storage"]),
+    ("Heizungsraum", "im Heizungsraum", "Heizungsraum", ["heizungsraum", "boiler_room"]),
+    ("Waschraum", "im Waschraum", "Waschraum", ["waschraum", "utility"]),
+    ("Einfahrt", "in der Einfahrt", "Einfahrts", ["einfahrt", "driveway"]),
+    ("Hauswirtschaftsraum", "im Hauswirtschaftsraum", "HWR", ["hwr", "utility_room"]),
+    ("Werkstatt", "in der Werkstatt", "Werkstatt", ["werkstatt", "workshop"]),
+    ("Carport", "im Carport", "Carport", ["carport"]),
 ]
 ROOM_BY_NAME = {r[0]: r for r in ROOMS}
-INDOOR = [r[0] for r in ROOMS if r[0] not in ("Garten", "Terrasse", "Balkon", "Garage")]
+OUTDOOR = ("Garten", "Terrasse", "Balkon", "Außenbereich", "Einfahrt", "Carport")
+UTILITY = ("Abstellraum", "Heizungsraum", "Waschraum", "Hauswirtschaftsraum",
+           "Werkstatt", "Keller", "Dachboden", "Garage", "Waschküche")
+INDOOR = [r[0] for r in ROOMS if r[0] not in OUTDOOR + ("Garage",)]
+NO_GROUP_COVERS = ("Markise", "Garagentor")
 
 # device type: (label, gender m/f/n/pl, slugs, compound-able)
 TYPES = {
@@ -133,6 +145,36 @@ COLORS = {"rot": "red", "grün": "green", "blau": "blue", "gelb": "yellow",
           "türkis": "turquoise", "violett": "violet"}
 COLOR_TEMPS = {"warmweiß": 2700, "kaltweiß": 6000, "neutralweiß": 4000}
 
+# brand-named devices: user says the generic noun, the name is the product
+BRAND_MEDIA = [("LG webOS Smart TV", "Fernseher", "m"), ("Samsung TV", "Fernseher", "m"),
+               ("Sony Bravia", "Fernseher", "m"), ("Philips Ambilight", "Fernseher", "m"),
+               ("Sonos One", "Lautsprecher", "m"), ("Echo Dot", "Lautsprecher", "m"),
+               ("HomePod", "Lautsprecher", "m"), ("Bose Soundbar", "Soundbar", "f")]
+BRAND_VACUUM = ["S8 MaxV Ultra", "Roborock S7", "Dreame L10s", "Roomba i7",
+                "Deebot X1", "Valetudo"]
+MOWERS = ["Automower", "Mählanie", "Rasenroboter", "Gardena Sileno", "Worx Landroid"]
+PLANTS = ["Tomaten", "Chili", "Basilikum", "Petersilie", "Erdbeeren", "Monstera",
+          "Ficus", "Gurken", "Zitronenbaum"]
+JUNK_SWITCHES = ["Gosund Sp1 03 Relay", "ACE 2 Drying", "Max-PC", "Sonoff Basic 4",
+                 "Shelly Plug S 2", "Enable guest Wi-Fi", "Tasmota Relay 1",
+                 "Warmwasser Boost", "Hauswasserwerk", "Aquarium Pumpe"]
+# appliances: a status sensor and a power switch with nearly the same name
+# ("Trockner" + "Trockner Power"): commands go to the switch, questions to the
+# sensor
+APPLIANCES = [("Trockner", "m", "trockner"), ("Waschmaschine", "f", "waschmaschine"),
+              ("Spülmaschine", "f", "spuelmaschine"),
+              ("Geschirrspüler", "m", "geschirrspueler"),
+              ("3D-Drucker", "m", "drucker_3d"), ("Wäschetrockner", "m", "dryer")]
+APP_RAW = {"running": ["running", "In Betrieb", "Läuft", "drying"],
+           "finished": ["finished", "Programm beendet", "Ende", "end"],
+           "off": ["off", "Aus"], "idle": ["idle", "Bereit", "standby"]}
+APP_ANSWER = {"running": ("läuft noch", "läuft"), "finished": ("ist fertig", "fertig"),
+              "off": ("ist aus", "aus"), "idle": ("ist bereit, läuft aber gerade nicht",
+                                                  "läuft aber gerade nicht")}
+VACUUM_BUTTONS = [("Vollreinigung", "die Vollreinigung"), ("Absaugen", "das Absaugen"),
+                  ("Mopp waschen", "das Mopp-Waschen")]
+TOGGLES = ["Urlaub", "Gästemodus", "Partymodus", "Schlafmodus", "Putzmodus"]
+
 UNKNOWN_DEVICES = [("Sauna", "f"), ("Whirlpool", "m"), ("Pool-Pumpe", "f"),
                    ("Kamin", "m"), ("Aquarium", "n"), ("Rasenmäher", "m"),
                    ("Springbrunnen", "m"), ("Wäschetrockner", "m"),
@@ -180,18 +222,31 @@ class House:
         self.used_ids: set[str] = set()
         self.used_names: set[str] = set()
         self.cryptic = R.random() < 0.3       # some houses use vendor ids
+        # some houses: all devices of a domain share a long vendor prefix and
+        # differ only in the last hex digits (Homematic, Zigbee, Shelly)
+        self.shared = {}
+        for dom in ("climate", "light", "cover", "switch", "binary_sensor"):
+            if R.random() < 0.18:
+                self.shared[dom] = R.choice([
+                    "hmip_etrv_b_2_r4m_00a3c5e7f91", "hmip_swdm_2_00b4d6f8a2c3e",
+                    "shellydimmer2_3c8a1fe0", "0x00158d000", "zigbee2mqtt_0x84fd27fffe",
+                    "lumi_lumi_sensor_magnet_aq2_00158d", "tz3000_ji4araar_ts0001_"])
         self.english_ids = R.random() < 0.4
         n_rooms = max(2, min(len(ROOMS) - 4, size // 4 + R.randint(-1, 2)))
         names = R.sample([r[0] for r in ROOMS if r[0] != "Badezimmer"], n_rooms)
         if "Bad" in names and R.random() < 0.4:
             names[names.index("Bad")] = "Badezimmer"
         self.rooms = names
+        self.appliances: list[tuple[str, str, Ent, Ent]] = []
         self._populate(size)
 
     # ---- id / name helpers ----
     def _slug(self, room: str | None, type_slugs: list[str], domain: str) -> str:
         rslugs = ROOM_BY_NAME[room][3] if room else ["haus", "home"]
-        if self.cryptic and R.random() < 0.6:
+        if domain in self.shared and R.random() < 0.9:
+            tail = "".join(R.choices("0123456789abcdef", k=R.choice([2, 3])))
+            base = self.shared[domain] + tail
+        elif self.cryptic and R.random() < 0.6:
             vendor = R.choice(["shelly1", "shellyplus1pm", "hue_color_lamp",
                                "tz3000", "sonoff_basic", "zbmini", "tasmota",
                                "fritz_dect", "homematic_hm", "tuya"])
@@ -239,25 +294,33 @@ class House:
 
     def _populate(self, size: int):
         for room in self.rooms:
-            outdoor = room in ("Garten", "Terrasse", "Balkon")
-            # lights: 1-3 per room
-            for lt in R.sample(TYPES["light"], R.choice([1, 1, 1, 2, 2, 3])):
+            outdoor = room in OUTDOOR
+            # lights: 0-3 per room; outdoor/utility rooms often have none
+            n_lights = R.choice([0, 0, 1, 1, 2] if room in OUTDOOR + UTILITY
+                                else [0, 1, 1, 1, 2, 2, 3])
+            room_lights = []
+            for lt in R.sample(TYPES["light"], n_lights):
                 on = R.random() < 0.4
-                self.add("light", room, lt[0], lt[1], lt[2], lt[3],
-                         state="on" if on else "off",
-                         attrs={"brightness": R.randint(20, 255)} if on else {})
+                room_lights.append(self.add(
+                    "light", room, lt[0], lt[1], lt[2], lt[3],
+                    state="on" if on else "off",
+                    attrs={"brightness": R.randint(20, 255)} if on else {}))
+            # real installs often name the main light just like the room
+            if room_lights and R.random() < 0.18 and room not in self.used_names:
+                room_lights[0].name = room
+                self.used_names.add(room)
             if not outdoor and room not in ("Flur", "Treppenhaus", "Gäste-WC") \
-                    and R.random() < 0.55:
+                    and room not in UTILITY and R.random() < 0.55:
                 ct = R.choice(TYPES["cover"][:4])
                 pos = R.choice([0, 0, 100, 100, 50, 30])
                 self.add("cover", room, ct[0], ct[1], ct[2], ct[3],
                          state="closed" if pos == 0 else "open",
                          attrs={"current_position": pos})
-            if room in ("Terrasse", "Balkon") and R.random() < 0.5:
+            if room in ("Terrasse", "Balkon", "Außenbereich") and R.random() < 0.5:
                 self.add("cover", room, "Markise", "f", ["markise", "awning"],
                          state=R.choice(["open", "closed"]),
                          attrs={"current_position": R.choice([0, 100])})
-            if not outdoor and room not in ("Garage",) and R.random() < 0.5:
+            if not outdoor and room not in UTILITY and R.random() < 0.5:
                 ct = R.choice(TYPES["climate"][:3] if room != "Bad" else TYPES["climate"])
                 target = R.choice([18, 19, 20, 20.5, 21, 21.5, 22, 23])
                 cur = round(target + R.uniform(-2, 1.5), 1)
@@ -289,6 +352,11 @@ class House:
             if room in ("Wohnzimmer", "Schlafzimmer", "Küche", "Büro",
                         "Kinderzimmer") and R.random() < 0.4:
                 mt = R.choice(TYPES["media_player"])
+                brand = None
+                if R.random() < 0.5:
+                    brand = R.choice(BRAND_MEDIA)
+                    mt = (brand[1], brand[2], [brand[0].lower().replace(" ", "_")
+                                               .replace("-", "_")])
                 playing = R.random() < 0.4
                 attrs = {"volume_level": R.choice([0.2, 0.3, 0.35, 0.5])}
                 if playing:
@@ -297,6 +365,7 @@ class House:
                          "Tatort", "Die Maus", "Morning Jazz"]),
                         media_artist=R.choice(["", "Queen", "Helene Fischer", ""]))
                 self.add("media_player", room, mt[0], mt[1], mt[2],
+                         name=brand[0] if brand and brand[0] not in self.used_names else None,
                          state="playing" if playing else R.choice(["off", "paused", "idle"]),
                          attrs={k: v for k, v in attrs.items() if v != ""})
             if room in ("Schlafzimmer", "Büro", "Wohnzimmer", "Dachboden") \
@@ -324,10 +393,23 @@ class House:
                 room = room if room in self.rooms else None
                 self.add("lock", room, lk[0], lk[1], lk[2], name=lk[0],
                          state=R.choice(["locked", "locked", "unlocked"]))
-        if R.random() < 0.35:
+        if R.random() < 0.4:
             vt = R.choice(VACUUMS)
-            self.add("vacuum", None, vt[0], vt[1], vt[2], name=vt[0],
+            vname = R.choice(BRAND_VACUUM) if R.random() < 0.6 else vt[0]
+            self.add("vacuum", R.choice(self.rooms + [None, None]), vt[0], vt[1],
+                     [vname.lower().replace(" ", "_")], name=vname,
                      state=R.choice(["docked", "docked", "cleaning", "paused"]))
+        if R.random() < 0.25:
+            mname = R.choice(MOWERS)
+            room = "Garten" if "Garten" in self.rooms else None
+            self.add("lawn_mower", room, "Mähroboter", "m",
+                     [mname.lower().replace(" ", "_").replace("ä", "ae")], name=mname,
+                     state=R.choice(["docked", "mowing", "paused"]))
+        if R.random() < 0.2:
+            room = R.choice([r for r in self.rooms if r in OUTDOOR] or [None])
+            self.add("valve", room, "Bewässerung", "f", ["bewaesserung", "irrigation"],
+                     name=R.choice(["Bewässerung", "Wasserventil", "Gartenventil"]),
+                     state=R.choice(["open", "closed", "closed"]))
         if R.random() < 0.6:
             for sc in R.sample(SCENES, R.randint(1, 4)):
                 self.add("scene", None, sc, "f", [sc.lower().replace(" ", "_")
@@ -350,17 +432,120 @@ class House:
                      ["garagentor", "garage_door"], name="Garagentor",
                      state=R.choice(["open", "closed", "closed"]),
                      attrs={"current_position": 0})
-        # pad tiny houses with extra lights / sensors
+        if R.random() < 0.35:
+            for app, g, slug in R.sample(APPLIANCES, R.choice([1, 1, 2])):
+                if any(n.startswith(app) for n in self.used_names):
+                    continue
+                rooms = [r for r in self.rooms if r in (
+                    "Küche", "Waschraum", "Hauswirtschaftsraum", "Bad", "Badezimmer",
+                    "Keller", "Abstellraum", "Büro")]
+                room = R.choice(rooms + [None]) if rooms else None
+                kind = R.choice(list(APP_RAW))
+                sensor = self.add("sensor", room, "Status", "m", [slug, slug + "_status"],
+                                  name=R.choice([app, app, f"{app} Status"]),
+                                  state=R.choice(APP_RAW[kind]), attrs={"_kind": kind})
+                power = self.add("switch", room, "Steckdose", "f",
+                                 [slug + "_power", slug + "_steckdose"],
+                                 name=R.choice([f"{app} Power", f"{app} Steckdose",
+                                                f"{app} Strom"]),
+                                 state="off" if kind == "off" and R.random() < 0.5 else "on")
+                self.appliances.append((app, g, sensor, power))
+        vac = [e for e in self.ents if e.domain == "vacuum"]
+        if vac and R.random() < 0.45:
+            v = vac[0]
+            for label, _ in R.sample(VACUUM_BUTTONS, R.choice([1, 2])):
+                self.add("button", v.area, label, "f",
+                         [v.eid.split(".")[1] + "_" + label.lower().replace(" ", "_")],
+                         name=f"{v.name} {label}", state="unknown")
+        if R.random() < 0.15 and not any(e.domain == "valve" for e in self.ents):
+            room = R.choice([r for r in self.rooms if r in OUTDOOR] or [None])
+            self.add("button", room, "Bewässerung", "f", ["bewaesserung_garten",
+                     "irrigation_start"], name=R.choice(
+                         ["Bewässerung Garten", "Gartenbewässerung", "Bewässerung starten"]),
+                     state="unknown")
+        # group entities as they exist in many installs
+        if len([e for e in self.ents if e.domain == "light"]) >= 3 and R.random() < 0.45:
+            e = self.add("light", None, "__group__", "pl", ["alle_lichter", "all_lights"],
+                         name=R.choice(["Alle Lichter", "Alle Lampen", "Licht Haus"]),
+                         state=R.choice(["on", "off"]))
+        if len([e for e in self.ents if e.domain == "cover"]) >= 3 and R.random() < 0.45:
+            self.add("cover", None, "__group__", "pl", ["alle_rolladen", "all_covers"],
+                     name=R.choice(["Alle Rolladen", "Alle Rollläden", "Rollos Haus"]),
+                     state=R.choice(["open", "closed"]))
+        # read-only distractors and odd names; fill up to the target size
         while len(self.ents) < size:
-            room = R.choice(self.rooms)
-            lt = R.choice(TYPES["light"])
-            self.add("light", room, lt[0], lt[1], lt[2], lt[3],
-                     state=R.choice(["on", "off"]))
+            self._distractor()
+
+    def _distractor(self):
+        room = R.choice(self.rooms + [None])
+        k = R.randrange(10)
+        rname = room or "Haus"
+        if k == 0 and room:
+            self.add("binary_sensor", room, "Anwesenheit", "f", ["presence"],
+                     name=R.choice([f"Anwesenheit {room}", f"{room} Presence",
+                                    f"Präsenz {room}"]),
+                     state=R.choice(["on", "off"]), attrs={"device_class": "occupancy"})
+        elif k == 1:
+            self.add("binary_sensor", room, "Bewegung", "f", ["motion"],
+                     name=R.choice([f"{rname} Motion", f"Bewegung {rname}"]),
+                     state=R.choice(["on", "off"]), attrs={"device_class": "motion"})
+        elif k == 2:
+            plant = R.choice(PLANTS)
+            self.add("sensor", room, "Bodenfeuchte", "f", ["plant_sensor", "moisture"],
+                     name=f"{plant} Bodenfeuchte", state=str(R.randint(8, 70)),
+                     attrs={"device_class": "moisture", "unit_of_measurement": "%"})
+        elif k == 3:
+            self.add("sensor", room, "Akku", "m", ["battery"],
+                     name=R.choice(["USV Akku", "Auto Ladestand", "Rauchmelder Batterie",
+                                    "Handy Akku", f"{rname} Sensor Batterie"]),
+                     state=str(R.randint(5, 100)),
+                     attrs={"device_class": "battery", "unit_of_measurement": "%"})
+        elif k == 4:
+            pr = R.choice(["Anycubic Kobra S1 Max", "Prusa MK4", "Bambu X1C"])
+            part = R.choice(["Nozzle temperature", "Bed temperature", "Chamber temperature"])
+            self.add("sensor", room, "Drucker", "m", ["printer"], name=f"{pr} {part}",
+                     state=str(R.randint(22, 220)),
+                     attrs={"device_class": "temperature", "unit_of_measurement": "°C"})
+        elif k == 5:
+            nm, unit = R.choice([("Windgeschwindigkeit", "km/h"), ("Windböen", "km/h"),
+                                 ("Regenmenge", "mm/h"), ("Luftdruck", "hPa"),
+                                 ("Wassertank Füllmenge", "L")])
+            self.add("sensor", room, nm, "f", ["weather_station"], name=nm,
+                     state=str(R.randint(0, 40)), attrs={"unit_of_measurement": unit})
+        elif k == 6:
+            self.add("sensor", room, "Status", "m", ["status"],
+                     name=R.choice(["USV Status", "Trockner", "Waschmaschine Status",
+                                    "Spülmaschine Programm"]),
+                     state=R.choice(["idle", "OL", "running", "off"]))
+        elif k == 7:
+            nm = R.choice(TOGGLES)
+            if nm not in self.used_names:
+                self.add("input_boolean", None, nm, "m", [nm.lower()], name=nm,
+                         state=R.choice(["on", "off"]))
+        elif k == 8:
+            nm = R.choice(JUNK_SWITCHES)
+            if nm not in self.used_names:
+                self.add("switch", room, nm, "m", [nm.lower().replace(" ", "_")
+                         .replace("-", "_")], name=nm, state=R.choice(["on", "off"]))
+        else:
+            self.add("sensor", room, "Temperatur", "f", ["temperature"],
+                     name=R.choice([f"{rname} Temperatur", f"Temperatur {rname}",
+                                    f"{rname} Thermometer"]),
+                     state=str(round(R.uniform(15, 26), 1)),
+                     attrs={"device_class": "temperature", "unit_of_measurement": "°C"})
 
     # ---- queries ----
-    def of(self, domain, room="*"):
+    def of(self, domain, room="*", plain=False):
+        """Entities of a domain (never group entities). plain=True also drops
+        covers that are not window covers (awning, garage door)."""
         return [e for e in self.ents if e.domain == domain
+                and e.label != "__group__"
+                and not (plain and e.label in NO_GROUP_COVERS)
                 and (room == "*" or e.area == room)]
+
+    def group(self, domain):
+        return next((e for e in self.ents if e.domain == domain
+                     and e.label == "__group__"), None)
 
     def system_prompt(self, location=None):
         return S.build_system_prompt(
@@ -385,10 +570,16 @@ class Ref:
 def ref_single(h: House, e: Ent, allow_room_ref=True) -> Ref:
     same_type_in_room = [x for x in h.ents if x.domain == e.domain
                          and x.area == e.area and x.label == e.label]
+    same_type = [x for x in h.ents if x.domain == e.domain and x.label == e.label]
     opts = ["name", "name"]
     if allow_room_ref and e.area and len(same_type_in_room) == 1:
         opts += ["type_room", "type_room"]
+    if e.label and e.label != "__group__" and len(same_type) == 1 and e.name != e.label:
+        opts += ["type_only"]           # "den Fernseher" for "LG webOS Smart TV"
     choice = R.choice(opts)
+    if choice == "type_only":
+        return Ref(f"{ART_ACC[e.gender]} {e.label}", f"{ART_NOM[e.gender]} {e.label}",
+                   e.plural, [e])
     if choice == "name":
         name = e.name if R.random() < 0.8 else e.name.lower()
         art = R.random() < 0.35 and e.label and e.name.endswith(e.label)
@@ -483,14 +674,15 @@ def confirm(ref: Ref, adj: str, part: str) -> str:
 # --------------------------------------------------------------------------
 def pick_target(h: House, domain, location=None, group_ok=True):
     """Return a Ref for one entity or a room group of `domain`."""
-    ents = h.of(domain)
+    plain = domain == "cover"
+    ents = h.of(domain, plain=plain)
     if not ents:
         return None
     if group_ok and domain in GROUP and R.random() < 0.35:
-        rooms = [r for r in h.rooms if h.of(domain, r)]
+        rooms = [r for r in h.rooms if h.of(domain, r, plain=plain)]
         if rooms:
             room = location if location in rooms and R.random() < 0.6 else R.choice(rooms)
-            return ref_room_group(domain, room, h.of(domain, room), location)
+            return ref_room_group(domain, room, h.of(domain, room, plain=plain), location)
     return ref_single(h, R.choice(ents))
 
 
@@ -610,6 +802,109 @@ def i_fan_pct(h, loc):
                      "Lass {r} mit {p} Prozent laufen"]).format(r=ref.acc, p=p)
     return user, [action("fan.set_percentage", [e], {"percentage": p})], \
         R.choice([f"{cap(ref.nom)} {sein(ref.plural)} auf {p} Prozent.", "Erledigt."])
+
+
+def i_awning(h, loc):
+    """Markise: ausfahren = open_cover, einfahren = close_cover."""
+    ents = [e for e in h.of("cover") if e.label == "Markise"]
+    if not ents:
+        return None
+    e = R.choice(ents)
+    n = "die Markise" if len(ents) == 1 and R.random() < 0.7 else e.name
+    if R.random() < 0.5:
+        user = R.choice([f"Fahr {n} aus", f"{cap(n)} ausfahren", f"Mach {n} auf",
+                         f"{cap(n)} raus", "Wir brauchen Schatten, fahr die Markise aus"])
+        return user, [action("cover.open_cover", [e])], R.choice(
+            ["Die Markise fährt aus.", "Erledigt, die Markise ist ausgefahren."])
+    user = R.choice([f"Fahr {n} ein", f"{cap(n)} einfahren", f"Mach {n} zu",
+                     f"{cap(n)} rein", "Es regnet, fahr die Markise ein"])
+    return user, [action("cover.close_cover", [e])], R.choice(
+        ["Die Markise fährt ein.", "Erledigt, die Markise ist eingefahren."])
+
+
+def i_mower(h, loc):
+    ents = h.of("lawn_mower")
+    if not ents:
+        return None
+    e = ents[0]
+    n = R.choice(["den Mähroboter", "den Rasenmäher", e.name])
+    r = R.random()
+    if r < 0.5:
+        user = R.choice([f"Starte {n}", f"Lass {n} mähen", "Rasen mähen bitte",
+                         f"Schick {n} los"])
+        return user, [action("lawn_mower.start_mowing", [e])], f"{e.name} mäht jetzt."
+    if r < 0.8:
+        user = R.choice([f"Schick {n} in die Ladestation", f"{cap(n)} nach Hause",
+                         f"Hol {n} rein"])
+        return user, [action("lawn_mower.dock", [e])], f"{e.name} fährt zur Ladestation."
+    user = R.choice([f"Pausiere {n}", f"Halte {n} an"])
+    return user, [action("lawn_mower.pause", [e])], f"{e.name} ist pausiert."
+
+
+def i_valve(h, loc):
+    ents = h.of("valve")
+    if not ents:
+        return None
+    e = ents[0]
+    n = R.choice([e.name, "die Bewässerung", "das Ventil"])
+    if R.random() < 0.5:
+        user = R.choice([f"Öffne {n}", f"Schalte {n} an", f"Mach {n} auf",
+                         "Starte die Bewässerung"])
+        return user, [action("valve.open_valve", [e])], f"{e.name} ist geöffnet."
+    user = R.choice([f"Schließe {n}", f"Schalte {n} aus", f"Mach {n} zu",
+                     "Stopp die Bewässerung"])
+    return user, [action("valve.close_valve", [e])], f"{e.name} ist geschlossen."
+
+
+def i_toggle(h, loc):
+    ents = h.of("input_boolean")
+    if not ents:
+        return None
+    e = R.choice(ents)
+    on = R.random() < 0.5
+    n = e.name
+    if on:
+        user = R.choice([f"Aktiviere {n}", f"{n} an", f"Schalte {n} ein",
+                         f"Aktiviere den {n}smodus" if not n.endswith("modus") else f"Aktiviere den {n}"])
+        return user, [action("input_boolean.turn_on", [e])], f"{n} ist aktiviert."
+    user = R.choice([f"Deaktiviere {n}", f"{n} aus", f"Schalte {n} aus"])
+    return user, [action("input_boolean.turn_off", [e])], f"{n} ist deaktiviert."
+
+
+def i_appliance(h, loc):
+    """'Schalte den Trockner aus' -> the power switch, not the status sensor."""
+    if not h.appliances:
+        return None
+    app, g, _sensor, power = R.choice(h.appliances)
+    n = f"{ART_ACC[g]} {app}"
+    if R.random() < 0.5:
+        user = R.choice([f"Schalte {n} aus", f"Mach {n} aus", f"{app} aus",
+                         f"Schalte {n} ab", f"Kannst du {n} ausschalten?"])
+        return user, [action("switch.turn_off", [power])], R.choice(
+            [f"{power.name} ist aus.", f"Ich habe {power.name} ausgeschaltet."])
+    user = R.choice([f"Schalte {n} ein", f"Mach {n} an", f"{app} an",
+                     f"Schalte {n} an"])
+    return user, [action("switch.turn_on", [power])], R.choice(
+        [f"{power.name} ist an.", f"Ich habe {power.name} eingeschaltet."])
+
+
+def i_button(h, loc):
+    ents = h.of("button")
+    if not ents:
+        return None
+    e = R.choice(ents)
+    vac = dict(VACUUM_BUTTONS)
+    if e.label in vac:
+        what = vac[e.label]
+        user = R.choice([f"Starte {what}", f"Starte {what} vom Saugroboter",
+                         f"Mach {what}", f"{e.name} starten"])
+    elif e.label == "Bewässerung":
+        user = R.choice(["Starte die Bewässerung", "Starte die Bewässerung im Garten",
+                         "Bewässere den Garten", f"Drück {e.name}"])
+    else:
+        user = R.choice([f"Drück {e.name}", f"Löse {e.name} aus"])
+    return user, [action("button.press", [e])], R.choice(
+        [f"{e.name} ist ausgelöst.", f"Ich habe {e.name} gestartet.", "Erledigt."])
 
 
 def i_cover(h, loc):
@@ -780,20 +1075,21 @@ def i_vacuum(h, loc):
     if not ents:
         return None
     e = ents[0]
-    n = f"{ART_ACC[e.gender]} {e.name}"
+    n = R.choice([f"{ART_ACC[e.gender]} {e.name}" if e.name == e.label else e.name,
+                  "den Staubsauger", "den Saugroboter", "den Staubsauger"])
     r = R.random()
     if r < 0.5:
-        user = R.choice([f"Starte {n}", f"Lass {n} saugen", f"{e.name} starten",
+        user = R.choice([f"Starte {n}", f"Lass {n} saugen", f"{cap(n)} starten",
                          "Staubsaugen bitte", f"Schick {n} los"])
         return user, [action("vacuum.start", [e])], R.choice(
-            [f"{cap(ART_NOM[e.gender])} {e.name} legt los.", "Der Sauger startet."])
+            [f"{e.name} legt los.", "Der Sauger startet."])
     if r < 0.8:
-        user = R.choice([f"Schick {n} zur Ladestation", f"{e.name} zurück zur Basis",
+        user = R.choice([f"Schick {n} zur Ladestation", f"{cap(n)} zurück zur Basis",
                          f"Schick {n} nach Hause"])
         return user, [action("vacuum.return_to_base", [e])], \
-            f"{cap(ART_NOM[e.gender])} {e.name} fährt zurück zur Ladestation."
-    user = R.choice([f"Pausiere {n}", f"{e.name} anhalten", f"Halte {n} an"])
-    return user, [action("vacuum.pause", [e])], f"{cap(ART_NOM[e.gender])} {e.name} ist pausiert."
+            f"{e.name} fährt zurück zur Ladestation."
+    user = R.choice([f"Pausiere {n}", f"{cap(n)} anhalten", f"Halte {n} an"])
+    return user, [action("vacuum.pause", [e])], f"{e.name} ist pausiert."
 
 
 def i_scene(h, loc):
@@ -817,9 +1113,12 @@ def i_scene(h, loc):
 
 def i_all(h, loc):
     domain = R.choice(["light", "light", "cover"])
-    ents = h.of(domain)
+    ents = h.of(domain, plain=True)
     if len(ents) < 2:
         return None
+    # a group entity ("Alle Lichter") replaces the list of members
+    if (grp := h.group(domain)) is not None:
+        ents = [grp]
     acc, nom = R.choice(ALL_GROUP[domain])
     ref = Ref(acc, nom, not acc.startswith("überall"), ents)
     if domain == "light":
@@ -844,8 +1143,9 @@ def i_all(h, loc):
 COMMANDS = [
     (i_light_onoff, 14), (i_light_room_phrase, 6), (i_light_brightness, 6),
     (i_light_color, 4), (i_switch, 6), (i_fan_pct, 1), (i_cover, 9),
-    (i_climate, 7), (i_lock, 3), (i_alarm, 3), (i_media, 4), (i_vacuum, 2),
-    (i_scene, 4), (i_all, 4),
+    (i_climate, 7), (i_lock, 3), (i_alarm, 3), (i_media, 5), (i_vacuum, 3),
+    (i_scene, 4), (i_all, 6), (i_awning, 2), (i_mower, 2), (i_valve, 1),
+    (i_toggle, 2), (i_appliance, 3), (i_button, 2),
 ]
 
 
@@ -877,9 +1177,8 @@ def s_command(h, loc):
     return msgs, {"cat": "command", "gold": [["control", {"actions": actions}]]}
 
 
-def s_compound(h, loc):
-    a = pick_command(h, loc)
-    b = pick_command(h, loc)
+def join_commands(a, b):
+    """Two command intents -> one sentence 'X und y', or None."""
     if not a or not b or a[1] == b[1]:
         return None
     ids_a = {i for x in a[1] for i in x["entity_id"]}
@@ -888,7 +1187,7 @@ def s_compound(h, loc):
         return None
     ua = a[0].rstrip("?.!")
     ub = b[0].rstrip("?.!")
-    if ub.startswith(("Kannst", "Würdest", "Ich ", "Bitte", "Es ist", "Hey")) or \
+    if ub.startswith(("Kannst", "Würdest", "Ich ", "Bitte", "Es ist", "Hey", "Wir ")) or \
             ua.startswith(("Kannst", "Würdest", "Es ist")):
         return None
     # lowercase the leading verb of the second command ("... und mach ...")
@@ -897,11 +1196,17 @@ def s_compound(h, loc):
                     "Dimme", "Starte", "Aktiviere", "Pausiere", "Spiel", "Setze",
                     "Setz", "Lass", "Färbe", "Schließ", "Sperre", "Verriegle",
                     "Entriegle", "Halte", "Stopp", "Stoppe", "Dreh", "Zieh", "Führe",
-                    "Schick", "Deaktiviere"):
-        ub2 = first[0].lower() + (" " + first[1] if len(first) > 1 else "")
-    else:
-        ub2 = ub
-    user = f"{ua} und {ub2}"
+                    "Schick", "Deaktiviere", "Drück", "Löse", "Hol", "Bewässere"):
+        ub = first[0].lower() + (" " + first[1] if len(first) > 1 else "")
+    return f"{ua} und {ub}"
+
+
+def s_compound(h, loc):
+    a = pick_command(h, loc)
+    b = pick_command(h, loc)
+    user = join_commands(a, b)
+    if not user:
+        return None
     actions = a[1] + b[1]
     conf = R.choice(["Erledigt.", "Beides erledigt.",
                      f"{a[2].rstrip('.')} und {b[2][0].lower() + b[2][1:]}"
@@ -915,6 +1220,8 @@ def s_compound(h, loc):
 
 def _state_word(e: Ent) -> str:
     d, s = e.domain, e.state
+    if s == "unavailable":
+        return "nicht erreichbar"
     if d in ("light", "switch", "fan", "input_boolean"):
         return "an" if s == "on" else "aus"
     if d == "cover":
@@ -951,6 +1258,8 @@ def s_question(h, loc):
         kinds += ["humidity"]
     if [e for e in h.of("sensor") if e.attrs.get("device_class") == "power"]:
         kinds += ["power"]
+    if [e for e in h.of("sensor") if e.attrs.get("device_class") in ("moisture", "battery")]:
+        kinds += ["generic"] * 2
     kind = R.choice(kinds)
     must = []
     if kind == "temp":
@@ -959,10 +1268,14 @@ def s_question(h, loc):
             return None
         e = R.choice(temps)
         val = de_num(float(e.state))
-        if e.area is None:
+        if e.label == "Außentemperatur":
             user = R.choice(["Wie warm ist es draußen?", "Wie kalt ist es draußen?",
                              "Wie ist die Außentemperatur?", "Wie viel Grad hat es draußen?"])
             ans = R.choice([f"Draußen sind es {val} Grad.", f"Die Außentemperatur liegt bei {val} Grad."])
+        elif e.area is None or e.area in OUTDOOR:
+            # a sensor without area is not automatically outside
+            user = R.choice([f"Was zeigt {e.name}?", f"Wie viel Grad misst {e.name}?"])
+            ans = f"{e.name} misst {val} Grad."
         else:
             prep = ROOM_BY_NAME[e.area][1]
             user = R.choice([f"Wie warm ist es {prep}?", f"Welche Temperatur hat es {prep}?",
@@ -976,6 +1289,20 @@ def s_question(h, loc):
         user = R.choice([f"Wie hoch ist die Luftfeuchtigkeit {prep}?",
                          f"Wie feucht ist es {prep}?"]).replace("  ", " ")
         ans = f"Die Luftfeuchtigkeit {prep} liegt bei {e.state} Prozent.".replace("  ", " ")
+        ids, must = [e], [e.state]
+    elif kind == "generic":
+        e = R.choice([e for e in h.of("sensor")
+                      if e.attrs.get("device_class") in ("moisture", "battery")])
+        if e.attrs["device_class"] == "moisture":
+            plant = e.name.replace(" Bodenfeuchte", "")
+            user = R.choice([f"Wie feucht ist die Erde bei den {plant}?",
+                             f"Müssen die {plant} gegossen werden?",
+                             f"Wie ist die Bodenfeuchte bei {plant}?"])
+            ans = f"Die Bodenfeuchte bei {plant} liegt bei {e.state} Prozent."
+        else:
+            user = R.choice([f"Wie voll ist {e.name}?", f"Wie steht es um {e.name}?",
+                             f"Was zeigt {e.name}?"])
+            ans = f"{e.name} steht bei {e.state} Prozent."
         ids, must = [e], [e.state]
     elif kind == "power":
         e = R.choice([e for e in h.of("sensor") if e.attrs.get("device_class") == "power"])
@@ -1008,6 +1335,8 @@ def s_question(h, loc):
         ids, must = [e], [val]
     elif kind == "onoff":
         cands = h.of("light") + h.of("switch") + h.of("cover")
+        if not cands:
+            return None
         e = R.choice(cands)
         ref = ref_single(h, e)
         if e.domain == "cover":
@@ -1035,6 +1364,8 @@ def s_question(h, loc):
             ents = h.of("light")
             user = R.choice(["Welche Lichter sind an?", "Brennt irgendwo noch Licht?",
                              "Sind noch Lampen an?", "Welche Lampen sind eingeschaltet?"])
+        if any(e.state == "unavailable" for e in ents):
+            return None
         on = [e for e in ents if e.state == "on"]
         if not on:
             ans = "Gerade ist kein Licht an." if not room else \
@@ -1049,18 +1380,27 @@ def s_question(h, loc):
             must = names
         ids = ents
     elif kind == "windows":
-        ents = h.of("binary_sensor")
-        user = R.choice(["Sind alle Fenster zu?", "Ist noch ein Fenster offen?",
-                         "Welche Fenster sind offen?", "Sind die Fenster geschlossen?"])
+        # only window sensors - presence and motion sensors are binary_sensors too
+        ents = [e for e in h.of("binary_sensor")
+                if e.attrs.get("device_class") in ("window", "door")]
+        if not ents:
+            return None
+        user, yes_if_open = R.choice([("Sind alle Fenster zu?", False),
+                                      ("Ist noch ein Fenster offen?", True),
+                                      ("Welche Fenster sind offen?", None),
+                                      ("Sind die Fenster geschlossen?", False)])
         opn = [e for e in ents if e.state == "on"]
         if not opn:
-            ans, must = "Alle Fenster sind geschlossen.", ["geschlossen"]
+            ans = {True: "Nein, alle Fenster sind geschlossen.",
+                   False: "Ja, alle Fenster sind geschlossen.",
+                   None: "Alle Fenster sind geschlossen."}[yes_if_open]
+            must = ["geschlossen"]
         else:
             names = [e.name for e in opn]
             ans = ("Offen ist: " + names[0] + "." if len(names) == 1 else
                    "Offen sind: " + ", ".join(names[:-1]) + " und " + names[-1] + ".")
-            if R.random() < 0.5:
-                ans = "Nein. " + ans
+            if yes_if_open is not None:
+                ans = ("Ja. " if yes_if_open else "Nein. ") + ans
             must = names
         ids = ents
     elif kind == "lock":
@@ -1099,6 +1439,27 @@ def s_question(h, loc):
                   "answer_contains": must}
 
 
+def s_appliance_question(h, loc):
+    """'Ist der Trockner fertig?' -> the status sensor, not the power switch."""
+    if not h.appliances:
+        return None
+    app, g, sensor, _power = R.choice(h.appliances)
+    kind = sensor.attrs["_kind"]
+    nom = f"{ART_NOM[g]} {app}"
+    user = R.choice([f"Ist {nom} fertig?", f"Läuft {nom} noch?", f"Was macht {nom}?",
+                     f"Ist {nom} schon durch?", f"Wie ist der Status von {ART_DAT[g]} {app}?"])
+    phrase, key = APP_ANSWER[kind]
+    ans = R.choice([f"{cap(nom)} {phrase}.", f"Laut Home Assistant {phrase.split()[0]} "
+                    f"{nom} {' '.join(phrase.split()[1:])}.".replace("  ", " ")])
+    msgs = base_msgs(h, loc) + [{"role": "user", "content": voice(user)}]
+    args = {"entity_ids": [sensor.eid]}
+    call, cid = tool_call("get_state", args)
+    msgs += [call, tool_msg(cid, h.state_of([sensor])),
+             {"role": "assistant", "content": ans}]
+    return msgs, {"cat": "question", "gold": [["get_state", args]],
+                  "answer_contains": [key]}
+
+
 def s_relative_climate(h, loc):
     """'Mach es im Bad wärmer' -> get_state -> set_temperature target +/- 1."""
     ents = [e for e in h.of("climate") if e.area]
@@ -1126,12 +1487,106 @@ def s_relative_climate(h, loc):
                                               ["control", {"actions": acts}]]}
 
 
+MISSING_TYPES = [
+    # domain, phrase, "kein ...", rel. pronoun, verb on, verb off, "ein ...",
+    # services (on, off), state words (on, off), label filter
+    ("light", "das Licht", "kein Licht", "das", "an", "aus", "Licht",
+     ("light.turn_on", "light.turn_off"), ("an", "aus"), None),
+    ("light", "die Lampe", "keine Lampe", "die", "an", "aus", "Eine Lampe",
+     ("light.turn_on", "light.turn_off"), ("an", "aus"), None),
+    ("cover", "die Rollläden", "keine Rollläden", "die", "hoch", "runter", "Rollläden",
+     ("cover.open_cover", "cover.close_cover"), ("offen", "geschlossen"), "plain"),
+    ("climate", "die Heizung", "keine Heizung", "die", "an", "aus", "Eine Heizung",
+     ("climate.turn_on", "climate.turn_off"), ("an", "aus"), None),
+    ("media_player", "den Fernseher", "keinen Fernseher", "den", "an", "aus",
+     "Einen Fernseher", ("media_player.turn_on", "media_player.turn_off"), ("an", "aus"),
+     "Fernseher"),
+    ("fan", "den Ventilator", "keinen Ventilator", "den", "an", "aus", "Einen Ventilator",
+     ("fan.turn_on", "fan.turn_off"), ("an", "aus"), None),
+]
+
+
+def s_missing_type(h, loc):
+    """Room exists, but has no device of the requested kind -> no tool call.
+    If the kind exists in another room, name it instead of switching it."""
+    dom, phrase, kein, rel, on, off, ein, svcs, words, filt = R.choice(MISSING_TYPES)
+
+    def match(e):
+        if filt == "plain":
+            return e.label not in NO_GROUP_COVERS
+        return filt is None or e.label == filt
+
+    ents = [e for e in h.of(dom) if match(e)]
+    rooms = [r for r in h.rooms if not any(e.area == r for e in ents)]
+    if not rooms:
+        return None
+    room = R.choice(rooms)
+    prep = ROOM_BY_NAME[room][1]
+    turn_on = R.random() < 0.5
+    verb = on if turn_on else off
+    user = R.choice([f"Mach {phrase} {prep} {verb}",
+                     f"Schalte {phrase} {prep} {'ein' if turn_on else 'aus'}",
+                     f"{cap(phrase.split()[1])} {prep} {verb}", f"Mach {prep} {phrase} {verb}"])
+    others = [e for e in ents if e.area and e.area != room]
+    # suggest the other device only if there are one or two candidates
+    alt = R.choice(others) if 0 < len(others) <= 2 else None
+    if alt is not None and R.random() < 0.8:
+        oprep = ROOM_BY_NAME[alt.area][1]
+        where = "" if alt.area in alt.name else f" {oprep}"
+        ans = R.choice([f"{cap(prep)} gibt es {kein}. {ein} gibt es {oprep}: {alt.name}.",
+                        f"{cap(prep)} finde ich {kein}. Meinst du {alt.name}{where}?",
+                        f"{cap(prep)} habe ich {kein} in der Geräteliste. {oprep[0].upper() + oprep[1:]} gibt es {alt.name}."])
+    else:
+        alt = None
+        ans = R.choice([f"{cap(prep)} finde ich {kein}, {rel} ich steuern kann.",
+                        f"{cap(prep)} gibt es {kein} in der Geräteliste.",
+                        f"Ich habe {prep} {kein} gefunden, {rel} ich schalten kann."])
+    msgs = base_msgs(h, loc) + [{"role": "user", "content": voice(user)},
+                                {"role": "assistant", "content": ans}]
+    gold: list = []
+    r = R.random()
+    if alt is not None and r < 0.35:
+        # user accepts the device in the other room -> now it is switched
+        oprep = ROOM_BY_NAME[alt.area][1]
+        where = "" if alt.area in alt.name else f" {oprep}"
+        msgs.append({"role": "user", "content": voice(R.choice(
+            [f"Dann {ART_ACC[alt.gender]} {oprep}", "Ja, den meine ich", "Okay, dann den",
+             f"Ja, {alt.name}", f"Dann eben {oprep}"]))})
+        act = [action(svcs[0] if turn_on else svcs[1], [alt])]
+        call, cid = tool_call("control", {"actions": act})
+        word = words[0] if turn_on else words[1]
+        msgs += [call, tool_msg(cid, S.control_result()),
+                 {"role": "assistant", "content": R.choice(
+                     [f"{alt.name}{where} ist jetzt {word}.",
+                      f"Erledigt, {alt.name}{where} ist {word}."])}]
+        gold = [["control", {"actions": act}]]
+        cat = "followup"
+    elif r < 0.7:
+        # user insists on the room -> still no invented action
+        msgs += [{"role": "user", "content": voice(R.choice(
+                     ["Doch, mach es an!", "Ja, schalte es an!", "Nee, das gibt es doch",
+                      "Mach es trotzdem", f"Doch, {prep}!", f"Nein, ich meine {prep}"]))},
+                 {"role": "assistant", "content": R.choice([
+                     f"{cap(prep)} gibt es in deiner Geräteliste {kein}. Prüfe bitte, ob das Gerät für Assist freigegeben ist.",
+                     f"Ich sehe {prep} wirklich {kein}, {rel} ich steuern kann."])}]
+        cat = "unknown"
+    else:
+        cat = "unknown"
+    meta = {"cat": cat, "gold": gold}
+    if cat == "followup":
+        meta["gold_last"] = gold
+    return msgs, meta
+
+
 def s_unknown(h, loc):
     """User asks for a device or room that does not exist -> no tool call."""
+    if R.random() < 0.45:
+        return s_missing_type(h, loc)
     r = R.random()
     if r < 0.5:
         dev, g = R.choice(UNKNOWN_DEVICES)
-        if any(dev.lower() in e.name.lower() for e in h.ents):
+        labels = " ".join(f"{e.name} {e.label}" for e in h.ents).lower()
+        if dev.lower() in labels or (dev == "Rasenmäher" and h.of("lawn_mower")):
             return None
         acc = f"{ART_ACC[g]} {dev}"
         user = R.choice([f"Schalte {acc} ein", f"Mach {acc} an", f"Schalte {acc} aus",
@@ -1185,8 +1640,29 @@ def s_chat(h, loc):
     return msgs, {"cat": "chat", "gold": []}
 
 
+def _unreachable(name):
+    return R.choice([f"Das hat leider nicht funktioniert. {name} reagiert gerade nicht.",
+                     f"Leider ist ein Fehler aufgetreten: {name} ist nicht erreichbar.",
+                     f"{name} ist gerade nicht erreichbar, deshalb konnte ich den Befehl nicht ausführen."])
+
+
+def _single_command(h, loc):
+    """A command intent that targets exactly one entity."""
+    for _ in range(10):
+        out = pick_command(h, loc)
+        if out and len(out[1]) == 1 and len(out[1][0]["entity_id"]) == 1:
+            return out
+    return None
+
+
 def s_error(h, loc):
-    out = pick_command(h, loc)
+    """The device does not respond: the answer reports it, never success."""
+    r = R.random()
+    if r < 0.3:
+        return _error_partial(h, loc)
+    if r < 0.45:
+        return _error_question(h, loc)
+    out = _single_command(h, loc) if r < 0.65 else pick_command(h, loc)
     if not out:
         return None
     user, actions, _ = out
@@ -1198,11 +1674,76 @@ def s_error(h, loc):
     msgs = base_msgs(h, loc) + [{"role": "user", "content": voice(user)}]
     call, cid = tool_call("control", {"actions": actions})
     msgs += [call, tool_msg(cid, S.control_result([err])),
-             {"role": "assistant", "content": R.choice([
-                 f"Das hat leider nicht funktioniert. {name} reagiert gerade nicht.",
-                 f"Leider ist ein Fehler aufgetreten: {name} ist nicht erreichbar.",
-                 f"{name} ist gerade nicht erreichbar, deshalb konnte ich den Befehl nicht ausführen."])}]
+             {"role": "assistant", "content": _unreachable(name)}]
+    meta = {"cat": "error", "gold": [["control", {"actions": actions}]]}
+    if r >= 0.65 or len(actions) != 1:
+        return msgs, meta
+    # second turn after the failure: retry or doubt, the device is still down
+    if R.random() < 0.5:
+        msgs.append({"role": "user", "content": voice(R.choice(
+            ["Versuch es nochmal", "Nochmal bitte", "Probier es noch einmal",
+             "Mach es nochmal"]))})
+        call, cid = tool_call("control", {"actions": actions})
+        msgs += [call, tool_msg(cid, S.control_result([err])),
+                 {"role": "assistant", "content": R.choice([
+                     f"{name} ist immer noch nicht erreichbar. Prüfe bitte, ob das Gerät Strom und Verbindung hat.",
+                     f"Auch der zweite Versuch hat nicht funktioniert, {name} reagiert nicht."])}]
+        meta.update(cat="followup", gold_last=[["control", {"actions": actions}]])
+    else:
+        onoff = actions[0]["service"].endswith(("turn_on", "open_cover", "open_valve"))
+        msgs.append({"role": "user", "content": voice(R.choice(
+            ["Ist es jetzt an?", "Nee, ist es nicht?", "Hat es geklappt?", "Und, ist es an?"]
+            if onoff else ["Hat es geklappt?", "Und, hat es funktioniert?", "Stimmt das?"]))})
+        e = next(x for x in h.ents if x.eid == eid)
+        args = {"entity_ids": [eid]}
+        call, cid = tool_call("get_state", args)
+        msgs += [call, tool_msg(cid, S.dumps([S.format_state(eid, e.name, "unavailable", {})])),
+                 {"role": "assistant", "content": R.choice([
+                     f"Nein. {name} ist nicht erreichbar, deshalb konnte ich es nicht schalten.",
+                     f"Laut Home Assistant ist {name} gerade nicht erreichbar. Geschaltet wurde nichts."])}]
+        meta.update(cat="followup", gold_last=[["get_state", args]])
+    return msgs, meta
+
+
+def _error_partial(h, loc):
+    """Two commands, one device is down: report both outcomes."""
+    a = _single_command(h, loc)
+    b = pick_command(h, loc)
+    user = join_commands(a, b)
+    if not user:
+        return None
+    eid = a[1][0]["entity_id"][0]
+    name = next(e.name for e in h.ents if e.eid == eid)
+    actions = a[1] + b[1]
+    done = [i for x in b[1] for i in x["entity_id"]]
+    rest = b[2] if b[2] != "Erledigt." else "Der Rest ist erledigt."
+    ans = R.choice([f"{rest} {name} ist aber gerade nicht erreichbar.",
+                    f"Das hat nur teilweise geklappt: {name} ist gerade nicht erreichbar. {rest}"])
+    msgs = base_msgs(h, loc) + [{"role": "user", "content": voice(user)}]
+    call, cid = tool_call("control", {"actions": actions})
+    msgs += [call, tool_msg(cid, S.control_result([f"Entity {eid} is unavailable"], done)),
+             {"role": "assistant", "content": ans}]
     return msgs, {"cat": "error", "gold": [["control", {"actions": actions}]]}
+
+
+def _error_question(h, loc):
+    """State question about a device that is unavailable."""
+    ents = [e for e in h.ents if e.domain in ("light", "switch", "cover", "lock",
+                                               "media_player", "climate", "fan")
+            and e.label != "__group__"]
+    if not ents:
+        return None
+    e = R.choice(ents)
+    user = R.choice([f"Ist {e.name} an?", f"Wie ist der Status von {e.name}?",
+                     f"Was macht {e.name}?", f"Ist {e.name} eingeschaltet?"])
+    args = {"entity_ids": [e.eid]}
+    msgs = base_msgs(h, loc) + [{"role": "user", "content": voice(user)}]
+    call, cid = tool_call("get_state", args)
+    msgs += [call, tool_msg(cid, S.dumps([S.format_state(e.eid, e.name, "unavailable", {})])),
+             {"role": "assistant", "content": R.choice([
+                 f"{e.name} ist gerade nicht erreichbar, deshalb kenne ich den aktuellen Zustand nicht.",
+                 f"Das kann ich nicht sagen: {e.name} ist gerade nicht erreichbar."])}]
+    return msgs, {"cat": "error", "gold": [["get_state", args]]}
 
 
 def s_followup(h, loc):
@@ -1221,10 +1762,25 @@ def s_followup(h, loc):
     msgs += [c, tool_msg(cid, S.control_result()),
              {"role": "assistant", "content": f"Das Licht {p1} ist an."}]
     k = R.random()
-    if k < 0.35:
+    if k < 0.15:
+        # user doubts the result -> check the real state instead of guessing
+        u2 = R.choice(["Nee, ist es nicht", "Ist es wirklich an?", "Stimmt das?",
+                       "Bei mir ist es noch dunkel"])
+        really_on = R.random() < 0.5
+        for e in e1:
+            e.state = "on" if really_on else "off"
+        msgs.append({"role": "user", "content": voice(u2)})
+        c2, cid2 = tool_call("get_state", {"entity_ids": [e.eid for e in e1]})
+        ans = (f"Laut Home Assistant ist das Licht {p1} an." if really_on else
+               f"Laut Home Assistant ist das Licht {p1} noch aus. Soll ich es erneut einschalten?")
+        msgs += [c2, tool_msg(cid2, h.state_of(e1)), {"role": "assistant", "content": ans}]
+        return msgs, {"cat": "followup",
+                      "gold_last": [["get_state", {"entity_ids": [e.eid for e in e1]}]],
+                      "gold": [["control", {"actions": a1}]]}
+    if k < 0.4:
         u2, a2, ans = R.choice(["Und wieder aus", "Mach es wieder aus", "Doch wieder aus"]), \
             [action("light.turn_off", e1)], f"Das Licht {p1} ist wieder aus."
-    elif k < 0.7:
+    elif k < 0.72:
         u2, a2, ans = R.choice([f"Und {p2}?", f"{cap(p2)} auch", f"Und {p2} bitte auch"]), \
             [action("light.turn_on", e2)], f"Das Licht {p2} ist auch an."
     else:
@@ -1246,22 +1802,382 @@ def s_followup(h, loc):
                   "gold": [["control", {"actions": a1}]]}
 
 
+# --------------------------------------------------------------------------
+# multi-turn conversations: later turns refer to earlier ones
+# --------------------------------------------------------------------------
+INVERSE = {"turn_on": "turn_off", "turn_off": "turn_on", "open_cover": "close_cover",
+           "close_cover": "open_cover", "lock": "unlock", "unlock": "lock",
+           "media_play": "media_pause", "media_pause": "media_play",
+           "open_valve": "close_valve", "close_valve": "open_valve",
+           "start": "return_to_base", "start_mowing": "dock"}
+PARTICIPLE = {"turn_on": "eingeschaltet", "turn_off": "ausgeschaltet",
+              "open_cover": "geöffnet", "close_cover": "geschlossen",
+              "stop_cover": "angehalten", "lock": "abgeschlossen", "unlock": "aufgeschlossen",
+              "media_play": "fortgesetzt", "media_pause": "pausiert", "media_stop": "gestoppt",
+              "media_next_track": "zum nächsten Titel geschaltet",
+              "media_previous_track": "zum vorherigen Titel geschaltet",
+              "volume_up": "lauter gestellt", "volume_down": "leiser gestellt",
+              "start": "gestartet", "pause": "pausiert", "return_to_base": "zur Ladestation geschickt",
+              "start_mowing": "gestartet", "dock": "zur Ladestation geschickt",
+              "open_valve": "geöffnet", "close_valve": "geschlossen", "press": "ausgelöst",
+              "alarm_arm_home": "scharf geschaltet", "alarm_arm_away": "scharf geschaltet",
+              "alarm_arm_night": "im Nachtmodus scharf geschaltet",
+              "alarm_disarm": "unscharf geschaltet"}
+DOMAIN_NOUN = {"light": ("Welches Licht", "Welche Lampen"),
+               "cover": ("Welchen Rollladen", "Welche Rollläden"),
+               "climate": ("Welche Heizung", "Welche Heizungen"),
+               "switch": ("Welches Gerät", "Welche Geräte"),
+               "media_player": ("Welchen Lautsprecher", "Welche Geräte"),
+               "fan": ("Welchen Ventilator", "Welche Ventilatoren")}
+
+
+def apply_actions(h, actions):
+    """Change the simulated states, so later questions see the result."""
+    by_id = {e.eid: e for e in h.ents}
+    for a in actions:
+        dom, svc = a["service"].split(".", 1)
+        data = a.get("data") or {}
+        for eid in a["entity_id"]:
+            e = by_id.get(eid)
+            if e is None or e.state == "unavailable":
+                continue
+            if svc == "turn_on":
+                e.state = "on" if dom not in ("media_player", "climate") else (
+                    "idle" if dom == "media_player" else "heat")
+                if dom == "light":
+                    b = e.attrs.get("brightness", 180)
+                    if "brightness_pct" in data:
+                        b = round(data["brightness_pct"] * 2.55)
+                    elif "brightness_step_pct" in data:
+                        b = max(3, min(255, b + round(data["brightness_step_pct"] * 2.55)))
+                    e.attrs["brightness"] = b
+            elif svc == "turn_off":
+                e.state = "off"
+                e.attrs.pop("brightness", None)
+            elif svc in ("open_cover", "close_cover", "set_cover_position"):
+                pos = data.get("position", 100 if svc == "open_cover" else 0)
+                e.state = "open" if pos > 0 else "closed"
+                e.attrs["current_position"] = pos
+            elif svc == "set_temperature":
+                e.attrs["temperature"] = data.get("temperature")
+            elif svc in ("lock", "unlock"):
+                e.state = "locked" if svc == "lock" else "unlocked"
+            elif svc in ("media_play", "media_pause", "media_stop"):
+                e.state = {"media_play": "playing", "media_pause": "paused",
+                           "media_stop": "idle"}[svc]
+            elif svc in ("start", "start_mowing"):
+                e.state = "cleaning" if dom == "vacuum" else "mowing"
+            elif svc in ("return_to_base", "dock"):
+                e.state = "returning"
+            elif svc in ("open_valve", "close_valve"):
+                e.state = "open" if svc == "open_valve" else "closed"
+            elif svc == "set_percentage":
+                e.state = "on"
+                e.attrs["percentage"] = data.get("percentage")
+
+
+def _names(h, ids):
+    by_id = {e.eid: e.name for e in h.ents}
+    ns = [by_id[i] for i in ids]
+    return ns[0] if len(ns) == 1 else ", ".join(ns[:-1]) + " und " + ns[-1]
+
+
+def describe(h, a):
+    """'Flur Deckenlicht eingeschaltet' for one action."""
+    dom, svc = a["service"].split(".", 1)
+    data = a.get("data") or {}
+    who = _names(h, a["entity_id"])
+    if "brightness_pct" in data:
+        return f"{who} auf {data['brightness_pct']} Prozent gestellt"
+    if "brightness_step_pct" in data:
+        return f"{who} {'heller' if data['brightness_step_pct'] > 0 else 'dunkler'} gemacht"
+    if "color_name" in data or "color_temp_kelvin" in data:
+        return f"bei {who} die Farbe geändert"
+    if svc == "set_temperature":
+        return f"{who} auf {de_num(data['temperature'])} Grad gestellt"
+    if svc == "set_cover_position":
+        return f"{who} auf {data['position']} Prozent gefahren"
+    if svc in ("set_percentage",) or "percentage" in data:
+        return f"{who} auf {data.get('percentage')} Prozent gestellt"
+    if svc == "volume_set":
+        return f"bei {who} die Lautstärke auf {round(data['volume_level'] * 100)} Prozent gestellt"
+    if dom == "scene":
+        return f"die Szene {who} aktiviert"
+    if dom == "script":
+        return f"{who} gestartet"
+    return f"{who} {PARTICIPLE.get(svc, 'geschaltet')}"
+
+
+class Conv:
+    """Builds one conversation turn by turn and tracks what really happened."""
+
+    def __init__(self, h, loc):
+        self.h, self.loc = h, loc
+        self.msgs = base_msgs(h, loc)
+        self.done: list[dict] = []        # successful actions, in order
+        self.last: list[dict] | None = None
+        self.gold_last: list = []
+
+    def user(self, text):
+        self.msgs.append({"role": "user", "content": voice(text)})
+
+    def control(self, actions, answer, errors=None, done=None):
+        call, cid = tool_call("control", {"actions": actions})
+        self.msgs += [call, tool_msg(cid, S.control_result(errors, done)),
+                      {"role": "assistant", "content": answer}]
+        ok = [a for a in actions if not errors or
+              all(i in (done or []) for i in a["entity_id"])]
+        apply_actions(self.h, ok)
+        self.done += ok
+        self.last = ok or None
+        self.gold_last = [["control", {"actions": actions}]]
+
+    def get_state(self, ents, answer):
+        args = {"entity_ids": [e.eid for e in ents]}
+        call, cid = tool_call("get_state", args)
+        self.msgs += [call, tool_msg(cid, self.h.state_of(ents)),
+                      {"role": "assistant", "content": answer}]
+        self.gold_last = [["get_state", args]]
+
+    def say(self, answer):
+        self.msgs.append({"role": "assistant", "content": answer})
+        self.gold_last = []
+
+
+def turn_command(c):
+    out = pick_command(c.h, c.loc)
+    if not out:
+        return False
+    user, actions, conf = out
+    c.user(user)
+    c.control(actions, conf)
+    return True
+
+
+def turn_question(c):
+    out = s_question(c.h, c.loc)
+    if not out:
+        return False
+    msgs = out[0][1:]
+    c.msgs += msgs
+    c.gold_last = out[1]["gold"]
+    return True
+
+
+def turn_chat(c):
+    users, answers = R.choice(CHAT[:4])
+    c.user(R.choice(users))
+    c.say(R.choice(answers))
+    return True
+
+
+def turn_error(c):
+    out = _single_command(c.h, c.loc)
+    if not out:
+        return False
+    user, actions, _ = out
+    eid = actions[0]["entity_id"][0]
+    e = next(x for x in c.h.ents if x.eid == eid)
+    e.state = "unavailable"
+    c.user(user)
+    c.control(actions, _unreachable(e.name), errors=[f"Entity {eid} is unavailable"])
+    c.last = None
+    return True
+
+
+def turn_unknown(c):
+    out = s_missing_type(c.h, c.loc) if R.random() < 0.5 else s_unknown(c.h, c.loc)
+    if not out or len(out[0]) != 3:      # only the single-turn variant here
+        return False
+    c.msgs += out[0][1:]
+    c.gold_last = []
+    return True
+
+
+def turn_which(c):
+    """'Welches Licht hast du ausgeschaltet?' -> answered from the history."""
+    if not c.last:
+        return False
+    a = c.last[-1]
+    dom, svc = a["service"].split(".", 1)
+    ids = a["entity_id"]
+    if dom in DOMAIN_NOUN and svc in PARTICIPLE and not a.get("data"):
+        sg, pl = DOMAIN_NOUN[dom]
+        q = (pl if len(ids) > 1 else sg) + f" hast du {PARTICIPLE[svc]}?"
+        user = R.choice([q, q, "Was hast du gerade gemacht?", "Welches Gerät war das?"])
+    else:
+        user = R.choice(["Was hast du gerade gemacht?", "Was genau hast du gemacht?"])
+    c.user(user)
+    parts = [describe(c.h, x) for x in c.last]
+    c.say(R.choice(["Ich habe ", "Gerade habe ich "]) + " und ".join(parts) + ".")
+    return True
+
+
+def turn_summary(c):
+    """'Was hast du alles gemacht?' over the whole conversation."""
+    if len(c.done) < 2:
+        return False
+    c.user(R.choice(["Was hast du alles gemacht?", "Was hast du bisher geschaltet?",
+                     "Fass mal zusammen, was du gemacht hast"]))
+    parts = [describe(c.h, x) for x in c.done]
+    c.say("Ich habe " + ", ".join(parts[:-1]) + " und " + parts[-1] + ".")
+    return True
+
+
+def turn_undo(c):
+    if not c.last:
+        return False
+    inv = []
+    for a in c.last:
+        dom, svc = a["service"].split(".", 1)
+        if svc not in INVERSE or a.get("data"):
+            return False
+        inv.append({"service": f"{dom}.{INVERSE[svc]}", "entity_id": a["entity_id"]})
+    c.user(R.choice(["Mach das rückgängig", "Doch nicht", "Und wieder zurück",
+                     "Nimm das zurück"] +
+                    (["Und wieder aus", "Mach es wieder aus"]
+                     if inv[0]["service"].endswith("turn_off") else []) +
+                    (["Und wieder an"] if inv[0]["service"].endswith("turn_on") else [])))
+    c.control(inv, "Okay, ich habe " + " und ".join(describe(c.h, x) for x in inv) + ".")
+    return True
+
+
+def turn_correct(c):
+    """'Nein, ich meinte das im Schlafzimmer' -> undo + the right device."""
+    if not c.last or len(c.last) != 1:
+        return False
+    a = c.last[0]
+    dom, svc = a["service"].split(".", 1)
+    if svc not in ("turn_on", "turn_off", "open_cover", "close_cover") or a.get("data") \
+            or dom not in ("light", "cover", "switch"):
+        return False
+    cur = next(e for e in c.h.ents if e.eid == a["entity_id"][0])
+    others = [e for e in c.h.of(dom, plain=dom == "cover")
+              if e.area and e.area != cur.area and e.state != "unavailable"]
+    if not others:
+        return False
+    o = R.choice(others)
+    prep = ROOM_BY_NAME[o.area][1]
+    c.user(R.choice([f"Nein, ich meinte {prep}", f"Falsch, {prep}",
+                     f"Nicht das, sondern {o.name}", f"Ich meinte {o.name}"]))
+    acts = [{"service": f"{dom}.{INVERSE[svc]}", "entity_id": [cur.eid]},
+            {"service": a["service"], "entity_id": [o.eid]}]
+    c.control(acts, f"Okay, ich habe {describe(c.h, acts[0])} und {describe(c.h, acts[1])}.")
+    return True
+
+
+def turn_also(c):
+    """'Im Bad auch' -> same service on the same device type in another room."""
+    if not c.last or len(c.last) != 1:
+        return False
+    a = c.last[0]
+    dom = a["service"].split(".")[0]
+    if dom not in ("light", "cover", "climate"):
+        return False
+    first = next(e for e in c.h.ents if e.eid == a["entity_id"][0])
+    rooms = [r for r in c.h.rooms if r != first.area and
+             [e for e in c.h.of(dom, r, plain=dom == "cover") if e.state != "unavailable"]]
+    if not rooms:
+        return False
+    r = R.choice(rooms)
+    prep = ROOM_BY_NAME[r][1]
+    ents = [e for e in c.h.of(dom, r, plain=dom == "cover") if e.state != "unavailable"]
+    c.user(R.choice([f"Und {prep} auch", f"{cap(prep)} auch", f"Das gleiche {prep}"]))
+    act = {"service": a["service"], "entity_id": [e.eid for e in ents]}
+    if a.get("data"):
+        act["data"] = a["data"]
+    c.control([act], R.choice(["Okay, ich habe ", "Erledigt, ich habe "])
+              + describe(c.h, act) + ".")
+    return True
+
+
+def turn_brightness(c):
+    if not c.last or len(c.last) != 1 or c.last[0]["service"] != "light.turn_on":
+        return False
+    ids = c.last[0]["entity_id"]
+    k = R.random()
+    if k < 0.4:
+        user, data = R.choice(["Etwas heller", "Noch heller", "Mach es heller"]), {"brightness_step_pct": 20}
+    elif k < 0.8:
+        user, data = R.choice(["Etwas dunkler", "Noch dunkler", "Mach es dunkler"]), {"brightness_step_pct": -20}
+    else:
+        p = R.choice([10, 30, 50, 70])
+        user, data = f"Auf {p} Prozent", {"brightness_pct": p}
+    act = {"service": "light.turn_on", "entity_id": ids, "data": data}
+    c.user(user)
+    c.control([act], "Okay, ich habe " + describe(c.h, act) + ".")
+    return True
+
+
+def turn_check(c):
+    """'Ist es jetzt an?' -> get_state on the last devices."""
+    if not c.last:
+        return False
+    ids = c.last[-1]["entity_id"]
+    ents = [e for e in c.h.ents if e.eid in ids]
+    if ents[0].domain not in ("light", "switch", "cover", "lock", "fan", "media_player"):
+        return False
+    c.user(R.choice(["Ist es jetzt an?", "Hat das geklappt?", "Stimmt das wirklich?",
+                     "Kannst du das prüfen?"]))
+    states = ", ".join(f"{e.name} ist {_state_word(e)}" for e in ents)
+    c.get_state(ents, f"Laut Home Assistant: {states}.")
+    return True
+
+
+OPENERS = [(turn_command, 6), (turn_question, 2), (turn_chat, 2), (turn_error, 1),
+           (turn_unknown, 1)]
+NEXT = [(turn_command, 4), (turn_question, 2), (turn_which, 4), (turn_undo, 3),
+        (turn_correct, 2), (turn_also, 2), (turn_brightness, 1), (turn_check, 2),
+        (turn_summary, 2), (turn_error, 1), (turn_unknown, 1), (turn_chat, 1)]
+
+
+def s_conversation(h, loc):
+    """3-6 turns; the loss covers every assistant turn, the eval checks the last."""
+    c = Conv(h, loc)
+    n = R.choice([3, 3, 4, 4, 5, 6])
+    pool = OPENERS
+    turns = 0
+    for _ in range(n * 6):
+        fn = R.choices([p[0] for p in pool], [p[1] for p in pool])[0]
+        if fn(c):
+            turns += 1
+            pool = NEXT
+            if turns >= n:
+                break
+    if turns < 3:
+        return None
+    return c.msgs, {"cat": "conversation", "gold": [], "gold_last": c.gold_last}
+
+
 CATEGORIES = [
     (s_command, 46), (s_compound, 8), (s_question, 24), (s_relative_climate, 2),
-    (s_unknown, 7), (s_chat, 3), (s_error, 2), (s_followup, 8),
+    (s_unknown, 9), (s_chat, 3), (s_error, 5), (s_followup, 8),
+    (s_missing_type, 6), (s_appliance_question, 3), (s_conversation, 12),
 ]
 
 
+def history_prefix(h, loc):
+    """An earlier exchange in the same conversation (small talk or a command)."""
+    if R.random() < 0.4:
+        users, answers = R.choice(CHAT)
+        return [{"role": "user", "content": voice(R.choice(users))},
+                {"role": "assistant", "content": R.choice(answers)}]
+    out = s_command(h, loc)
+    return out[0][1:] if out else []
+
+
 def make_sample():
-    size = R.choice([R.randint(8, 18), R.randint(18, 35), R.randint(18, 35),
-                     R.randint(35, 60)])
+    size = R.choice([R.randint(8, 18), R.randint(18, 35), R.randint(25, 45),
+                     R.randint(35, 60), R.randint(60, 110)])
     h = House(size)
-    loc = R.choice(h.rooms) if R.random() < 0.3 else None
+    loc = R.choice(h.rooms) if R.random() < 0.25 else None
     for _ in range(20):
         fn = R.choices([c[0] for c in CATEGORIES], [c[1] for c in CATEGORIES])[0]
         out = fn(h, loc)
         if out:
             msgs, meta = out
+            if meta["cat"] not in ("followup", "conversation") and R.random() < 0.2:
+                msgs = msgs[:1] + history_prefix(h, loc) + msgs[1:]
             meta["location"] = loc
             return {"messages": msgs, "meta": meta}
     return None
@@ -1276,7 +2192,8 @@ def main():
         s = make_sample()
         if not s:
             continue
-        key = s["messages"][1]["content"] + str(s["meta"].get("gold"))
+        last_user = [m["content"] for m in s["messages"] if m["role"] == "user"][-1]
+        key = last_user + str(s["meta"].get("gold"))
         if key in seen:
             continue
         seen.add(key)

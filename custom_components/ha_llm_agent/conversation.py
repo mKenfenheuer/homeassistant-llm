@@ -217,6 +217,7 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
     async def _control(self, args: dict, exposed: dict,
                        context) -> str:
         errors: list[str] = []
+        done: list[str] = []
         actions = args.get("actions")
         if isinstance(actions, dict):
             actions = [actions]
@@ -246,7 +247,9 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
                     blocking=True, context=context)
             except (HomeAssistantError, ValueError, TypeError) as err:
                 errors.append(f"{service} failed for {', '.join(ids)}: {err}")
-        return S.control_result(errors)
+            else:
+                done.extend(ids)
+        return S.control_result(errors, done)
 
     # ------------------------------------------------------------------- llm
     async def _complete(self, messages: list[dict], max_tokens: int = 400,
@@ -356,5 +359,5 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
 
         chat_log.async_add_assistant_content_without_tools(
             conversation.AssistantContent(agent_id=self.entity_id,
-                                          content=text or "Erledigt."))
+                                          content=text))
         return conversation.async_get_result_from_chat_log(user_input, chat_log)

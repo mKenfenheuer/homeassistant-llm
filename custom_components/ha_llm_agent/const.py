@@ -12,7 +12,7 @@ CONF_USE_LOCATION = "use_location"
 # hostname of the local add-on "ha_llm_inference" inside the HA network
 DEFAULT_URL = "http://local-ha-llm-inference:8080"
 DEFAULT_TEMPERATURE = 0.0
-DEFAULT_MAX_HISTORY = 4        # previous user turns kept per conversation
+DEFAULT_MAX_HISTORY = 6        # previous user turns kept per conversation
 DEFAULT_TIMEOUT = 300          # seconds per LLM request (CPU inference is slow)
 DEFAULT_MAX_ENTITIES = 200
 # The area line sits before the tool block in the prompt; a different area per

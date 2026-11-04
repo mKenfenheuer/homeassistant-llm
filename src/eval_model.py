@@ -89,11 +89,11 @@ def main():
         msgs, meta = row["messages"], row["meta"]
         cat = meta["cat"]
         # cut before the assistant turn under test
-        if cat == "followup":
-            last_user = max(i for i, m in enumerate(msgs) if m["role"] == "user")
-            prompt, gold = msgs[:last_user + 1], meta["gold_last"][0]
+        last_user = max(i for i, m in enumerate(msgs) if m["role"] == "user")
+        prompt = msgs[:last_user + 1]
+        if "gold_last" in meta:
+            gold = meta["gold_last"][0] if meta["gold_last"] else None
         else:
-            prompt = msgs[:2]
             gold = meta["gold"][0] if meta["gold"] else None
         msg = chat(prompt)
         name, args = first_call(msg)
@@ -105,12 +105,12 @@ def main():
                           (msg.get("content") or "")[:120]))
         # grounded answer check for questions
         if cat == "question" and ok:
-            answer = chat(msgs[:4])["content"] or ""
+            answer = chat(msgs[:last_user + 3])["content"] or ""
             hit = all(s.lower() in answer.lower() for s in meta["answer_contains"])
             answer_stats[0] += hit
             answer_stats[1] += 1
             if not hit:
-                fails.append(("answer", msgs[1]["content"], meta["answer_contains"],
+                fails.append(("answer", msgs[last_user]["content"], meta["answer_contains"],
                               None, None, answer[:160]))
     dt = time.time() - t0
     total = sum(v[0] for v in stats.values()), sum(v[1] for v in stats.values())
