@@ -123,12 +123,41 @@ HA_URL=http://localhost:18123 HA_TOKEN=... python3 src/ha_e2e_test.py
 Integration besteht 23 von 23 Fällen. Die Antwortzeit liegt im Median bei
 2,8 Sekunden, die erste Anfrage braucht wegen des leeren Caches 7,6 Sekunden.
 
+## Hardware für das Add-on
+
+Das Add-on rechnet auf der CPU. Entscheidend ist AVX2: Ohne AVX2 nutzt
+llama.cpp für Q4_K langsamen generischen Code. Messung mit 95 Entitäten
+(2.342 Tokens Systemprompt) auf 4 Kernen (`src/bench_cpu.py`):
+
+| Befehlssatz | Erste Anfrage (kalter Cache) | Folgende Befehle |
+|-------------|------------------------------|------------------|
+| AVX2 (z. B. Intel N100, Core i3/i5, Ryzen) | 34 s | 2–3 s |
+| nur SSE4.2 (z. B. Atom C3000, Celeron J4125) | 19 min | 30–40 s |
+
+Die Integration schickt den Systemprompt beim Start und nach jeder Änderung
+der Geräteliste vorab an llama-server (Warm-up). Danach liegt er im Cache, und
+nur die Frage selbst muss neu verarbeitet werden. Dauert das Warm-up länger als
+60 Sekunden, schreibt die Integration eine Warnung ins Log.
+
+Hat der Home-Assistant-Host kein AVX2, sollte llama-server auf einem anderen
+Rechner laufen, etwa per Docker auf einem Server mit GPU:
+
+```bash
+docker run -d --name ha-llm-server --restart unless-stopped --gpus all \
+  -p 8080:8080 -v $PWD/model:/models:ro \
+  ghcr.io/ggml-org/llama.cpp:full-cuda --server \
+  -m /models/qwen2.5-3b-ha-Q4_K_M.gguf --host 0.0.0.0 --port 8080 \
+  --alias ha-llm --jinja -ngl 99 -c 8192 -np 1 --cache-reuse 256
+```
+
+In der Integration dann `http://<server>:8080` als URL eintragen.
+
 ## Grenzen
 
 - Das Modell kennt nur die Dienste in `llm_schema.SERVICES`. Automationen
   anlegen, Timer oder Wetterberichte beherrscht es nicht.
-- Auf der CPU dauert die erste Anfrage nach einer Änderung der Geräteliste
-  länger, weil llama-server den Systemprompt neu verarbeitet. Danach nutzt der
-  Server den Cache.
 - Ab etwa 250 Entitäten reicht die Kontextlänge von 8.192 Tokens nicht mehr.
   Die Integration kürzt dann die Liste (Option „Maximale Anzahl Entitäten“).
+- Die Option „Bereich des Sprachgeräts verwenden“ ist standardmäßig aus. Der
+  Bereich steht im Prompt vor den Werkzeugen, deshalb verwirft jeder Wechsel
+  des Sprachgeräts rund 600 Tokens Cache.
