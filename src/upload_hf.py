@@ -1,7 +1,7 @@
 """Upload the GGUF model and the dataset to Hugging Face.
 
 Requires `hf auth login` (write token) on this machine.
-Usage: python src/upload_hf.py MODEL_REPO DATASET_REPO [--private]
+Usage: python src/upload_hf.py MODEL_REPO DATASET_REPO [--gguf FILE] [--private]
   e.g. python src/upload_hf.py maxk/qwen2.5-3b-homeassistant-de-GGUF \
                                maxk/homeassistant-tool-calling-de
 """
@@ -15,7 +15,7 @@ from pathlib import Path
 from huggingface_hub import HfApi, hf_hub_download
 
 ROOT = Path(__file__).resolve().parents[1]
-GGUF = ROOT / "model" / "qwen2.5-3b-ha-Q4_K_M.gguf"
+GGUF = ROOT / "model" / "qwen2.5-3b-ha-Q4_K_M.gguf"   # default, see --gguf
 
 
 def sha256(path: Path) -> str:
@@ -27,8 +27,11 @@ def sha256(path: Path) -> str:
 
 
 def main():
+    global GGUF
     model_repo, dataset_repo = sys.argv[1], sys.argv[2]
     private = "--private" in sys.argv
+    if "--gguf" in sys.argv:
+        GGUF = Path(sys.argv[sys.argv.index("--gguf") + 1]).resolve()
     api = HfApi()
     print("logged in as", api.whoami()["name"])
     digest = sha256(GGUF)
@@ -37,7 +40,8 @@ def main():
         tmp = Path(tmp)
         # ---- model repo
         card = (ROOT / "hf/model/README.md").read_text()
-        card = card.replace("__DATASET_REPO__", dataset_repo).replace("__SHA256__", digest)
+        card = (card.replace("__DATASET_REPO__", dataset_repo)
+                .replace("__SHA256__", digest).replace("__GGUF__", GGUF.name))
         (tmp / "model").mkdir()
         (tmp / "model/README.md").write_text(card)
         shutil.copy(ROOT / "hf/model/NOTICE", tmp / "model/NOTICE")

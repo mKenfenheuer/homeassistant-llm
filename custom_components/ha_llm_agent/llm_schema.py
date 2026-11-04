@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from typing import Any, Iterable
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 4
 
 # --- services the model may call, with the data keys it may pass ------------
 SERVICES: dict[str, list[str]] = {
@@ -56,6 +56,11 @@ SERVICES: dict[str, list[str]] = {
     "scene.turn_on": [],
     "script.turn_on": [],
     "button.press": [],
+    "lawn_mower.start_mowing": [],
+    "lawn_mower.pause": [],
+    "lawn_mower.dock": [],
+    "valve.open_valve": [],
+    "valve.close_valve": [],
 }
 
 # domains that appear in the device list (controllable + read-only)
@@ -184,7 +189,13 @@ def dumps(obj: Any) -> str:
     return json.dumps(obj, ensure_ascii=False)
 
 
-def control_result(errors: list[str] | None = None) -> str:
+def control_result(errors: list[str] | None = None,
+                   done: list[str] | None = None) -> str:
+    """Result of a control call. On failure, `done` lists the entity_ids
+    that were switched successfully in the same call."""
     if errors:
-        return dumps({"success": False, "error": "; ".join(errors)})
+        out: dict[str, Any] = {"success": False, "error": "; ".join(errors)}
+        if done:
+            out["done"] = done
+        return dumps(out)
     return dumps({"success": True})

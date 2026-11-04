@@ -152,6 +152,16 @@ def main():
         n += 1
         times.append(dt)
         print(f"{'OK ' if good else 'BAD'} {dt:5.1f}s  {text!r} -> {speech!r}")
+    # unreachable device: the answer must report the failure, not success
+    api("POST", "/api/states/light.bed_light",
+        {"state": "unavailable", "attributes": {"friendly_name": "Nachttischlampe"}})
+    speech, _, dt = say("Schalte die Nachttischlampe ein")
+    good = "nicht" in speech.lower() and state("light.bed_light")["state"] == "unavailable"
+    ok += good
+    n += 1
+    times.append(dt)
+    print(f"{'OK ' if good else 'BAD'} {dt:5.1f}s  unavailable -> {speech!r}")
+    svc("light.turn_off", entity_id="light.bed_light")   # demo light writes its state again
     # follow-up within one conversation
     svc("light.turn_on", entity_id="light.kitchen_lights")
     s1, cid, dt1 = say("Mach das Küchenlicht aus")

@@ -31,7 +31,7 @@ DEFAULTS = dict(
     data="data/train.jsonl",
     out="output/lora",
     merged="output/merged",
-    epochs=2, batch=4, accum=4, lr=2e-4, max_len=3072,
+    epochs=2, batch=1, accum=16, lr=2e-4, max_len=4096,
 )
 
 

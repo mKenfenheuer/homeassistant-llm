@@ -1,10 +1,10 @@
 configuration:
   model_url:
     name: Model URL
-    description: Download URL of the GGUF file (Hugging Face). Downloaded to /share/ha_llm/ on first start.
+    description: Optional. Empty = the model that belongs to this add-on version (Hugging Face). Custom GGUF URL possible.
   model_sha256:
     name: Model SHA-256
-    description: Checksum of the GGUF file. Leave empty to skip the check.
+    description: Optional. Checksum of a custom model_url.
   model_path:
     name: Local model file
     description: Optional. Own path to a GGUF file, e.g. /share/ha_llm/custom.gguf. Empty = file name from the URL.

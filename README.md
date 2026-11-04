@@ -16,6 +16,8 @@ nur nicht-kommerzielle Nutzung). Für den Betrieb läuft es als GGUF (Q4_K_M,
 | `src/gen_dataset.py` | Generator für Trainings- und Testdaten |
 | `src/train_sft.py` | LoRA-Training, speichert Adapter und zusammengeführtes Modell |
 | `src/eval_model.py` | Bewertung eines llama-servers auf dem Testdatensatz |
+| `src/check_dataset.py` | Prüft jede Antwort im Datensatz gegen die vorherigen Werkzeugergebnisse |
+| `src/agent_sim.py` | Spielt Gespräche über mehrere Runden gegen ein simuliertes Haus durch |
 | `src/ha_e2e_test.py` | Ende-zu-Ende-Test gegen eine Home-Assistant-Instanz |
 | `legacy/` | Erster Versuch (Dataset, Add-on, Integration), nur zur Ansicht |
 
@@ -40,17 +42,24 @@ neu gewürfeltes Haus mit eigenen Räumen, Namen und teils kryptischen
 `entity_id`s wie `light.shelly1_3c61a5`. Das Modell lernt dadurch die Zuordnung
 über die Geräteliste und merkt sich kein festes Haus. Die Daten decken Befehle,
 Gruppen („alle Rollläden“), kombinierte Befehle, Fragen mit `get_state`,
-Rückfragen im Gespräch, unbekannte Geräte und Fehlermeldungen ab.
+Gespräche über mehrere Runden, unbekannte Geräte, nicht erreichbare Geräte
+und Teilerfolge ab.
+
+Ehrlichkeit kommt aus den Daten, nicht aus Regeln in der Integration. Meldet
+`control` einen Fehler, z. B. `{"success": false, "error": "Entity light.garten
+is unavailable", "done": ["light.flur"]}`, lernt das Modell, genau das zu
+sagen. `src/check_dataset.py` verwirft jeden Datensatz, in dem eine Antwort
+einen Erfolg behauptet, den das Werkzeugergebnis nicht hergibt.
 
 ## Training
 
 ```bash
-./run_train.sh       # 6.000 Trainings- und 300 Testproben, LoRA r=32, 2 Epochen
-./run_export.sh      # output/merged -> model/qwen2.5-3b-ha-Q4_K_M.gguf
+./run_train.sh       # 7.000 Trainings- und 300 Testproben, LoRA r=32, 2 Epochen
+./run_export.sh output/merged qwen2.5-3b-ha-v3   # -> model/qwen2.5-3b-ha-v3-Q4_K_M.gguf
 ./run_test.sh        # Bewertung auf data/eval.jsonl (GPU, Docker)
 ```
 
-Das Training braucht rund 19 GB VRAM und auf der RTX 3090 etwa drei Stunden.
+Das Training braucht rund 19 GB VRAM und auf der RTX 3090 etwa 3,4 Stunden.
 Konvertierung und Quantisierung laufen im offiziellen Image
 `ghcr.io/ggml-org/llama.cpp:full-cuda`, ein eigener llama.cpp-Build ist nicht
 nötig.
@@ -95,8 +104,10 @@ Freigabe unter „Entitäten freigeben“.
 Upload eines neuen Stands: `HF_TOKEN` in `.env` eintragen, dann
 `set -a; . ./.env; set +a; .venv/bin/python src/upload_hf.py
 mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF mkenfenheuer/homeassistant-tool-calling-de`.
-Nach einem neuen Modell `model_sha256` in `addons/ha_llm_inference/config.yaml`
-anpassen und die Add-on-Version erhöhen.
+Mit `--gguf model/<datei>.gguf` lädt das Skript ein neues Modell unter eigenem
+Namen hoch, ältere Dateien bleiben erhalten. Danach `DEFAULT_URL` und
+`DEFAULT_SHA` in `addons/ha_llm_inference/run.sh` anpassen, die alte URL in
+`LEGACY_URLS` eintragen und die Add-on-Version erhöhen.
 
 ## Test
 
@@ -116,12 +127,40 @@ HA_URL=http://localhost:18123 HA_TOKEN=... python3 src/ha_e2e_test.py
 
 | Modell | Werkzeugaufrufe korrekt | Antworten korrekt |
 |--------|------------------------|-------------------|
-| Qwen2.5-3B-Instruct ohne Training (60 Proben) | 61,7 % | 50,0 % |
-| qwen2.5-3b-ha (LoRA, 2 Epochen) | 98,3 % | 100 % |
+| Qwen2.5-3B-Instruct ohne Training (60 Proben, v1-Testdaten) | 61,7 % | 50,0 % |
+| v1 (LoRA, 2 Epochen), v1-Testdaten | 98,3 % | 100 % |
+| v1, v2-Testdaten | 89,0 % | 98,4 % |
+| v2 (1 weitere Epoche auf v2-Daten), v2-Testdaten | 94,3 % | 100 % |
+| v2, v3-Testdaten | 93,7 % | 93,3 % |
+| v3 (LoRA, 2 Epochen ab Basismodell), v3-Testdaten | 93,3 % | 100 % |
+
+Die v2-Testdaten sind schwerer als die v1-Testdaten: Häuser mit bis zu 110
+Entitäten, Gruppen, Räume ohne Licht und Geräte, die nicht in der Liste
+stehen. Die v3-Testdaten enthalten zusätzlich Gespräche über mehrere Runden,
+nicht erreichbare Geräte und Geräte mit Status-Sensor und Steckdose. Bei
+einfachen Befehlen liegt v3 hinter v2 (91,6 % zu 98,1 %), meist weil es bei
+langen Listen eine entity_id falsch abschreibt. Gespräche (29 von 30 zu 26),
+abgelehnte Geräte (35 von 37 zu 31) und Antworten löst v3 besser.
+
+**Echtes Haus** Ein Abnahmetest mit 31 Sätzen auf einer realen Installation
+mit 107 freigegebenen Entitäten: v3 löst 29, v2 26. Beide schalten bei „Licht
+in der Küche“ nur die Lampe namens „Küche“ und nicht alle Lampen im Raum.
+v3 startet bei „Bewässere die Balkonpflanzen“ die Gartenbewässerung statt
+des Balkonventils.
+
+**Dialoge** `src/agent_sim.py` spielt Gespräche über mehrere Runden gegen ein
+simuliertes Haus durch. In 16 Szenarien meldet v3 nicht erreichbare Geräte in
+jeder Runde als Fehler und behauptet keinen Erfolg. v2 behauptet dagegen
+„Der Fernseher im Schlafzimmer ist an“, obwohl es dort keinen gibt, und
+beantwortet „Welche Heizungen hast du verstellt?“ mit einer falschen Liste.
+v3 beantwortet die Kontrollfrage „Ist er jetzt offen?“ noch mit „Nein“,
+obwohl es den Zustand richtig als offen nennt.
 
 **Home Assistant** Der Ende-zu-Ende-Test mit Add-on (CPU, 8 Threads) und
-Integration besteht 23 von 23 Fällen. Die Antwortzeit liegt im Median bei
-2,8 Sekunden, die erste Anfrage braucht wegen des leeren Caches 7,6 Sekunden.
+Integration besteht mit v3 24 von 24 Fällen. Dazu gehören eine nicht
+erreichbare Lampe und eine Rückfrage im selben Gespräch. Die Antwortzeit
+liegt im Median bei 2,8 Sekunden, die erste Anfrage braucht wegen des leeren
+Caches 7,8 Sekunden.
 
 ## Hardware für das Add-on
 

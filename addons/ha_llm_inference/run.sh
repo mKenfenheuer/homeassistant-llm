@@ -13,8 +13,30 @@ fail() {
     exit 1
 }
 
+# Model that belongs to this add-on version. Empty options (the default) use
+# it, so an add-on update also brings the matching model.
+DEFAULT_URL="https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-v3-Q4_K_M.gguf"
+DEFAULT_SHA="9851d8f0d1495cd058ad5147971fd23851dde20b28e3dd063c40ded694ce649a"
+# default URLs of earlier versions: treated like "empty", old file removed
+LEGACY_URLS=(
+    "https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-Q4_K_M.gguf"
+    "https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-v2-Q4_K_M.gguf"
+)
+
 MODEL_URL="$(opt model_url)"
 MODEL_SHA="$(opt model_sha256)"
+OLD_DEFAULT=""
+for u in "${LEGACY_URLS[@]}"; do
+    if [ "$MODEL_URL" = "$u" ]; then
+        OLD_DEFAULT="/share/ha_llm/$(basename "$u")"
+        MODEL_URL=""
+        MODEL_SHA=""
+    fi
+done
+if [ -z "$MODEL_URL" ] && [ -z "$(opt model_path)" ]; then
+    MODEL_URL="$DEFAULT_URL"
+    MODEL_SHA="$DEFAULT_SHA"
+fi
 MODEL_PATH="$(opt model_path)"
 HF_TOKEN="$(opt hf_token)"
 CTX="$(opt ctx_size)"
@@ -86,6 +108,10 @@ if [ ! -f "$MODEL_PATH" ]; then
     fi
     mv "$PART" "$MODEL_PATH"
     echo "[INFO] Download abgeschlossen"
+    if [ -n "$OLD_DEFAULT" ] && [ "$OLD_DEFAULT" != "$MODEL_PATH" ] && [ -f "$OLD_DEFAULT" ]; then
+        echo "[INFO] Entferne altes Modell ${OLD_DEFAULT}"
+        rm -f "$OLD_DEFAULT"
+    fi
 fi
 
 ARGS=(-m "$MODEL_PATH" --host 0.0.0.0 --port 8080 --alias ha-llm

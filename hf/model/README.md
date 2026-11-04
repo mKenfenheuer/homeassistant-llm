@@ -26,7 +26,8 @@ inference with llama.cpp.
 
 | File | SHA-256 |
 |------|---------|
-| `qwen2.5-3b-ha-Q4_K_M.gguf` | `__SHA256__` |
+| `__GGUF__` (current) | `__SHA256__` |
+| `qwen2.5-3b-ha-Q4_K_M.gguf` (v1, superseded) | `134b113ee4914735e6d119bc418ca489f04d55acac0d519510fc6896d81a8467` |
 
 ## Usage
 
@@ -38,24 +39,32 @@ The Home Assistant integration and add-on in the project repository build this
 prompt automatically.
 
 ```bash
-llama-server -m qwen2.5-3b-ha-Q4_K_M.gguf --jinja -c 8192 --port 8080
+llama-server -m __GGUF__ --jinja -c 8192 --port 8080
 ```
 
 ## Training
 
 - Data: [__DATASET_REPO__](https://huggingface.co/datasets/__DATASET_REPO__),
-  6,000 synthetic German conversations over randomly generated houses.
-- LoRA r=32, alpha=64, all linear layers, 2 epochs, lr 2e-4, loss on
+  7,000 synthetic German conversations over randomly generated houses
+  (up to 110 entities, group entities, rooms without lights, brand names,
+  devices that are not in the list).
+- v1: LoRA r=32, alpha=64, all linear layers, 2 epochs, lr 2e-4, loss on
   assistant tokens only. RTX 3090, 3 hours.
+- v2: same LoRA setup, 1 further epoch on the v2 data starting from v1,
+  lr 1e-4. RTX 3090, 1.7 hours.
 
 ## Evaluation
 
-300 held-out conversations in houses not seen during training:
+300 held-out conversations (v2 data) in houses not seen during training:
 
-| Model | Correct tool calls | Grounded answers |
-|-------|-------------------|------------------|
-| Qwen2.5-3B-Instruct (60 samples) | 61.7 % | 50.0 % |
-| this model | 98.3 % | 100 % |
+| Model | Correct tool calls | Grounded answers | Unknown device refused |
+|-------|-------------------|------------------|------------------------|
+| v1 | 89.0 % | 98.4 % | 77.3 % |
+| v2 (current) | 94.3 % | 100 % | 100 % |
+
+On the easier v1 test set, v1 reached 98.3 % (base Qwen2.5-3B-Instruct:
+61.7 %). On a real house with 107 exposed entities, v2 handles 27 of 31
+acceptance sentences correctly (v1: 21).
 
 End-to-end in Home Assistant 2026.10.4 (demo devices with German names):
 23/23 test sentences, median latency 2.8 s on 8 CPU threads.
