@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import re
+import time
 from collections import OrderedDict
+from datetime import timedelta
 from typing import Any, Literal
 
 import aiohttp
@@ -28,6 +31,8 @@ from homeassistant.helpers import (
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.start import async_at_started
 
 from . import llm_schema as S
 from .const import (
@@ -36,13 +41,17 @@ from .const import (
     CONF_TEMPERATURE,
     CONF_TIMEOUT,
     CONF_URL,
+    CONF_USE_LOCATION,
     DEFAULT_MAX_ENTITIES,
     DEFAULT_MAX_HISTORY,
     DEFAULT_TEMPERATURE,
     DEFAULT_TIMEOUT,
+    DEFAULT_USE_LOCATION,
     DOMAIN,
     MAX_CONVERSATIONS,
     MAX_TOOL_ROUNDS,
+    WARMUP_INTERVAL_MIN,
+    WARMUP_TIMEOUT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -72,6 +81,9 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
             entry_type=DeviceEntryType.SERVICE)
         # conversation_id -> OpenAI-format messages without system prompt
         self._history: OrderedDict[str, list[dict[str, Any]]] = OrderedDict()
+        # hash of the system prompt that llama-server has in its cache
+        self._cached_prompt: str | None = None
+        self._warming = False
 
     @property
     def supported_languages(self) -> list[str] | Literal["*"]:
@@ -80,6 +92,52 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         conversation.async_set_agent(self.hass, self.entry, self)
+        # prefill llama-server's prompt cache before the first question
+        self.async_on_remove(async_at_started(self.hass, self._async_start_warmup))
+        self.async_on_remove(async_track_time_interval(
+            self.hass, self._async_warmup_tick, timedelta(minutes=WARMUP_INTERVAL_MIN)))
+
+    async def _async_start_warmup(self, _hass) -> None:
+        self.entry.async_create_background_task(
+            self.hass, self._async_warmup(), "ha_llm_agent warmup")
+
+    async def _async_warmup_tick(self, _now) -> None:
+        await self._async_start_warmup(self.hass)
+
+    async def _async_warmup(self) -> None:
+        """Send the current system prompt once so llama-server caches it."""
+        if self._warming:
+            return
+        exposed = self._exposed()
+        system = S.build_system_prompt(
+            [(eid, name, area) for eid, (name, area) in exposed.items()])
+        digest = hashlib.sha1(system.encode()).hexdigest()
+        if digest == self._cached_prompt:
+            return
+        self._warming = True
+        start = time.monotonic()
+        try:
+            await self._complete(
+                [{"role": "system", "content": system},
+                 {"role": "user", "content": "Hallo"}],
+                max_tokens=1, timeout=WARMUP_TIMEOUT)
+            self._cached_prompt = digest
+            took = time.monotonic() - start
+            if took > 60:
+                _LOGGER.warning(
+                    "Prompt cache warm-up for %d entities took %.0f s. The CPU of "
+                    "the llama-server host is slow for this prompt size; expose "
+                    "fewer entities or run llama-server on a faster machine",
+                    len(exposed), took)
+            else:
+                _LOGGER.info("Prompt cache warmed (%d entities) in %.0f s",
+                             len(exposed), took)
+        except (aiohttp.ClientError, asyncio.TimeoutError, HomeAssistantError,
+                KeyError, ValueError) as err:
+            _LOGGER.warning("Prompt cache warm-up failed after %.0f s: %s: %s",
+                            time.monotonic() - start, type(err).__name__, err)
+        finally:
+            self._warming = False
 
     async def async_will_remove_from_hass(self) -> None:
         conversation.async_unset_agent(self.hass, self.entry)
@@ -180,19 +238,20 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
         return S.control_result(errors)
 
     # ------------------------------------------------------------------- llm
-    async def _complete(self, messages: list[dict]) -> dict:
+    async def _complete(self, messages: list[dict], max_tokens: int = 400,
+                        timeout: float | None = None) -> dict:
         url = self.entry.data[CONF_URL].rstrip("/") + "/v1/chat/completions"
         body = {
             "model": "ha-llm",
             "messages": messages,
             "tools": S.TOOLS,
             "temperature": float(self._opt(CONF_TEMPERATURE, DEFAULT_TEMPERATURE)),
-            "max_tokens": 400,
+            "max_tokens": max_tokens,
             "cache_prompt": True,
         }
         session = async_get_clientsession(self.hass)
         timeout = aiohttp.ClientTimeout(
-            total=float(self._opt(CONF_TIMEOUT, DEFAULT_TIMEOUT)))
+            total=timeout or float(self._opt(CONF_TIMEOUT, DEFAULT_TIMEOUT)))
         async with session.post(url, json=body, timeout=timeout) as resp:
             if resp.status != 200:
                 raise HomeAssistantError(
@@ -220,9 +279,10 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
     ) -> conversation.ConversationResult:
         conv_id = chat_log.conversation_id
         exposed = self._exposed()
+        location = (self._location(user_input)
+                    if self._opt(CONF_USE_LOCATION, DEFAULT_USE_LOCATION) else None)
         system = S.build_system_prompt(
-            [(eid, name, area) for eid, (name, area) in exposed.items()],
-            self._location(user_input))
+            [(eid, name, area) for eid, (name, area) in exposed.items()], location)
         history = self._history.get(conv_id, [])
         turn: list[dict[str, Any]] = [{"role": "user", "content": user_input.text}]
         text = ""
@@ -257,13 +317,18 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
                 text = "Das konnte ich leider nicht vollständig ausführen."
         except (aiohttp.ClientError, asyncio.TimeoutError, HomeAssistantError,
                 KeyError, ValueError) as err:
-            _LOGGER.error("LLM request failed: %s", err)
+            _LOGGER.error("LLM request failed: %s: %s", type(err).__name__, err)
             response = intent.IntentResponse(language=user_input.language)
             response.async_set_error(
                 intent.IntentResponseErrorCode.UNKNOWN,
-                "Der Sprachassistent ist gerade nicht erreichbar.")
+                "Der Sprachassistent hat nicht rechtzeitig geantwortet."
+                if isinstance(err, asyncio.TimeoutError)
+                else "Der Sprachassistent ist gerade nicht erreichbar.")
             return conversation.ConversationResult(
                 response=response, conversation_id=conv_id)
+
+        if location is None:
+            self._cached_prompt = hashlib.sha1(system.encode()).hexdigest()
 
         # keep the last N user turns for follow-up questions
         new_hist = history + turn

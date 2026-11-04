@@ -21,6 +21,7 @@ from homeassistant.config_entries import (
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
+    BooleanSelector,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -35,11 +36,13 @@ from .const import (
     CONF_TEMPERATURE,
     CONF_TIMEOUT,
     CONF_URL,
+    CONF_USE_LOCATION,
     DEFAULT_MAX_ENTITIES,
     DEFAULT_MAX_HISTORY,
     DEFAULT_TEMPERATURE,
     DEFAULT_TIMEOUT,
     DEFAULT_URL,
+    DEFAULT_USE_LOCATION,
     DOMAIN,
 )
 
@@ -133,5 +136,8 @@ class HaLlmAgentOptionsFlow(OptionsFlow):
                          default=opts.get(CONF_MAX_ENTITIES, DEFAULT_MAX_ENTITIES)):
                 NumberSelector(NumberSelectorConfig(
                     min=10, max=1000, step=1, mode=NumberSelectorMode.BOX)),
+            vol.Optional(CONF_USE_LOCATION,
+                         default=opts.get(CONF_USE_LOCATION, DEFAULT_USE_LOCATION)):
+                BooleanSelector(),
         })
         return self.async_show_form(step_id="init", data_schema=schema)
