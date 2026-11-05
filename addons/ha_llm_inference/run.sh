@@ -15,12 +15,13 @@ fail() {
 
 # Model that belongs to this add-on version. Empty options (the default) use
 # it, so an add-on update also brings the matching model.
-DEFAULT_URL="https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-v3-Q4_K_M.gguf"
-DEFAULT_SHA="9851d8f0d1495cd058ad5147971fd23851dde20b28e3dd063c40ded694ce649a"
+DEFAULT_URL="https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-v4-Q4_K_M.gguf"
+DEFAULT_SHA="1235a58736df7397e96271ed4cec2313fa5bd7ab436bfc1d58c2097b5d1af57a"
 # default URLs of earlier versions: treated like "empty", old file removed
 LEGACY_URLS=(
     "https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-Q4_K_M.gguf"
     "https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-v2-Q4_K_M.gguf"
+    "https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-v3-Q4_K_M.gguf"
 )
 
 MODEL_URL="$(opt model_url)"

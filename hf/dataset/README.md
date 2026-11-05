@@ -34,8 +34,8 @@ instead of memorising one house.
 
 | Split | Samples | Seed |
 |-------|---------|------|
-| train | 7,000 | 3 |
-| test | 300 | 1001 (different houses) |
+| train | 8,000 | 4 |
+| test | 300 | 1002 (different houses) |
 
 ## Format
 
@@ -61,15 +61,15 @@ during training.
 
 | Category | Samples | Content |
 |----------|---------|---------|
-| command | 3,019 | single commands: lights, covers, awning, climate, locks, alarm, media, fans, vacuum, lawn mower, valves, buttons, scenes, group entities, appliance power switches |
-| question | 1,599 | state questions answered via `get_state`, including appliance status sensors |
-| followup | 606 | two-turn conversations ("und wieder aus", "Nee, ist es nicht", accepting a suggested other room) |
-| conversation | 521 | 3 to 6 turns: undo, corrections, "Welches Licht hast du ausgeschaltet?", checks, topic changes |
-| unknown | 511 | devices or rooms that do not exist, or a room without that device type: no tool call, other rooms suggested |
-| compound | 354 | two commands in one sentence |
-| error | 237 | unreachable devices, partial success, retries: the answer reports the failure |
-| relative | 117 | "Mach es im Bad wärmer": read state, then set |
-| chat | 36 | greetings, thanks, capabilities |
+| command | 3,605 | single commands: lights, covers, awning, climate, locks, alarm, media, fans, vacuum, lawn mower, valves, buttons, scenes, group entities, appliance power switches |
+| question | 1,773 | state questions answered via `get_state`, including appliance status sensors |
+| followup | 697 | two-turn conversations ("und wieder aus", "Nee, ist es nicht", accepting a suggested other room) |
+| conversation | 547 | 3 to 6 turns: undo, corrections, "Welches Licht hast du ausgeschaltet?", checks, topic changes |
+| unknown | 515 | devices or rooms that do not exist, or a room without that device type: no tool call, other rooms suggested |
+| compound | 428 | two commands in one sentence |
+| error | 289 | unreachable devices, partial success, retries: the answer reports the failure |
+| relative | 106 | "Mach es im Bad wärmer": read state, then set |
+| chat | 40 | greetings, thanks, capabilities |
 
 `src/check_dataset.py` verifies every assistant answer against the preceding
 tool results (no claimed success after an error, numbers present in the
@@ -81,4 +81,4 @@ learns to act on the latest request only.
 ## Generation
 
 Created with `src/gen_dataset.py` (template-based, no LLM involved):
-`python src/gen_dataset.py data/train.jsonl 7000 3`.
+`python src/gen_dataset.py data/train.jsonl 8000 4`.

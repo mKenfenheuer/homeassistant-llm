@@ -237,8 +237,11 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
             unavailable = [i for i in ids if (s := self.hass.states.get(i)) is None
                            or s.state == STATE_UNAVAILABLE]
             if unavailable:
+                # switch the reachable entities, report the others as failed
                 errors.append(f"Entity {', '.join(unavailable)} is unavailable")
-                continue
+                ids = [i for i in ids if i not in unavailable]
+                if not ids:
+                    continue
             data = {k: v for k, v in (act.get("data") or {}).items()
                     if k in S.SERVICES[service]}
             try:

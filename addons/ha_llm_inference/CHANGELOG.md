@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0
+
+- Neues Modell v4 (`qwen2.5-3b-ha-v4-Q4_K_M.gguf`), neu trainiert ab
+  Qwen2.5-3B-Instruct mit 8.000 Beispielen und 2,5 Epochen.
+- „Licht in der Küche“ schaltet alle Lampen im Raum, auch wenn eine Lampe
+  selbst „Küche“ heißt und daneben „Küche Links“ und „Küche Rechts“ stehen.
+- Mehrere Bewässerungen: „Bewässere die Balkonpflanzen“ öffnet das Ventil auf
+  dem Balkon und startet nicht die Gartenbewässerung.
+- Teilerfolge nennen beide Teile: „Gartenbeleuchtung ist gerade nicht
+  erreichbar. Den Rest habe ich erledigt: Flur eingeschaltet.“
+- Kontrollfragen wie „Ist es jetzt an?“ beginnen mit „Ja“ oder „Nein“, passend
+  zum Zustand.
+- Kennt Gerätestatus wie `in_use`, `program_ended` oder `not_connected`.
+- Integration: Enthält eine Aktion mehrere Geräte und ist eines davon nicht
+  erreichbar, schaltet sie die übrigen und meldet nur dieses als Fehler.
+  Bisher schlug die ganze Aktion fehl.
+
 ## 0.4.0
 
 - Neues Modell v3 (`qwen2.5-3b-ha-v3-Q4_K_M.gguf`), neu trainiert ab
