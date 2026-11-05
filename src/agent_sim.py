@@ -70,7 +70,9 @@ class House:
             if unavailable:
                 errors.append(f"Entity {', '.join(unavailable)} is unavailable")
                 self.log.append(f"FAILED {service} {unavailable} (unavailable)")
-                continue
+                ids = [i for i in ids if i not in unavailable]
+                if not ids:
+                    continue
             for i in ids:
                 if name in AFTER:
                     self.state[i] = AFTER[name]

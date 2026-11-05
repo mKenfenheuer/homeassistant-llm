@@ -54,12 +54,12 @@ einen Erfolg behauptet, den das Werkzeugergebnis nicht hergibt.
 ## Training
 
 ```bash
-./run_train.sh       # 7.000 Trainings- und 300 Testproben, LoRA r=32, 2 Epochen
-./run_export.sh output/merged qwen2.5-3b-ha-v3   # -> model/qwen2.5-3b-ha-v3-Q4_K_M.gguf
+./run_train.sh       # 8.000 Trainings- und 300 Testproben, LoRA r=32, 2,5 Epochen
+./run_export.sh output/merged qwen2.5-3b-ha-v4   # -> model/qwen2.5-3b-ha-v4-Q4_K_M.gguf
 ./run_test.sh        # Bewertung auf data/eval.jsonl (GPU, Docker)
 ```
 
-Das Training braucht rund 19 GB VRAM und auf der RTX 3090 etwa 3,4 Stunden.
+Das Training braucht rund 19 GB VRAM und auf der RTX 3090 etwa 4,8 Stunden.
 Konvertierung und Quantisierung laufen im offiziellen Image
 `ghcr.io/ggml-org/llama.cpp:full-cuda`, ein eigener llama.cpp-Build ist nicht
 nötig.
@@ -120,7 +120,7 @@ Bereiche erhalten.
 HA_URL=http://localhost:18123 HA_TOKEN=... python3 src/ha_e2e_test.py
 ```
 
-## Ergebnisse (Stand 04.11.2026)
+## Ergebnisse (Stand 05.11.2026)
 
 **Testdatensatz** 300 Proben aus Häusern, die im Training nicht vorkamen
 (`./run_test.sh`):
@@ -133,34 +133,39 @@ HA_URL=http://localhost:18123 HA_TOKEN=... python3 src/ha_e2e_test.py
 | v2 (1 weitere Epoche auf v2-Daten), v2-Testdaten | 94,3 % | 100 % |
 | v2, v3-Testdaten | 93,7 % | 93,3 % |
 | v3 (LoRA, 2 Epochen ab Basismodell), v3-Testdaten | 93,3 % | 100 % |
+| v3, v4-Testdaten | 93,3 % | 96,8 % |
+| v4 (LoRA, 2,5 Epochen ab Basismodell), v4-Testdaten | 96,0 % | 100 % |
 
 Die v2-Testdaten sind schwerer als die v1-Testdaten: Häuser mit bis zu 110
 Entitäten, Gruppen, Räume ohne Licht und Geräte, die nicht in der Liste
-stehen. Die v3-Testdaten enthalten zusätzlich Gespräche über mehrere Runden,
-nicht erreichbare Geräte und Geräte mit Status-Sensor und Steckdose. Bei
-einfachen Befehlen liegt v3 hinter v2 (91,6 % zu 98,1 %), meist weil es bei
-langen Listen eine entity_id falsch abschreibt. Gespräche (29 von 30 zu 26),
-abgelehnte Geräte (35 von 37 zu 31) und Antworten löst v3 besser.
+stehen. Ab v3 kommen Gespräche über mehrere Runden, nicht erreichbare Geräte
+und Geräte mit Status-Sensor und Steckdose hinzu, ab v4 Lampen mit dem Namen
+ihres Raums und mehrere Bewässerungen. Auf den v4-Testdaten löst v4 117 von
+119 einfachen Befehlen (v3: 111) und meldet alle 10 Fehlerfälle richtig
+(v3: 8). Die meisten verbleibenden Fehler betreffen lange Listen wie „Welche
+Lampen sind eingeschaltet?“, bei denen das Modell eine entity_id falsch
+abschreibt oder auslässt.
 
 **Echtes Haus** Ein Abnahmetest mit 31 Sätzen auf einer realen Installation
-mit 107 freigegebenen Entitäten: v3 löst 29, v2 26. Beide schalten bei „Licht
-in der Küche“ nur die Lampe namens „Küche“ und nicht alle Lampen im Raum.
-v3 startet bei „Bewässere die Balkonpflanzen“ die Gartenbewässerung statt
-des Balkonventils.
+mit über 100 freigegebenen Entitäten: v4 löst alle 31, v3 30. v4 schaltet bei
+„Licht in der Küche“ alle vier Lampen im Raum, obwohl eine davon selbst
+„Küche“ heißt. „Bewässere die Balkonpflanzen“ öffnet das Ventil auf dem Balkon,
+v3 startete dort die Gartenbewässerung.
 
 **Dialoge** `src/agent_sim.py` spielt Gespräche über mehrere Runden gegen ein
-simuliertes Haus durch. In 16 Szenarien meldet v3 nicht erreichbare Geräte in
-jeder Runde als Fehler und behauptet keinen Erfolg. v2 behauptet dagegen
-„Der Fernseher im Schlafzimmer ist an“, obwohl es dort keinen gibt, und
-beantwortet „Welche Heizungen hast du verstellt?“ mit einer falschen Liste.
-v3 beantwortet die Kontrollfrage „Ist er jetzt offen?“ noch mit „Nein“,
-obwohl es den Zustand richtig als offen nennt.
+simuliertes Haus durch. In 18 Szenarien meldet v4 nicht erreichbare Geräte in
+jeder Runde als Fehler. Nach einem Teilerfolg nennt es beide Teile („Den Rest
+habe ich erledigt: Flur eingeschaltet“) und beantwortet „Was hast du
+eingeschaltet?“ richtig. v3 zählte dort auch die nicht erreichbare
+Gartenbeleuchtung auf. Ein Fehler bleibt: Nach „Licht in der Küche an“ schaltet
+v4 bei der Korrektur „Nein, ich meinte im Esszimmer“ nur eine der vier
+Küchenlampen aus.
 
 **Home Assistant** Der Ende-zu-Ende-Test mit Add-on (CPU, 8 Threads) und
-Integration besteht mit v3 24 von 24 Fällen. Dazu gehören eine nicht
+Integration besteht mit v4 24 von 24 Fällen. Dazu gehören eine nicht
 erreichbare Lampe und eine Rückfrage im selben Gespräch. Die Antwortzeit
-liegt im Median bei 2,8 Sekunden, die erste Anfrage braucht wegen des leeren
-Caches 7,8 Sekunden.
+liegt im Median bei 3,0 Sekunden, die erste Anfrage braucht wegen des leeren
+Caches 7,7 Sekunden.
 
 ## Hardware für das Add-on
 
@@ -185,7 +190,7 @@ Rechner laufen, etwa per Docker auf einem Server mit GPU:
 docker run -d --name ha-llm-server --restart unless-stopped --gpus all \
   -p 8080:8080 -v $PWD/model:/models:ro \
   ghcr.io/ggml-org/llama.cpp:full-cuda --server \
-  -m /models/qwen2.5-3b-ha-Q4_K_M.gguf --host 0.0.0.0 --port 8080 \
+  -m /models/qwen2.5-3b-ha-v4-Q4_K_M.gguf --host 0.0.0.0 --port 8080 \
   --alias ha-llm --jinja -ngl 99 -c 8192 -np 1 --cache-reuse 256
 ```
 
