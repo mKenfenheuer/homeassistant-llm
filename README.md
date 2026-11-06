@@ -55,7 +55,7 @@ einen Erfolg behauptet, den das Werkzeugergebnis nicht hergibt.
 
 ```bash
 ./run_train.sh       # 8.000 Trainings- und 300 Testproben, LoRA r=32, 2,5 Epochen
-./run_export.sh output/merged qwen2.5-3b-ha-v4   # -> model/qwen2.5-3b-ha-v4-Q4_K_M.gguf
+./run_export.sh output/merged qwen2.5-3b-ha-v7   # -> model/qwen2.5-3b-ha-v7-Q4_K_M.gguf
 ./run_test.sh        # Bewertung auf data/eval.jsonl (GPU, Docker)
 ```
 
@@ -120,7 +120,7 @@ Bereiche erhalten.
 HA_URL=http://localhost:18123 HA_TOKEN=... python3 src/ha_e2e_test.py
 ```
 
-## Ergebnisse (Stand 05.11.2026)
+## Ergebnisse (Stand 06.11.2026)
 
 **Testdatensatz** 300 Proben aus Häusern, die im Training nicht vorkamen
 (`./run_test.sh`):
@@ -135,37 +135,44 @@ HA_URL=http://localhost:18123 HA_TOKEN=... python3 src/ha_e2e_test.py
 | v3 (LoRA, 2 Epochen ab Basismodell), v3-Testdaten | 93,3 % | 100 % |
 | v3, v4-Testdaten | 93,3 % | 96,8 % |
 | v4 (LoRA, 2,5 Epochen ab Basismodell), v4-Testdaten | 96,0 % | 100 % |
+| v4, v7-Testdaten | 96,3 % | 100 % |
+| v7 (LoRA, 2,5 Epochen ab Basismodell), v7-Testdaten | 98,0 % | 100 % |
 
 Die v2-Testdaten sind schwerer als die v1-Testdaten: Häuser mit bis zu 110
 Entitäten, Gruppen, Räume ohne Licht und Geräte, die nicht in der Liste
 stehen. Ab v3 kommen Gespräche über mehrere Runden, nicht erreichbare Geräte
 und Geräte mit Status-Sensor und Steckdose hinzu, ab v4 Lampen mit dem Namen
-ihres Raums und mehrere Bewässerungen. Auf den v4-Testdaten löst v4 117 von
-119 einfachen Befehlen (v3: 111) und meldet alle 10 Fehlerfälle richtig
-(v3: 8). Die meisten verbleibenden Fehler betreffen lange Listen wie „Welche
+ihres Raums und mehrere Bewässerungen, ab v7 Räume mit teilweise nicht
+erreichbaren Lampen, mehrfaches Beharren auf fehlenden Geräten und
+Modus-Schalter der Heizung. Auf den v7-Testdaten lehnt v7 alle 31 Anfragen
+nach fehlenden Geräten ab (v4: 29) und beantwortet alle 40 Zustandsfragen mit
+dem richtigen Aufruf (v4: 38). Die meisten verbleibenden Fehler betreffen lange Listen wie „Welche
 Lampen sind eingeschaltet?“, bei denen das Modell eine entity_id falsch
 abschreibt oder auslässt.
 
 **Echtes Haus** Ein Abnahmetest mit 31 Sätzen auf einer realen Installation
-mit über 100 freigegebenen Entitäten: v4 löst alle 31, v3 30. v4 schaltet bei
+mit über 100 freigegebenen Entitäten: v7 und v4 lösen alle 31. v7 schaltet bei
 „Licht in der Küche“ alle vier Lampen im Raum, obwohl eine davon selbst
-„Küche“ heißt. „Bewässere die Balkonpflanzen“ öffnet das Ventil auf dem Balkon,
-v3 startete dort die Gartenbewässerung.
+„Küche“ heißt. „Bewässere die Balkonpflanzen“ öffnet das Ventil auf dem Balkon.
+Auf vier Varianten derselben Geräteliste mit je 8 fehlenden Geräten löst v7
+123 von 124 Sätzen, v4 alle 124. Auf einem älteren Stand der Geräteliste
+verfehlt v7 zwei Fragen: „Ist die Balkontür im Wohnzimmer offen?“ fragt die
+Wohnungstüre ab, die Frage nach der Reichweite des Elektroautos den
+Ladestand. Türkontakte und Elektroautos fehlen in den v7-Trainingsdaten.
 
 **Dialoge** `src/agent_sim.py` spielt Gespräche über mehrere Runden gegen ein
-simuliertes Haus durch. In 18 Szenarien meldet v4 nicht erreichbare Geräte in
-jeder Runde als Fehler. Nach einem Teilerfolg nennt es beide Teile („Den Rest
-habe ich erledigt: Flur eingeschaltet“) und beantwortet „Was hast du
-eingeschaltet?“ richtig. v3 zählte dort auch die nicht erreichbare
-Gartenbeleuchtung auf. Ein Fehler bleibt: Nach „Licht in der Küche an“ schaltet
-v4 bei der Korrektur „Nein, ich meinte im Esszimmer“ nur eine der vier
-Küchenlampen aus.
+simuliertes Haus durch. In 19 Szenarien meldet v7 nicht erreichbare Geräte in
+jeder Runde als Fehler. Sind zwei von vier Küchenlampen nicht erreichbar,
+nennt v7 auf „Welche Lichter sind in der Küche an?“ die eingeschalteten und
+die nicht erreichbaren Lampen getrennt. v4 behauptete „In der Küche ist
+gerade kein Licht an.“ Ein Fehler
+bleibt: Nach „Licht in der Küche an“ schaltet v7 bei der Korrektur „Nein, ich
+meinte im Esszimmer“ nur eine der vier Küchenlampen aus.
 
 **Home Assistant** Der Ende-zu-Ende-Test mit Add-on (CPU, 8 Threads) und
-Integration besteht mit v4 24 von 24 Fällen. Dazu gehören eine nicht
+Integration besteht mit v7 24 von 24 Fällen. Dazu gehören eine nicht
 erreichbare Lampe und eine Rückfrage im selben Gespräch. Die Antwortzeit
-liegt im Median bei 3,0 Sekunden, die erste Anfrage braucht wegen des leeren
-Caches 7,7 Sekunden.
+liegt im Median bei 3,2 Sekunden, die längste Anfrage braucht 5,6 Sekunden.
 
 ## Hardware für das Add-on
 
@@ -190,7 +197,7 @@ Rechner laufen, etwa per Docker auf einem Server mit GPU:
 docker run -d --name ha-llm-server --restart unless-stopped --gpus all \
   -p 8080:8080 -v $PWD/model:/models:ro \
   ghcr.io/ggml-org/llama.cpp:full-cuda --server \
-  -m /models/qwen2.5-3b-ha-v4-Q4_K_M.gguf --host 0.0.0.0 --port 8080 \
+  -m /models/qwen2.5-3b-ha-v7-Q4_K_M.gguf --host 0.0.0.0 --port 8080 \
   --alias ha-llm --jinja -ngl 99 -c 8192 -np 1 --cache-reuse 256
 ```
 

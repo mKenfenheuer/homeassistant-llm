@@ -34,8 +34,8 @@ instead of memorising one house.
 
 | Split | Samples | Seed |
 |-------|---------|------|
-| train | 8,000 | 4 |
-| test | 300 | 1002 (different houses) |
+| train | 8,000 | 7 |
+| test | 300 | 1005 (different houses) |
 
 ## Format
 
@@ -61,15 +61,15 @@ during training.
 
 | Category | Samples | Content |
 |----------|---------|---------|
-| command | 3,605 | single commands: lights, covers, awning, climate, locks, alarm, media, fans, vacuum, lawn mower, valves, buttons, scenes, group entities, appliance power switches |
-| question | 1,773 | state questions answered via `get_state`, including appliance status sensors |
-| followup | 697 | two-turn conversations ("und wieder aus", "Nee, ist es nicht", accepting a suggested other room) |
-| conversation | 547 | 3 to 6 turns: undo, corrections, "Welches Licht hast du ausgeschaltet?", checks, topic changes |
-| unknown | 515 | devices or rooms that do not exist, or a room without that device type: no tool call, other rooms suggested |
-| compound | 428 | two commands in one sentence |
-| error | 289 | unreachable devices, partial success, retries: the answer reports the failure |
-| relative | 106 | "Mach es im Bad wärmer": read state, then set |
-| chat | 40 | greetings, thanks, capabilities |
+| command | 3,472 | single commands: lights, covers, awning, climate, locks, alarm, media, fans, vacuum, lawn mower, valves, buttons, scenes, group entities, appliance power switches, heating mode switches |
+| question | 1,780 | state questions answered via `get_state`, including appliance status sensors |
+| followup | 661 | two-turn conversations ("und wieder aus", "Nee, ist es nicht", accepting a suggested other room) |
+| conversation | 543 | 3 to 6 turns: undo, corrections, "Welches Licht hast du ausgeschaltet?", checks, topic changes |
+| unknown | 501 | devices or rooms that do not exist, or a room without that device type: no tool call, other rooms suggested, also when the user insists twice |
+| compound | 403 | two commands in one sentence |
+| error | 496 | unreachable devices, partial success, rooms where only some lights are reachable, retries: the answer reports the failure |
+| relative | 110 | "Mach es im Bad wärmer": read state, then set |
+| chat | 34 | greetings, thanks, capabilities |
 
 `src/check_dataset.py` verifies every assistant answer against the preceding
 tool results (no claimed success after an error, numbers present in the

@@ -89,6 +89,8 @@ def main():
     for k in DEFAULTS:
         ap.add_argument("--" + k, default=None, type=types.get(k, str))
     ap.add_argument("--max-steps", type=int, default=-1)
+    ap.add_argument("--resume", action="store_true",
+                    help="continue from the newest checkpoint in --out")
     a = ap.parse_args()
     cfg = {k: getattr(a, k) if getattr(a, k) is not None else v
            for k, v in DEFAULTS.items()}
@@ -148,7 +150,7 @@ def main():
     )
     trainer = Trainer(model=model, args=targs, train_dataset=ds,
                       data_collator=collate_fn(pad_id))
-    trainer.train()
+    trainer.train(resume_from_checkpoint=True if a.resume else None)
 
     print("saving adapter ->", cfg["out"])
     model.save_pretrained(cfg["out"])

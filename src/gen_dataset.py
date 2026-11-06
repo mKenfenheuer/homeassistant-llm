@@ -495,6 +495,15 @@ class House:
                 names = ["Bewässerung starten", "Bewässerung Garten", "Gartenbewässerung"]
             self.add("button", room, "Bewässerung", "f", ["bewaesserung_garten",
                      "irrigation_start"], name=R.choice(names), state="unknown")
+        # heating systems expose their modes as switches next to the climate
+        # entity ("Heizung Haus Abwesenheitsmodus")
+        if any(e.domain == "climate" for e in self.ents) and R.random() < 0.3:
+            mode, slug = R.choice(HEAT_MODES)
+            base = R.choice(["Heizung", "Heizung Haus", "Thermostat", "Zuhause"])
+            room = "Heizungsraum" if "Heizungsraum" in self.rooms and R.random() < 0.5 else None
+            if f"{base} {mode}" not in self.used_names:
+                self.add("switch", room, mode, "m", [f"heizung_{slug}", f"zuhause_{slug}"],
+                         name=f"{base} {mode}", state=R.choice(["on", "off", "off"]))
         # group entities as they exist in many installs
         if len([e for e in self.ents if e.domain == "light"]) >= 3 and R.random() < 0.45:
             e = self.add("light", None, "__group__", "pl", ["alle_lichter", "all_lights"],
@@ -606,7 +615,12 @@ def ref_single(h: House, e: Ent, allow_room_ref=True) -> Ref:
                          and x.area == e.area and x.label == e.label]
     same_type = [x for x in h.ents if x.domain == e.domain and x.label == e.label]
     opts = ["name", "name"]
-    if allow_room_ref and e.label and e.area and len(same_type_in_room) == 1:
+    # "das Licht im Flur" / "die Lampe im Flur" mean every light of the room,
+    # so a single lamp only gets these words when it is the room's only light
+    generic = e.domain == "light" and e.label in ("Licht", "Lampe") \
+        and len(h.of("light", e.area)) > 1
+    if allow_room_ref and e.label and e.area and len(same_type_in_room) == 1 \
+            and not generic:
         opts += ["type_room", "type_room"]
     if e.label and e.label != "__group__" and len(same_type) == 1 and e.name != e.label:
         opts += ["type_only"]           # "den Fernseher" for "LG webOS Smart TV"
@@ -966,6 +980,33 @@ def i_button(h, loc):
         [f"{e.name} ist ausgelöst.", f"Ich habe {e.name} gestartet.", "Erledigt."])
 
 
+HEAT_MODES = [("Abwesenheitsmodus", "away_mode"), ("Eco-Modus", "eco_mode"),
+              ("Frostschutz", "frost_protection")]
+
+
+def i_heating_mode(h, loc):
+    """'Aktiviere den Abwesenheitsmodus der Heizung' -> the mode switch, not
+    the climate entity."""
+    modes = [e for e in h.ents if e.domain == "switch"
+             and e.label in [m for m, _ in HEAT_MODES]]
+    if not modes or not h.of("climate"):
+        return None
+    e = R.choice(modes)
+    m = e.label
+    on = R.random() < 0.6
+    if on:
+        user = R.choice([f"Aktiviere den {m} der Heizung", f"Schalte die Heizung in den {m}",
+                         f"Heizung auf {m}", f"{m} an", f"Mach den {m} an",
+                         f"Stell die Heizung auf {m}", f"Schalte den {m} ein"])
+    else:
+        user = R.choice([f"Deaktiviere den {m} der Heizung", f"{m} aus",
+                         f"Schalte den {m} aus", f"Beende den {m} der Heizung",
+                         f"Mach den {m} der Heizung aus"])
+    adj, part = ("an", "eingeschaltet") if on else ("aus", "ausgeschaltet")
+    return (user, [action("switch.turn_on" if on else "switch.turn_off", [e])],
+            R.choice([f"{e.name} ist jetzt {adj}.", f"Ich habe {e.name} {part}."]))
+
+
 def i_irrigation(h, loc):
     """Several irrigation devices: the phrase must pick the right one
     ("Bewässere die Balkonpflanzen" -> balcony valve, not the garden button)."""
@@ -1223,6 +1264,7 @@ COMMANDS = [
     (i_climate, 7), (i_lock, 3), (i_alarm, 3), (i_media, 5), (i_vacuum, 3),
     (i_scene, 4), (i_all, 6), (i_awning, 2), (i_mower, 2), (i_valve, 1),
     (i_toggle, 2), (i_appliance, 3), (i_button, 2), (i_irrigation, 12),
+    (i_heating_mode, 4),
 ]
 
 
@@ -1505,6 +1547,8 @@ def s_question(h, loc):
         ids, must = [e], [word]
     elif kind == "alarm":
         e = h.of("alarm_control_panel")[0]
+        if e.state == "unavailable":
+            return None   # unreachable devices: see _error_question
         user = R.choice(["Ist die Alarmanlage scharf?", "Ist die Alarmanlage an?",
                          "Welchen Status hat die Alarmanlage?"])
         txt = {"disarmed": "Die Alarmanlage ist unscharf.",
@@ -1653,13 +1697,19 @@ def s_missing_type(h, loc):
         gold = [["control", {"actions": act}]]
         cat = "followup"
     elif r < 0.7:
-        # user insists on the room -> still no invented action
-        msgs += [{"role": "user", "content": voice(R.choice(
-                     ["Doch, mach es an!", "Ja, schalte es an!", "Nee, das gibt es doch",
-                      "Mach es trotzdem", f"Doch, {prep}!", f"Nein, ich meine {prep}"]))},
-                 {"role": "assistant", "content": R.choice([
-                     f"{cap(prep)} gibt es in deiner Geräteliste {kein}. Prüfe bitte, ob das Gerät für Assist freigegeben ist.",
-                     f"Ich sehe {prep} wirklich {kein}, {rel} ich steuern kann."])}]
+        # user insists on the room, sometimes twice -> still no invented action
+        pushes = ["Doch, mach es an!", "Ja, schalte es an!", "Nee, das gibt es doch",
+                  "Mach es trotzdem", f"Doch, {prep}!", f"Nein, ich meine {prep}",
+                  "Nee ist es nicht?", "Doch, da ist eins", "Mach einfach"]
+        refusals = [
+            f"{cap(prep)} gibt es in deiner Geräteliste {kein}. Prüfe bitte, ob das Gerät für Assist freigegeben ist.",
+            f"Ich sehe {prep} wirklich {kein}, {rel} ich steuern kann.",
+            f"{cap(prep)} gibt es {kein} in meiner Geräteliste, deshalb kann ich dort nichts schalten."]
+        p1, p2 = R.sample(pushes, 2)
+        a1, a2 = R.sample(refusals, 2)
+        msgs += [{"role": "user", "content": voice(p1)}, {"role": "assistant", "content": a1}]
+        if R.random() < 0.45:
+            msgs += [{"role": "user", "content": voice(p2)}, {"role": "assistant", "content": a2}]
         cat = "unknown"
     else:
         cat = "unknown"
@@ -1753,6 +1803,10 @@ def s_error(h, loc):
         return _error_partial(h, loc)
     if r < 0.45:
         return _error_question(h, loc)
+    if R.random() < 0.35:
+        out = _error_room(h, loc)
+        if out:
+            return out
     out = _single_command(h, loc) if r < 0.65 else pick_command(h, loc)
     if not out:
         return None
@@ -1794,6 +1848,152 @@ def s_error(h, loc):
                      f"Laut Home Assistant ist {name} gerade nicht erreichbar. Geschaltet wurde nichts."])}]
         meta.update(cat="followup", gold_last=[["get_state", args]])
     return msgs, meta
+
+
+def _error_room(h, loc):
+    """Some lights of a room are unreachable, the others work. Questions and
+    commands about the room report both groups by name."""
+    rooms = [r for r in h.rooms if len([e for e in h.of("light", r)
+                                         if e.label != "__group__"]) >= 2]
+    if not rooms:
+        return None
+    # rooms with a light named like the room are the hard case ("Küche" is
+    # down, "Küche Links" is not), so they come up more often
+    named_rooms = [r for r in rooms if any(e.name == r for e in h.of("light", r))]
+    room = R.choice(named_rooms) if named_rooms and R.random() < 0.6 else R.choice(rooms)
+    ents = [e for e in h.of("light", room) if e.label != "__group__"]
+    k = len(ents) if R.random() < 0.15 else R.randint(1, len(ents) - 1)
+    down = R.sample(ents, k)
+    named = [e for e in ents if e.name == room]
+    if named and named[0] not in down and R.random() < 0.6:
+        down[0] = named[0]
+    for e in down:
+        e.state, e.attrs = "unavailable", {}
+    up = [e for e in ents if e not in down]
+    prep = ROOM_BY_NAME[room][1]
+    ids = [e.eid for e in ents]
+    nd = _names(h, [e.eid for e in down])
+    down_txt = f"{nd} {sein(len(down) > 1)} gerade nicht erreichbar."
+    msgs = base_msgs(h, loc)
+    if R.random() < 0.5:
+        # question
+        user, kind = R.choice([(f"Ist das Licht {prep} an?", "yn"),
+                               (f"Brennt {prep} noch Licht?", "yn"),
+                               (f"Welche Lichter sind {prep} an?", "which"),
+                               (f"Sind die Lampen {prep} aus?", "yn_off")])
+        on = [e for e in up if e.state == "on"]
+        off = [e for e in up if e.state != "on"]
+        parts = []
+        if on:
+            parts.append(f"{_names(h, [e.eid for e in on])} {sein(len(on) > 1)} an.")
+        if off and (not on or R.random() < 0.5):
+            parts.append(f"{_names(h, [e.eid for e in off])} {sein(len(off) > 1)} aus.")
+        if not up:
+            ans = f"{cap(down_txt)} Ob dort Licht brennt, kann ich deshalb nicht sagen."
+        else:
+            if kind == "yn":
+                parts[0] = ("Ja, " if on else "Nein, ") + parts[0]
+            elif kind == "yn_off":
+                parts[0] = ("Nein, " if on else "Von den erreichbaren ja: ") + parts[0]
+            ans = " ".join(parts) + " " + down_txt
+        args = {"entity_ids": ids}
+        call, cid = tool_call("get_state", args)
+        msgs += [{"role": "user", "content": voice(user)}, call,
+                 tool_msg(cid, h.state_of(ents)), {"role": "assistant", "content": ans}]
+        return msgs, {"cat": "error", "gold": [["get_state", args]]}
+    # command for the whole room: the reachable lights switch
+    on_cmd = R.random() < 0.5
+    svc = "light.turn_on" if on_cmd else "light.turn_off"
+    user = R.choice([f"Mach das Licht {prep} an", f"Licht {prep} an",
+                     f"Schalte das Licht {prep} ein"] if on_cmd else
+                    [f"Mach das Licht {prep} aus", f"Licht {prep} aus",
+                     f"Schalte das Licht {prep} aus"])
+    actions = [action(svc, ents)]
+    done = [e.eid for e in up]
+    word = "eingeschaltet" if on_cmd else "ausgeschaltet"
+    if up:
+        did = _names(h, done)
+        ans = R.choice([
+            f"Ich habe {did} {word}. {down_txt}",
+            f"Das hat nur teilweise geklappt: {did} {sein(len(up) > 1)} {'an' if on_cmd else 'aus'}, aber {nd} {sein(len(down) > 1)} gerade nicht erreichbar.",
+            f"{down_txt} Den Rest habe ich {word}: {did}.",
+        ])
+    else:
+        ans = f"{down_txt} Deshalb konnte ich das Licht {prep} nicht schalten."
+    call, cid = tool_call("control", {"actions": actions})
+    msgs += [{"role": "user", "content": voice(user)}, call,
+             tool_msg(cid, S.control_result(
+                 [f"Entity {', '.join(e.eid for e in down)} is unavailable"], done)),
+             {"role": "assistant", "content": ans}]
+    return msgs, {"cat": "error", "gold": [["control", {"actions": actions}]]}
+
+
+def _named_room_light(h, loc):
+    """A light carries the room's name ("Küche") next to other lights there.
+    "das Licht in der Küche" means all lights of the room; only the bare name
+    ("Mach Küche an") means that single lamp."""
+    rooms = [r for r in h.rooms
+             if any(e.name == r for e in h.of("light", r))
+             and len([e for e in h.of("light", r) if e.label != "__group__"]) >= 2]
+    if not rooms:
+        return None
+    room = R.choice(rooms)
+    ents = [e for e in h.of("light", room) if e.label != "__group__"]
+    named = next(e for e in ents if e.name == room)
+    prep = ROOM_BY_NAME[room][1]
+    msgs = base_msgs(h, loc)
+    r = R.random()
+    if r < 0.3:
+        user, kind = R.choice([(f"Ist das Licht {prep} an?", "yn"),
+                               (f"Brennt {prep} Licht?", "yn"),
+                               (f"Ist {prep} noch Licht an?", "yn"),
+                               (f"Welche Lichter sind {prep} an?", "which")])
+        on = [e for e in ents if e.state == "on"]
+        off = [e for e in ents if e.state != "on"]
+        if on:
+            ans = f"{_names(h, [e.eid for e in on])} {sein(len(on) > 1)} an."
+            if off and R.random() < 0.6:
+                ans += f" {_names(h, [e.eid for e in off])} {sein(len(off) > 1)} aus."
+            if kind == "yn":
+                ans = "Ja, " + ans
+        elif kind == "yn":
+            ans = R.choice([f"Nein, {_names(h, [e.eid for e in off])} {sein(len(off) > 1)} aus.",
+                            f"Nein, {prep} ist kein Licht an."])
+        else:
+            ans = f"{cap(prep)} ist gerade kein Licht an."
+        args = {"entity_ids": [e.eid for e in ents]}
+        call, cid = tool_call("get_state", args)
+        msgs += [{"role": "user", "content": voice(user)}, call,
+                 tool_msg(cid, h.state_of(ents)), {"role": "assistant", "content": ans}]
+        must = [e.name for e in on] if on else ["nein" if kind == "yn" else "kein"]
+        return msgs, {"cat": "question", "gold": [["get_state", args]],
+                      "answer_contains": must}
+    on_cmd = R.random() < 0.5
+    svc = "light.turn_on" if on_cmd else "light.turn_off"
+    adj, part = ("an", "eingeschaltet") if on_cmd else ("aus", "ausgeschaltet")
+    if r < 0.8:
+        # the room: every light in it
+        user = R.choice([f"Mach das Licht {prep} an", f"Schalte das Licht {prep} ein",
+                         f"Licht {prep} an", f"Mach {prep} das Licht an",
+                         f"Kannst du das Licht {prep} einschalten?"] if on_cmd else
+                        [f"Mach das Licht {prep} aus", f"Schalte das Licht {prep} aus",
+                         f"Licht {prep} aus", f"Mach {prep} das Licht aus",
+                         f"Kannst du das Licht {prep} ausmachen?"])
+        targets = ents
+        conf = confirm(Ref(f"das Licht {prep}", f"das Licht {prep}", False, ents), adj, part)
+    else:
+        # the bare name: only the lamp called like the room
+        user = R.choice([f"Mach {room} an", f"Schalte {room} ein", f"{room} an",
+                         f"Schalte die Lampe {room} ein"] if on_cmd else
+                        [f"Mach {room} aus", f"Schalte {room} aus", f"{room} aus",
+                         f"Schalte die Lampe {room} aus"])
+        targets = [named]
+        conf = confirm(Ref(room, room, False, targets), adj, part)
+    actions = [action(svc, targets)]
+    call, cid = tool_call("control", {"actions": actions})
+    msgs += [{"role": "user", "content": voice(user)}, call,
+             tool_msg(cid, S.control_result()), {"role": "assistant", "content": conf}]
+    return msgs, {"cat": "command", "gold": [["control", {"actions": actions}]]}
 
 
 def partial_answer(h, ok_actions, failed_name, conf=None):
@@ -2295,6 +2495,7 @@ CATEGORIES = [
     (s_command, 46), (s_compound, 8), (s_question, 24), (s_relative_climate, 2),
     (s_unknown, 9), (s_chat, 3), (s_error, 5), (s_followup, 8),
     (s_missing_type, 6), (s_appliance_question, 3), (s_conversation, 12),
+    (_error_room, 3), (_named_room_light, 5),
 ]
 
 
