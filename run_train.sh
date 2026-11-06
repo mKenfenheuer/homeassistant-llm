@@ -5,8 +5,8 @@ set -euo pipefail
 cd "$(dirname "$0")"
 PY=.venv/bin/python
 
-$PY src/gen_dataset.py data/train.jsonl 8000 4     # training set (v4)
-$PY src/gen_dataset.py data/eval.jsonl 300 1002    # held-out set, other houses
+$PY src/gen_dataset.py data/train.jsonl 8000 7     # training set (v7)
+$PY src/gen_dataset.py data/eval.jsonl 300 1005    # held-out set, other houses
 $PY src/check_dataset.py data/train.jsonl          # answers must match the tool results
 
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \

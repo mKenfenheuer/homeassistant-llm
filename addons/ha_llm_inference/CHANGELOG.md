@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.6.0
+
+- Neues Modell v7 (`qwen2.5-3b-ha-v7-Q4_K_M.gguf`), neu trainiert ab
+  Qwen2.5-3B-Instruct mit 8.000 Beispielen und 2,5 Epochen.
+- Räume mit teilweise nicht erreichbaren Lampen: „Ist das Licht in der Küche
+  an?“ nennt die erreichbaren Lampen mit ihrem Zustand und die übrigen als
+  nicht erreichbar. Bisher antwortete das Modell „Alle Lichter sind aus“.
+- „Mach das Licht in der Küche an“ schaltet bei teilweise nicht erreichbaren
+  Lampen die übrigen und nennt beide Teile.
+- Besteht der Nutzer mehrmals auf einem Gerät, das nicht in der Liste steht,
+  lehnt das Modell jedes Mal ab, statt eine entity_id zu erfinden.
+- Modus-Schalter der Heizung: „Aktiviere den Abwesenheitsmodus der Heizung“
+  schaltet den Schalter „Heizung … Abwesenheitsmodus“, nicht das Thermostat.
+- „das Licht im Flur“ meint immer alle Lampen im Raum. Nur der Name allein
+  („Mach Küche an“) meint die Lampe, die so heißt wie der Raum.
+- Bekannte Schwäche: Fragen nach Türkontakten („Ist die Balkontür im
+  Wohnzimmer offen?“) treffen je nach Geräteliste manchmal den falschen
+  Kontakt.
+
 ## 0.5.0
 
 - Neues Modell v4 (`qwen2.5-3b-ha-v4-Q4_K_M.gguf`), neu trainiert ab
