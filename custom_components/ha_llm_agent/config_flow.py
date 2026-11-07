@@ -105,6 +105,28 @@ class HaLlmAgentConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(step_id="user", data_schema=schema,
                                     errors=errors)
 
+    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None
+                                     ) -> ConfigFlowResult:
+        """Point an existing entry at another llama-server (add-on, GPU host)."""
+        entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            url = user_input[CONF_URL].rstrip("/")
+            if any(e.unique_id == url and e.entry_id != entry.entry_id
+                   for e in self._async_current_entries(include_ignore=False)):
+                return self.async_abort(reason="already_configured")
+            if (err := await _probe(self.hass, url)) is not None:
+                errors["base"] = err
+            else:
+                return self.async_update_reload_and_abort(
+                    entry, unique_id=url, data_updates={CONF_URL: url})
+        schema = vol.Schema({
+            vol.Required(CONF_URL, default=(user_input or entry.data)[CONF_URL]):
+                TextSelector(TextSelectorConfig(type=TextSelectorType.URL)),
+        })
+        return self.async_show_form(step_id="reconfigure", data_schema=schema,
+                                    errors=errors)
+
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:

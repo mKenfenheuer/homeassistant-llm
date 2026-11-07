@@ -7,13 +7,21 @@
         "data": {
           "url": "Server URL"
         }
+      },
+      "reconfigure": {
+        "title": "Change LLM server",
+        "description": "New URL of the llama.cpp server, e.g. the add-on \"HA LLM Inference\" or llama-server on a GPU host. The conversation agent and its settings are kept.",
+        "data": {
+          "url": "Server URL"
+        }
       }
     },
     "error": {
       "cannot_connect": "Cannot reach llama-server at this URL (GET /health)."
     },
     "abort": {
-      "already_configured": "This server is already configured."
+      "already_configured": "This server is already configured.",
+      "reconfigure_successful": "The server URL has been changed."
     }
   },
   "options": {
@@ -32,7 +40,7 @@
   "issues": {
     "slow_inference": {
       "title": "llama-server is too slow for {entities} entities",
-      "description": "Loading the device list into the model took {seconds} s (server: {url}). This usually means the CPU has no AVX2, so every voice command will take 30 seconds or more.\n\nRun llama-server on a machine with AVX2 or a GPU and enter its URL in a new HA LLM Agent entry, or expose fewer entities to Assist."
+      "description": "Loading the device list into the model took {seconds} s (server: {url}). This usually means the CPU has no AVX2, so every voice command will take 30 seconds or more.\n\nRun llama-server on a machine with AVX2 or a GPU and enter its URL via \"Reconfigure\" on the HA LLM Agent entry, or expose fewer entities to Assist."
     }
   }
 }
