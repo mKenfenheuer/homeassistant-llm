@@ -88,7 +88,9 @@ herunterladen und Home Assistant neu starten. Ohne HACS den Ordner
 **Einrichtung** „HA LLM Agent (lokal)“ hinzufügen. Die Integration erkennt das
 installierte Add-on und trägt dessen URL vor, z. B.
 `http://a1b2c3d4-ha-llm-inference:8080`. Läuft llama-server woanders, die URL
-von Hand eintragen.
+von Hand eintragen. Eine spätere Änderung, etwa vom Add-on auf einen GPU-Rechner,
+läuft über das Menü des Eintrags → „Neu konfigurieren“. Der Agent und seine
+Optionen bleiben dabei erhalten.
 
 **Assist** Unter Einstellungen → Sprachassistenten den Agenten „Lokales LLM“
 als Gesprächsagenten wählen. Welche Geräte das Modell sieht, steuert die
@@ -201,7 +203,8 @@ docker run -d --name ha-llm-server --restart unless-stopped --gpus all \
   --alias ha-llm --jinja -ngl 99 -c 8192 -np 1 --cache-reuse 256
 ```
 
-In der Integration dann `http://<server>:8080` als URL eintragen.
+In der Integration dann `http://<server>:8080` als URL eintragen oder einen
+bestehenden Eintrag über „Neu konfigurieren“ auf diese URL umstellen.
 
 ## Grenzen
 

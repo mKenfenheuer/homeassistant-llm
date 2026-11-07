@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.1
+
+- Integration: Die Server-URL lässt sich über „Neu konfigurieren“ am Eintrag
+  ändern, etwa beim Wechsel vom Add-on auf llama-server auf einem GPU-Rechner.
+  Die Integration prüft die neue URL über `/health`, bevor sie sie übernimmt.
+  Agent und Optionen bleiben erhalten. Bisher musste der Eintrag gelöscht und
+  neu angelegt werden.
+- Add-on und Modell (v7) sind unverändert.
+
 ## 0.6.0
 
 - Neues Modell v7 (`qwen2.5-3b-ha-v7-Q4_K_M.gguf`), neu trainiert ab
