@@ -118,8 +118,10 @@ class HaLlmAgentConfigFlow(ConfigFlow, domain=DOMAIN):
             if (err := await _probe(self.hass, url)) is not None:
                 errors["base"] = err
             else:
-                return self.async_update_reload_and_abort(
-                    entry, unique_id=url, data_updates={CONF_URL: url})
+                # the entry's update listener reloads it
+                return self.async_update_and_abort(
+                    entry, unique_id=url, data_updates={CONF_URL: url},
+                    reason="reconfigure_successful")
         schema = vol.Schema({
             vol.Required(CONF_URL, default=(user_input or entry.data)[CONF_URL]):
                 TextSelector(TextSelectorConfig(type=TextSelectorType.URL)),

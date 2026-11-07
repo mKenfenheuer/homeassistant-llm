@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.2
+
+- Integration: „Neu konfigurieren“ lädt den Eintrag über dessen
+  Update-Listener neu. HA warnte bisher, weil der Ablauf zusätzlich selbst neu
+  lud; ab HA 2026.12 wäre das ein Fehler.
+
 ## 0.6.1
 
 - Integration: Die Server-URL lässt sich über „Neu konfigurieren“ am Eintrag
