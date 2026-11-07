@@ -200,12 +200,29 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
         return area.name if area else None
 
     # ----------------------------------------------------------------- tools
+    def _area_ids(self, domain: str, area: str, exposed: dict) -> list[str] | None:
+        """Exposed entities of `domain` in `area` ("*" = whole house), as the
+        device list shows them. Group entities (state attribute entity_id)
+        are left out, their members are included."""
+        groups = [eid for eid in exposed
+                  if (st := self.hass.states.get(eid)) is not None
+                  and isinstance(st.attributes.get("entity_id"), list)]
+        return S.area_targets(domain, str(area),
+                              [(e, n, a) for e, (n, a) in exposed.items()], groups)
+
     async def _get_state(self, args: dict, exposed: dict) -> str:
         ids = args.get("entity_ids") or args.get("entity_id") or []
         if isinstance(ids, str):
             ids = [ids]
+        if not ids and args.get("area"):
+            domain = args.get("domain") or "light"
+            if domain not in S.AREA_DOMAINS:
+                return S.dumps([{"error": f"area wird für {domain} nicht unterstützt"}])
+            ids = self._area_ids(domain, args["area"], exposed)
+            if ids is None:
+                return S.dumps([{"error": f"unbekannter Bereich {args['area']}"}])
         out = []
-        for eid in ids[:50]:
+        for eid in ids[:100]:
             state = self.hass.states.get(eid)
             if eid not in exposed or state is None:
                 out.append({"entity_id": eid, "error": "unbekannte entity_id"})
@@ -218,6 +235,7 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
                        context) -> str:
         errors: list[str] = []
         done: list[str] = []
+        by_area = False
         actions = args.get("actions")
         if isinstance(actions, dict):
             actions = [actions]
@@ -230,6 +248,18 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
                 errors.append(f"Unknown service {service}")
                 continue
             domain, name = service.split(".", 1)
+            if not ids and act.get("area"):
+                if domain not in S.AREA_DOMAINS:
+                    errors.append(f"area is not supported for {service}")
+                    continue
+                ids = self._area_ids(domain, act["area"], exposed)
+                if ids is None:
+                    errors.append(f"Unknown area {act['area']}")
+                    continue
+                if not ids:
+                    errors.append(f"No {domain} entities in area {act['area']}")
+                    continue
+                by_area = True
             bad = [i for i in ids if i not in exposed or i.split(".")[0] != domain]
             if bad or not ids:
                 errors.append(f"Unknown entity for {service}: {', '.join(bad) or '-'}")
@@ -252,7 +282,9 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
                 errors.append(f"{service} failed for {', '.join(ids)}: {err}")
             else:
                 done.extend(ids)
-        return S.control_result(errors, done)
+        # on success `done` is only reported for area actions: it tells the
+        # model which entities the area stood for
+        return S.control_result(errors, done if errors or by_area else None)
 
     # ------------------------------------------------------------------- llm
     async def _complete(self, messages: list[dict], max_tokens: int = 400,

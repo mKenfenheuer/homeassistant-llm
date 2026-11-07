@@ -15,14 +15,15 @@ fail() {
 
 # Model that belongs to this add-on version. Empty options (the default) use
 # it, so an add-on update also brings the matching model.
-DEFAULT_URL="https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-v7-Q4_K_M.gguf"
-DEFAULT_SHA="507d2f74f64cf63df4a0bca5098c2cae480cecab1358902b05e61703b9e94592"
+DEFAULT_URL="https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-v11-Q4_K_M.gguf"
+DEFAULT_SHA="6332d3069eb1fe50112617763b7cd4aaae179bb2fc62a59baf6a2349f8b7bc10"
 # default URLs of earlier versions: treated like "empty", old file removed
 LEGACY_URLS=(
     "https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-Q4_K_M.gguf"
     "https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-v2-Q4_K_M.gguf"
     "https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-v3-Q4_K_M.gguf"
     "https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-v4-Q4_K_M.gguf"
+    "https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-v7-Q4_K_M.gguf"
 )
 
 MODEL_URL="$(opt model_url)"
@@ -114,6 +115,17 @@ if [ ! -f "$MODEL_PATH" ]; then
         echo "[INFO] Entferne altes Modell ${OLD_DEFAULT}"
         rm -f "$OLD_DEFAULT"
     fi
+fi
+
+# the default model replaces the defaults of earlier versions
+if [ "$MODEL_URL" = "$DEFAULT_URL" ] && [ -f "$MODEL_PATH" ]; then
+    for u in "${LEGACY_URLS[@]}"; do
+        OLD="/share/ha_llm/$(basename "$u")"
+        if [ "$OLD" != "$MODEL_PATH" ] && [ -f "$OLD" ]; then
+            echo "[INFO] Entferne altes Modell ${OLD}"
+            rm -f "$OLD"
+        fi
+    done
 fi
 
 ARGS=(-m "$MODEL_PATH" --host 0.0.0.0 --port 8080 --alias ha-llm

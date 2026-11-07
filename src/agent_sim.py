@@ -6,6 +6,7 @@ shows what the user would hear and what really happened, turn by turn.
 
 Usage: python src/agent_sim.py URL scenarios.json
 scenarios.json: {"house": "layout.json" ([[entity_id, name, area], ...]),
+                 "groups": [group entity_ids, left out of area targets],
                  "scenarios": [{"name": ..., "unavailable": [...],
                                 "states": {eid: state}, "turns": [...]}]}
 """
@@ -33,7 +34,9 @@ AFTER = {"turn_on": "on", "turn_off": "off", "open_cover": "open",
 
 
 class House:
-    def __init__(self, layout, unavailable=(), states=None):
+    def __init__(self, layout, unavailable=(), states=None, groups=()):
+        self.layout = [tuple(e) for e in layout]
+        self.groups = list(groups)
         self.names = {e: n for e, n, _ in layout}
         self.state = {e: DEFAULT_STATE.get(e.split(".")[0], "unknown") for e in self.names}
         self.state.update(states or {})
@@ -43,6 +46,13 @@ class House:
 
     def get_state(self, args):
         ids = args.get("entity_ids") or []
+        if not ids and args.get("area"):
+            domain = args.get("domain") or "light"
+            if domain not in S.AREA_DOMAINS:
+                return S.dumps([{"error": f"area wird für {domain} nicht unterstützt"}])
+            ids = S.area_targets(domain, args["area"], self.layout, self.groups)
+            if ids is None:
+                return S.dumps([{"error": f"unbekannter Bereich {args['area']}"}])
         out = []
         for eid in ids if isinstance(ids, list) else [ids]:
             if eid not in self.names:
@@ -53,6 +63,7 @@ class House:
 
     def control(self, args):
         errors, done = [], []
+        by_area = False
         acts = args.get("actions") or []
         for act in acts if isinstance(acts, list) else [acts]:
             service = act.get("service", "")
@@ -62,6 +73,18 @@ class House:
                 errors.append(f"Unknown service {service}")
                 continue
             domain, name = service.split(".", 1)
+            if not ids and act.get("area"):
+                if domain not in S.AREA_DOMAINS:
+                    errors.append(f"area is not supported for {service}")
+                    continue
+                ids = S.area_targets(domain, act["area"], self.layout, self.groups)
+                if ids is None:
+                    errors.append(f"Unknown area {act['area']}")
+                    continue
+                if not ids:
+                    errors.append(f"No {domain} entities in area {act['area']}")
+                    continue
+                by_area = True
             bad = [i for i in ids if i not in self.names or i.split(".")[0] != domain]
             if bad or not ids:
                 errors.append(f"Unknown entity for {service}: {', '.join(bad) or '-'}")
@@ -78,7 +101,7 @@ class House:
                     self.state[i] = AFTER[name]
             done.extend(ids)
             self.log.append(f"{service} {ids}")
-        return S.control_result(errors, done)
+        return S.control_result(errors, done if errors or by_area else None)
 
 
 def complete(url, messages):
@@ -90,8 +113,8 @@ def complete(url, messages):
         return json.loads(r.read())["choices"][0]["message"]
 
 
-def run(url, layout, sc):
-    house = House(layout, sc.get("unavailable", []), sc.get("states"))
+def run(url, layout, sc, groups=()):
+    house = House(layout, sc.get("unavailable", []), sc.get("states"), groups)
     system = S.build_system_prompt([tuple(e) for e in layout])
     history: list[dict] = []
     print(f"\n### {sc['name']}")
@@ -126,7 +149,7 @@ def main():
     cfg = json.load(open(sys.argv[2], encoding="utf-8"))
     for sc in cfg["scenarios"]:
         layout = json.load(open(sc.get("house", cfg["house"]), encoding="utf-8"))
-        run(url, layout, sc)
+        run(url, layout, sc, sc.get("groups", cfg.get("groups", [])))
 
 
 if __name__ == "__main__":

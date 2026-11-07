@@ -33,6 +33,14 @@ Werkzeuge:
 - `get_state` liefert Zustand und wichtige Attribute, z. B. Temperatur,
   Position oder Helligkeit.
 
+Lichter spricht das Modell auch über den Bereich an: „Mach das Licht in der
+Küche an“ wird zu `{"service": "light.turn_on", "area": "Küche"}`, „alle
+Lichter aus“ zu `"area": "*"`. Die Integration löst den Bereich in die
+freigegebenen Lampen auf und meldet sie im Ergebnis zurück (`"done": [...]`).
+Das Modell muss bei vier Lampen in der Küche keine vier entity_ids mehr
+abschreiben. Ebenso fragt `get_state` mit `domain` und `area` alle Lichter
+eines Bereichs ab.
+
 Die Integration prüft jeden Aufruf. Sie erlaubt nur Dienste aus
 `llm_schema.SERVICES`, nur freigegebene Entitäten und nur die dort genannten
 Parameter.
@@ -43,7 +51,8 @@ neu gewürfeltes Haus mit eigenen Räumen, Namen und teils kryptischen
 über die Geräteliste und merkt sich kein festes Haus. Die Daten decken Befehle,
 Gruppen („alle Rollläden“), kombinierte Befehle, Fragen mit `get_state`,
 Gespräche über mehrere Runden, unbekannte Geräte, nicht erreichbare Geräte
-und Teilerfolge ab.
+und Teilerfolge ab. Jeder der 64 Fälle hat dieselbe Quote, auch seltene wie
+„Im Schlafzimmer gibt es keinen Ventilator“ oder ein Haus ohne Bereiche.
 
 Ehrlichkeit kommt aus den Daten, nicht aus Regeln in der Integration. Meldet
 `control` einen Fehler, z. B. `{"success": false, "error": "Entity light.garten
@@ -55,11 +64,11 @@ einen Erfolg behauptet, den das Werkzeugergebnis nicht hergibt.
 
 ```bash
 ./run_train.sh       # 8.000 Trainings- und 300 Testproben, LoRA r=32, 2,5 Epochen
-./run_export.sh output/merged qwen2.5-3b-ha-v7   # -> model/qwen2.5-3b-ha-v7-Q4_K_M.gguf
+./run_export.sh output/merged qwen2.5-3b-ha-v11  # -> model/qwen2.5-3b-ha-v11-Q4_K_M.gguf
 ./run_test.sh        # Bewertung auf data/eval.jsonl (GPU, Docker)
 ```
 
-Das Training braucht rund 19 GB VRAM und auf der RTX 3090 etwa 4,8 Stunden.
+Das Training braucht rund 17 GB VRAM und auf der RTX 3090 etwa 5,5 Stunden.
 Konvertierung und Quantisierung laufen im offiziellen Image
 `ghcr.io/ggml-org/llama.cpp:full-cuda`, ein eigener llama.cpp-Build ist nicht
 nötig.
@@ -122,7 +131,7 @@ Bereiche erhalten.
 HA_URL=http://localhost:18123 HA_TOKEN=... python3 src/ha_e2e_test.py
 ```
 
-## Ergebnisse (Stand 06.11.2026)
+## Ergebnisse (Stand 08.11.2026)
 
 **Testdatensatz** 300 Proben aus Häusern, die im Training nicht vorkamen
 (`./run_test.sh`):
@@ -139,6 +148,7 @@ HA_URL=http://localhost:18123 HA_TOKEN=... python3 src/ha_e2e_test.py
 | v4 (LoRA, 2,5 Epochen ab Basismodell), v4-Testdaten | 96,0 % | 100 % |
 | v4, v7-Testdaten | 96,3 % | 100 % |
 | v7 (LoRA, 2,5 Epochen ab Basismodell), v7-Testdaten | 98,0 % | 100 % |
+| v11 (LoRA, 2,5 Epochen ab Basismodell), v11-Testdaten | 98,7 % | 98,7 % |
 
 Die v2-Testdaten sind schwerer als die v1-Testdaten: Häuser mit bis zu 110
 Entitäten, Gruppen, Räume ohne Licht und Geräte, die nicht in der Liste
@@ -146,35 +156,41 @@ stehen. Ab v3 kommen Gespräche über mehrere Runden, nicht erreichbare Geräte
 und Geräte mit Status-Sensor und Steckdose hinzu, ab v4 Lampen mit dem Namen
 ihres Raums und mehrere Bewässerungen, ab v7 Räume mit teilweise nicht
 erreichbaren Lampen, mehrfaches Beharren auf fehlenden Geräten und
-Modus-Schalter der Heizung. Auf den v7-Testdaten lehnt v7 alle 31 Anfragen
-nach fehlenden Geräten ab (v4: 29) und beantwortet alle 40 Zustandsfragen mit
-dem richtigen Aufruf (v4: 38). Die meisten verbleibenden Fehler betreffen lange Listen wie „Welche
-Lampen sind eingeschaltet?“, bei denen das Modell eine entity_id falsch
-abschreibt oder auslässt.
+Modus-Schalter der Heizung. Die v11-Testdaten nutzen Schema 5 mit Bereichen
+und enthalten Türkontakte, Elektroautos sowie Außentemperatur neben
+Vorhersage-Sensoren. v7 lässt sich darauf nicht direkt messen, weil es
+`area` nicht kennt. v11 lehnt alle 15 Anfragen nach fehlenden Geräten ab und
+beantwortet 78 von 81 Zustandsfragen mit dem richtigen Aufruf.
 
-**Echtes Haus** Ein Abnahmetest mit 31 Sätzen auf einer realen Installation
-mit über 100 freigegebenen Entitäten: v7 und v4 lösen alle 31. v7 schaltet bei
-„Licht in der Küche“ alle vier Lampen im Raum, obwohl eine davon selbst
-„Küche“ heißt. „Bewässere die Balkonpflanzen“ öffnet das Ventil auf dem Balkon.
-Auf vier Varianten derselben Geräteliste mit je 8 fehlenden Geräten löst v7
-123 von 124 Sätzen, v4 alle 124. Auf einem älteren Stand der Geräteliste
-verfehlt v7 zwei Fragen: „Ist die Balkontür im Wohnzimmer offen?“ fragt die
-Wohnungstüre ab, die Frage nach der Reichweite des Elektroautos den
-Ladestand. Türkontakte und Elektroautos fehlen in den v7-Trainingsdaten.
+**Echtes Haus** Der Abnahmetest läuft auf einer realen Installation mit über
+100 freigegebenen Entitäten: 26 Sätze auf einem älteren Stand der
+Geräteliste, 32 Sätze auf dem aktuellen Stand und vier Varianten des
+aktuellen Stands mit je 8 fehlenden Geräten.
+
+| Modell | Älterer Stand | Aktueller Stand | Varianten |
+|--------|---------------|-----------------|-----------|
+| v7 | 24/26 | 32/32 | 123/128 |
+| v11 | 26/26 | 32/32 | 128/128 |
+
+v7 fragte bei „Ist die Balkontür im Wohnzimmer offen?“ die Wohnungstür ab und
+bei der Reichweite des Elektroautos den Ladestand. v11 löst beide.
 
 **Dialoge** `src/agent_sim.py` spielt Gespräche über mehrere Runden gegen ein
-simuliertes Haus durch. In 19 Szenarien meldet v7 nicht erreichbare Geräte in
+simuliertes Haus durch. In 19 Szenarien meldet v11 nicht erreichbare Geräte in
 jeder Runde als Fehler. Sind zwei von vier Küchenlampen nicht erreichbar,
-nennt v7 auf „Welche Lichter sind in der Küche an?“ die eingeschalteten und
-die nicht erreichbaren Lampen getrennt. v4 behauptete „In der Küche ist
-gerade kein Licht an.“ Ein Fehler
-bleibt: Nach „Licht in der Küche an“ schaltet v7 bei der Korrektur „Nein, ich
-meinte im Esszimmer“ nur eine der vier Küchenlampen aus.
+schaltet v11 „das Licht in der Küche“ über den Bereich und nennt die
+geschalteten und die nicht erreichbaren Lampen getrennt. Die Korrektur „Nein,
+ich meinte im Esszimmer“ schaltet jetzt alle Küchenlampen aus, v7 nur eine.
+Zwei Schwächen bleiben. Steht im Schlafzimmer nur der Media Player eines
+Sprachassistenten, schaltet v11 auf „Mach den Fernseher im Schlafzimmer an“
+korrekt nichts, nennt in der Antwort aber den Media Player statt des Raums.
+In der ersten Antwort zur teilweise erreichbaren Küche nennt v11 nur eine
+der beiden nicht erreichbaren Lampen.
 
 **Home Assistant** Der Ende-zu-Ende-Test mit Add-on (CPU, 8 Threads) und
-Integration besteht mit v7 24 von 24 Fällen. Dazu gehören eine nicht
+Integration besteht mit v11 24 von 24 Fällen. Dazu gehören eine nicht
 erreichbare Lampe und eine Rückfrage im selben Gespräch. Die Antwortzeit
-liegt im Median bei 3,2 Sekunden, die längste Anfrage braucht 5,6 Sekunden.
+liegt im Median bei 3,2 Sekunden, die längste Anfrage braucht 5,3 Sekunden.
 
 ## Hardware für das Add-on
 
@@ -199,7 +215,7 @@ Rechner laufen, etwa per Docker auf einem Server mit GPU:
 docker run -d --name ha-llm-server --restart unless-stopped --gpus all \
   -p 8080:8080 -v $PWD/model:/models:ro \
   ghcr.io/ggml-org/llama.cpp:full-cuda --server \
-  -m /models/qwen2.5-3b-ha-v7-Q4_K_M.gguf --host 0.0.0.0 --port 8080 \
+  -m /models/qwen2.5-3b-ha-v11-Q4_K_M.gguf --host 0.0.0.0 --port 8080 \
   --alias ha-llm --jinja -ngl 99 -c 8192 -np 1 --cache-reuse 256
 ```
 
@@ -209,7 +225,10 @@ bestehenden Eintrag über „Neu konfigurieren“ auf diese URL umstellen.
 ## Grenzen
 
 - Das Modell kennt nur die Dienste in `llm_schema.SERVICES`. Automationen
-  anlegen, Timer oder Wetterberichte beherrscht es nicht.
+  anlegen oder Timer beherrscht es nicht. Wettervorhersagen beantwortet es
+  nur über freigegebene Vorhersage-Sensoren.
+- Integration und Modell gehören zusammen. Integration 0.7.0 braucht Modell
+  v11, ältere Modelle kennen `area` nicht.
 - Ab etwa 250 Entitäten reicht die Kontextlänge von 8.192 Tokens nicht mehr.
   Die Integration kürzt dann die Liste (Option „Maximale Anzahl Entitäten“).
 - Die Option „Bereich des Sprachgeräts verwenden“ ist standardmäßig aus. Der

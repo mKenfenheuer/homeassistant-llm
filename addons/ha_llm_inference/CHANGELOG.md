@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.7.0
+
+- Neues Modell v11 (`qwen2.5-3b-ha-v11-Q4_K_M.gguf`), neu trainiert ab
+  Qwen2.5-3B-Instruct mit 8.000 Beispielen und 2,5 Epochen. Jeder der 64
+  Fälle im Generator hat dieselbe Quote, seltene Fälle eingeschlossen.
+- Schema 5: „Mach das Licht in der Küche an“ schaltet alle Lichter des
+  Bereichs über `area`, „alle Lichter“ über `area: "*"`. Die Integration löst
+  den Bereich selbst auf und meldet die geschalteten Lampen zurück. Bisher
+  musste das Modell jede entity_id abschreiben und ließ bei vier Lampen
+  gelegentlich eine aus.
+- `get_state` fragt mit `domain` und `area` alle Lichter eines Bereichs ab.
+- Türkontakte und Elektroautos sind im Training: „Ist die Balkontür offen?“
+  fragt den Kontakt der Balkontür ab, nicht die Wohnungstür, „Wie weit kommt
+  das Auto noch?“ die Reichweite statt des Ladestands.
+- Außentemperatur neben Vorhersage-, Taupunkt- und Gefühlte-Temperatur-Sensoren:
+  „Wie warm ist es draußen?“ liest den Außensensor, „Wie warm wird es
+  morgen?“ die Vorhersage.
+- Korrektur „Nein, ich meinte im Esszimmer“ schaltet alle Küchenlampen aus,
+  nicht nur eine.
+- Add-on: Ein Update auf das neue Standardmodell löscht die Modelldateien
+  früherer Versionen in `/share/ha_llm/` (bisher blieben 1,9 GB pro Version
+  liegen).
+- Integration und Modell gehören zusammen: Integration 0.7.0 braucht Modell
+  v11, ältere Modelle kennen `area` nicht.
+
 ## 0.6.2
 
 - Integration: „Neu konfigurieren“ lädt den Eintrag über dessen

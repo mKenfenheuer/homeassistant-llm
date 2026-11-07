@@ -143,7 +143,7 @@ def main():
         logging_steps=10,
         save_strategy="steps",
         save_steps=max(50, total // 4),
-        save_total_limit=2,
+        save_total_limit=4,             # keep all four for checkpoint selection
         dataloader_num_workers=2,
         report_to=[],
         seed=42,

@@ -2,8 +2,9 @@
 
 For each sample the conversation is cut before the assistant turn under test
 and sent with the shared tool schema. Checks:
-  - control: same (service, entity_id, data) triples as the gold call
-  - get_state: all gold entity_ids requested
+  - control: same (service, entity_id, data) triples as the gold call; an
+    area target counts as the entity_ids it resolves to in the device list
+  - get_state: all gold entity_ids requested (area resolved the same way)
   - unknown/chat: no tool call
   - question: after feeding the gold tool result, the answer contains the
     expected values
@@ -44,12 +45,29 @@ def norm_value(v):
     return v
 
 
-def triples(actions):
+def devices(prompt):
+    """(entity_id, name, area) tuples of the device list in the system prompt."""
+    out = []
+    for line in prompt[0]["content"].splitlines():
+        p = [x.strip() for x in line.split(" | ")]
+        if len(p) == 3 and "." in p[0] and " " not in p[0]:
+            out.append((p[0], p[1], None if p[2] == "-" else p[2]))
+    return out
+
+
+def resolve(ids, area, domain, ents, groups):
+    if ids:
+        return [ids] if isinstance(ids, str) else ids
+    if area and domain in S.AREA_DOMAINS:
+        return S.area_targets(domain, area, ents, groups) or []
+    return []
+
+
+def triples(actions, ents=(), groups=()):
     out = set()
     for a in actions or []:
-        ids = a.get("entity_id") or []
-        if isinstance(ids, str):
-            ids = [ids]
+        dom = (a.get("service") or "").split(".", 1)[0]
+        ids = resolve(a.get("entity_id"), a.get("area"), dom, ents, groups)
         data = tuple(sorted((k, norm_value(v)) for k, v in (a.get("data") or {}).items()))
         for e in ids:
             out.add((a.get("service"), e, data))
@@ -68,15 +86,20 @@ def first_call(msg):
     return fn["name"], args
 
 
-def check_call(gold, name, args):
+def check_call(gold, name, args, ents=(), groups=()):
     if gold is None:
         return name is None
     gname, gargs = gold
     if name != gname:
         return False
     if gname == "control":
-        return triples(args.get("actions")) == triples(gargs["actions"])
-    return set(gargs["entity_ids"]) <= set(args.get("entity_ids") or [])
+        return triples(args.get("actions"), ents, groups) == \
+            triples(gargs["actions"], ents, groups)
+    got = resolve(args.get("entity_ids"), args.get("area"),
+                  args.get("domain") or "light", ents, groups)
+    want = resolve(gargs.get("entity_ids"), gargs.get("area"),
+                   gargs.get("domain") or "light", ents, groups)
+    return set(want) <= set(got)
 
 
 def main():
@@ -97,7 +120,7 @@ def main():
             gold = meta["gold"][0] if meta["gold"] else None
         msg = chat(prompt)
         name, args = first_call(msg)
-        ok = check_call(gold, name, args)
+        ok = check_call(gold, name, args, devices(prompt), meta.get("groups", []))
         stats[cat][0] += ok
         stats[cat][1] += 1
         if not ok:

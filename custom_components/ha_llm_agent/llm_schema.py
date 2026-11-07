@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from typing import Any, Iterable
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 # --- services the model may call, with the data keys it may pass ------------
 SERVICES: dict[str, list[str]] = {
@@ -67,6 +67,11 @@ SERVICES: dict[str, list[str]] = {
 CONTROL_DOMAINS = sorted({s.split(".", 1)[0] for s in SERVICES})
 READ_DOMAINS = ["sensor", "binary_sensor", "weather"]
 EXPOSED_DOMAINS = CONTROL_DOMAINS + READ_DOMAINS
+# domains that can be addressed by area ("das Licht in der Küche", "alle
+# Lichter"). Covers are left out: "die Rollläden auf der Terrasse" must not
+# move the awning in the same area.
+AREA_DOMAINS = ["light"]
+ALL_AREAS = "*"
 
 SYSTEM_TEMPLATE = (
     "Du bist der Sprachassistent eines Smart Homes mit Home Assistant. "
@@ -74,7 +79,9 @@ SYSTEM_TEMPLATE = (
     "Steuere Geräte mit dem Werkzeug control. Frage Zustände und Messwerte "
     "mit get_state ab, bevor du Fragen dazu beantwortest.\n"
     "Verwende nur entity_ids aus der folgenden Liste. Gibt es ein Gerät "
-    "nicht, sage das, statt eine entity_id zu erfinden.\n\n"
+    "nicht, sage das, statt eine entity_id zu erfinden.\n"
+    "Meint der Nutzer alle Lichter eines Bereichs, gib statt entity_id den "
+    "Bereich an (area), für das ganze Haus area \"*\".\n\n"
     "Geräte (entity_id | Name | Bereich):\n{devices}"
 )
 LOCATION_TEMPLATE = "\n\nDas Sprachgerät steht im Bereich: {area}"
@@ -86,7 +93,8 @@ TOOLS: list[dict[str, Any]] = [
             "name": "control",
             "description": (
                 "Steuert ein oder mehrere Geräte. Jede Aktion ruft einen "
-                "Home-Assistant-Dienst für eine oder mehrere entity_ids auf. "
+                "Home-Assistant-Dienst für eine oder mehrere entity_ids auf, "
+                "bei Lichtern auch für alle Lichter eines Bereichs (area). "
                 "Erlaubte Dienste: " + ", ".join(SERVICES) + "."
             ),
             "parameters": {
@@ -105,6 +113,13 @@ TOOLS: list[dict[str, Any]] = [
                                     "type": "array",
                                     "items": {"type": "string"},
                                 },
+                                "area": {
+                                    "type": "string",
+                                    "description": (
+                                        "Statt entity_id: alle Lichter dieses "
+                                        "Bereichs, \"*\" für das ganze Haus"
+                                    ),
+                                },
                                 "data": {
                                     "type": "object",
                                     "description": (
@@ -115,7 +130,7 @@ TOOLS: list[dict[str, Any]] = [
                                     ),
                                 },
                             },
-                            "required": ["service", "entity_id"],
+                            "required": ["service"],
                         },
                     }
                 },
@@ -129,14 +144,16 @@ TOOLS: list[dict[str, Any]] = [
             "name": "get_state",
             "description": (
                 "Liefert den aktuellen Zustand und wichtige Attribute von "
-                "Geräten und Sensoren."
+                "Geräten und Sensoren, entweder für entity_ids oder für alle "
+                "Lichter eines Bereichs (domain light und area)."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "entity_ids": {"type": "array", "items": {"type": "string"}}
+                    "entity_ids": {"type": "array", "items": {"type": "string"}},
+                    "domain": {"type": "string"},
+                    "area": {"type": "string"},
                 },
-                "required": ["entity_ids"],
             },
         },
     },
@@ -191,11 +208,34 @@ def dumps(obj: Any) -> str:
 
 def control_result(errors: list[str] | None = None,
                    done: list[str] | None = None) -> str:
-    """Result of a control call. On failure, `done` lists the entity_ids
-    that were switched successfully in the same call."""
+    """Result of a control call. `done` lists the entity_ids that were
+    switched: on failure the successful part, on success the entities an
+    area resolved to (callers pass it on success only for area actions)."""
     if errors:
         out: dict[str, Any] = {"success": False, "error": "; ".join(errors)}
         if done:
             out["done"] = done
         return dumps(out)
+    if done:
+        return dumps({"success": True, "done": done})
     return dumps({"success": True})
+
+
+def area_targets(domain: str, area: str,
+                 entities: Iterable[tuple[str, str, str | None]],
+                 groups: Iterable[str] = ()) -> list[str] | None:
+    """entity_ids of `domain` in `area` ("*" = whole house), in device-list
+    order. Group entities are left out, their members are listed anyway.
+    None if the area does not exist."""
+    ents = sorted(entities, key=sort_key)
+    groups = set(groups)
+    if area != ALL_AREAS:
+        names = {a for _, _, a in ents if a}
+        match = next((a for a in names if a == area), None) or \
+            next((a for a in names if a.casefold() == area.strip().casefold()), None)
+        if match is None:
+            return None
+        area = match
+    return [e for e, _, a in ents
+            if e.split(".", 1)[0] == domain and e not in groups
+            and (area == ALL_AREAS or a == area)]
