@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.8.0
+
+- Automatische Modell-Updates: Mit `auto_update` (Standard: an) prüft das
+  Add-on beim Start und alle 6 Stunden (`update_interval`) die Datei
+  `latest.json` auf Hugging Face. Ein neues Modell lädt es im laufenden
+  Betrieb, prüft die SHA-256-Summe, wechselt darauf und löscht das alte.
+  Ohne Netz startet es mit dem zuletzt geladenen Modell. Eigene `model_url`
+  oder `model_path` schalten die Updates ab.
+- Modell v15.1 (`qwen2.5-3b-ha-v15.1-Q4_K_M.gguf`): Gewichte wie v15-soup,
+  die eingebettete Chat-Vorlage nutzt ohne Systemnachricht einen deutschen
+  Standard-Systemprompt statt „You are Qwen“. Mit Systemnachricht, wie von
+  der Integration gesendet, ändert sich am Prompt nichts. Testergebnisse
+  identisch: 299 von 300 Werkzeugaufrufen, 24 von 24 im Home-Assistant-Test.
+- Auf Hugging Face liegt nur noch das aktuelle Modell.
+
 ## 0.7.1
 
 - Neues Modell v15-soup (`qwen2.5-3b-ha-v15-soup-Q4_K_M.gguf`). Es mittelt

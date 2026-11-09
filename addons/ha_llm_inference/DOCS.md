@@ -13,7 +13,14 @@ Beim ersten Start lädt das Add-on die GGUF-Datei (1,9 GB) von Hugging Face nach
 `/share/ha_llm/` und prüft die SHA-256-Summe. Ein abgebrochener Download wird
 beim nächsten Start fortgesetzt. Danach startet der Server ohne Download.
 
-Ein eigenes Modell lässt sich über `model_path` einbinden, z. B.
+Mit `auto_update` (Standard: an) prüft das Add-on beim Start und alle
+`update_interval` Stunden (Standard: 6), ob auf Hugging Face ein neues Modell
+liegt (`latest.json`). Ein neues Modell lädt es im laufenden Betrieb, prüft
+die SHA-256-Summe, startet den Server damit neu und löscht das alte. Die
+erste Anfrage danach dauert so lange wie nach einem Neustart. Für ein neues
+Modell ist zeitweise doppelter Speicherplatz nötig (2 × 1,9 GB).
+
+Ein eigenes Modell lässt sich über `model_path` oder `model_url` einbinden, die automatischen Updates sind dann aus. Beispiel:
 `/share/ha_llm/eigenes.gguf`. Für ein privates Hugging-Face-Repository das
 Token unter `hf_token` eintragen.
 

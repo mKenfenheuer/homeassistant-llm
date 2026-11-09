@@ -37,6 +37,12 @@ fi
 for Q in ${QUANTS:-Q4_K_M}; do
     docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/model":/out "$IMG" \
         --quantize "${QARGS[@]}" "/out/${NAME}-f16.gguf" "/out/${NAME}-${Q}.gguf" "$Q"
+    # chat template with German default system prompt (templates/); renders
+    # the same text as the Qwen2.5 template whenever a system message is set
+    .venv/bin/gguf-new-metadata --force --chat-template-file templates/chat_template.jinja \
+        --general-name "Qwen2.5 3B Home Assistant DE ${NAME}" \
+        "model/${NAME}-${Q}.gguf" "model/${NAME}-${Q}.tmpl.gguf" >/dev/null
+    mv "model/${NAME}-${Q}.tmpl.gguf" "model/${NAME}-${Q}.gguf"
 done
 
 rm -f "model/${NAME}-f16.gguf"

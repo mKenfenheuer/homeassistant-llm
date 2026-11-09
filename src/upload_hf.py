@@ -7,6 +7,7 @@ Usage: python src/upload_hf.py MODEL_REPO DATASET_REPO [--gguf FILE] [--private]
 """
 
 import hashlib
+import json
 import shutil
 import sys
 import tempfile
@@ -39,18 +40,29 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         # ---- model repo
+        # manifest for the add-on's automatic update (hf/model/latest.json
+        # holds version, schema and notes; file, hash and size come from GGUF)
+        manifest = json.loads((ROOT / "hf/model/latest.json").read_text())
+        manifest.update(file=GGUF.name, sha256=digest, size=GGUF.stat().st_size)
+        manifest_text = json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
         card = (ROOT / "hf/model/README.md").read_text()
         card = (card.replace("__DATASET_REPO__", dataset_repo)
-                .replace("__SHA256__", digest).replace("__GGUF__", GGUF.name))
+                .replace("__SHA256__", digest).replace("__GGUF__", GGUF.name)
+                .replace("__MANIFEST__", manifest_text.strip()))
         (tmp / "model").mkdir()
         (tmp / "model/README.md").write_text(card)
+        (tmp / "model/latest.json").write_text(manifest_text)
         shutil.copy(ROOT / "hf/model/NOTICE", tmp / "model/NOTICE")
+        shutil.copy(ROOT / "templates/chat_template.jinja", tmp / "model/chat_template.jinja")
         lic = hf_hub_download("Qwen/Qwen2.5-3B-Instruct", "LICENSE")
         shutil.copy(lic, tmp / "model/LICENSE")
         (tmp / "model" / GGUF.name).symlink_to(GGUF)
         api.create_repo(model_repo, repo_type="model", private=private, exist_ok=True)
+        # only the current GGUF stays in the repository; older files are
+        # deleted in the same commit (uploaded files are never deleted)
         api.upload_folder(repo_id=model_repo, repo_type="model", folder_path=tmp / "model",
-                          commit_message="Upload qwen2.5-3b-ha Q4_K_M")
+                          commit_message=f"Modell {manifest.get('version', GGUF.stem)}",
+                          delete_patterns=["*.gguf"])
         # ---- dataset repo
         (tmp / "dataset").mkdir()
         shutil.copy(ROOT / "hf/dataset/README.md", tmp / "dataset/README.md")

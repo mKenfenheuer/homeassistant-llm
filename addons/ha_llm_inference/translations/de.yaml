@@ -1,7 +1,13 @@
 configuration:
+  auto_update:
+    name: Modell automatisch aktualisieren
+    description: Lädt neue Modelle von Hugging Face, sobald sie erscheinen. Gilt nur, wenn Modell-URL und lokale Modelldatei leer sind.
+  update_interval:
+    name: Prüfintervall (Stunden)
+    description: Wie oft das Add-on nach einem neuen Modell sucht. Zusätzlich prüft es bei jedem Start.
   model_url:
     name: Modell-URL
-    description: Optional. Leer = das zur Add-on-Version passende Modell von Hugging Face. Eigene URL einer GGUF-Datei möglich.
+    description: Optional. Leer = das offizielle Modell von Hugging Face. Eigene URL einer GGUF-Datei möglich.
   model_sha256:
     name: SHA-256 des Modells
     description: Optional. Prüfsumme einer eigenen model_url.

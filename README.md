@@ -83,8 +83,14 @@ Formate in einem Lauf.
 **Model Soup** `src/soup.py` mittelt die LoRA-Änderungen mehrerer Läufe auf
 demselben Basismodell, ohne neues Training:
 `.venv/bin/python src/soup.py output/merged-soup output/lora-v13 output/lora-v14 output/lora-v15`.
-Das veröffentlichte Modell v15-soup entstand so aus drei Läufen mit den Seeds
+Das veröffentlichte Modell v15.1 entstand so aus drei Läufen mit den Seeds
 13, 14 und 15.
+
+**Chat-Vorlage** `run_export.sh` schreibt `templates/chat_template.jinja` in
+jede GGUF-Datei. Die Vorlage entspricht der von Qwen2.5, nur der
+Standard-Systemprompt ohne Systemnachricht ist deutsch statt „You are Qwen“.
+Für alle 8.300 Trainings- und Testgespräche erzeugt sie denselben Text wie
+die Vorlage im Training.
 
 Wer `llm_schema.py` ändert, muss neu trainieren. Training und Integration
 lesen dieselbe Datei, damit der Prompt zur Laufzeit exakt dem Training
@@ -101,6 +107,16 @@ dieses Git-Repositorys eintragen. Danach „HA LLM Inference“ installieren und
 starten. Der erste Start lädt das Modell (1,9 GB) von
 [mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF](https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF)
 nach `/share/ha_llm/`. Im Log erscheint danach `listening on http://0.0.0.0:8080`.
+
+**Modell-Updates** Mit `auto_update` (Standard: an) liest das Add-on beim
+Start und alle 6 Stunden (`update_interval`) die Datei
+[`latest.json`](https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/blob/main/latest.json)
+im Modell-Repository. Nennt sie ein neues Modell, lädt das Add-on die Datei im
+laufenden Betrieb, prüft die SHA-256-Summe, wechselt auf das neue Modell und
+löscht das alte. Ein Modell für ein neueres Prompt-Schema überspringt es, bis
+ein Add-on-Update die passende Integration mitbringt. Ist Hugging Face nicht
+erreichbar, startet es mit dem zuletzt geladenen Modell. Eine eigene
+`model_url` oder `model_path` schaltet die Updates ab.
 
 **Integration** In HACS → Menü → Benutzerdefinierte Repositories die URL
 dieses Git-Repositorys mit Typ „Integration“ eintragen, „HA LLM Agent (lokal)“
@@ -128,10 +144,15 @@ Freigabe unter „Entitäten freigeben“.
 Upload eines neuen Stands: `HF_TOKEN` in `.env` eintragen, dann
 `set -a; . ./.env; set +a; .venv/bin/python src/upload_hf.py
 mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF mkenfenheuer/homeassistant-tool-calling-de`.
-Mit `--gguf model/<datei>.gguf` lädt das Skript ein neues Modell unter eigenem
-Namen hoch, ältere Dateien bleiben erhalten. Danach `DEFAULT_URL` und
-`DEFAULT_SHA` in `addons/ha_llm_inference/run.sh` anpassen, die alte URL in
-`LEGACY_URLS` eintragen und die Add-on-Version erhöhen.
+Mit `--gguf model/<datei>.gguf` lädt das Skript ein neues Modell hoch und
+löscht im selben Commit alle anderen GGUF-Dateien. Es schreibt `latest.json`
+aus `hf/model/latest.json` (Version, Schema, Hinweis) und Name, SHA-256 und
+Größe der Datei. Ab diesem Moment aktualisieren sich alle Add-ons mit
+`auto_update`. Für Neuinstallationen ohne Netz zu Hugging Face beim Start
+zusätzlich `DEFAULT_URL` und `DEFAULT_SHA` in `addons/ha_llm_inference/run.sh`
+anpassen und die alte URL in `LEGACY_URLS` eintragen. Ändert sich das
+Prompt-Schema, `schema` in `hf/model/latest.json` und `SUPPORTED_SCHEMA` in
+`run.sh` gemeinsam mit der Integration erhöhen.
 
 ## Test
 
@@ -233,14 +254,16 @@ nur die Frage selbst muss neu verarbeitet werden. Dauert das Warm-up länger als
 60 Sekunden, schreibt die Integration eine Warnung ins Log.
 
 Hat der Home-Assistant-Host kein AVX2, sollte llama-server auf einem anderen
-Rechner laufen, etwa per Docker auf einem Server mit GPU:
+Rechner laufen, etwa per Docker auf einem Server mit GPU. Eine GTX 1060 (6 GB,
+Treiber 580) verarbeitet den Prompt mit 540 Tokens/s und erzeugt 45 Tokens/s.
+Der Systemprompt mit 100 Entitäten liegt damit nach etwa 10 Sekunden im Cache.
 
 ```bash
-docker run -d --name ha-llm-server --restart unless-stopped --gpus all \
+docker run -d --name ha-llm --restart unless-stopped --gpus all \
   -p 8080:8080 -v $PWD/model:/models:ro \
-  ghcr.io/ggml-org/llama.cpp:full-cuda --server \
-  -m /models/qwen2.5-3b-ha-v15-soup-Q4_K_M.gguf --host 0.0.0.0 --port 8080 \
-  --alias ha-llm --jinja -ngl 99 -c 8192 -np 1 --cache-reuse 256
+  ghcr.io/ggml-org/llama.cpp:server-cuda-b12063 \
+  -m /models/qwen2.5-3b-ha-v15.1-Q4_K_M.gguf --host 0.0.0.0 --port 8080 \
+  --alias ha-llm --jinja -ngl 99 -fa on -c 16384 -np 1 --cache-reuse 256
 ```
 
 In der Integration dann `http://<server>:8080` als URL eintragen oder einen

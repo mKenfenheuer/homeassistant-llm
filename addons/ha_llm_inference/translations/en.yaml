@@ -1,7 +1,13 @@
 configuration:
+  auto_update:
+    name: Update model automatically
+    description: Downloads new models from Hugging Face as soon as they are published. Only applies if model URL and local model file are empty.
+  update_interval:
+    name: Check interval (hours)
+    description: How often the add-on looks for a new model. It also checks on every start.
   model_url:
     name: Model URL
-    description: Optional. Empty = the model that belongs to this add-on version (Hugging Face). Custom GGUF URL possible.
+    description: Optional. Empty = the official model from Hugging Face. Custom GGUF URL possible.
   model_sha256:
     name: Model SHA-256
     description: Optional. Checksum of a custom model_url.
