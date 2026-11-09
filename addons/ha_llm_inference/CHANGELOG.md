@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.0
+
+- Zwei neue Add-ons für GPUs im Home-Assistant-Host, beide experimentell:
+  „HA LLM Inference (NVIDIA)“ mit CUDA 12.8 (ab Maxwell, getestet mit einer
+  GTX 1060) und „HA LLM Inference (AMD/Intel)“ mit Vulkan (getestet mit einer
+  Radeon RX 6900 XT, 130 Tokens pro Sekunde). Sie brauchen Home Assistant OS
+  mit GPU-Unterstützung für Apps (Option `gpu`), die es bisher nur als
+  Testimage gibt. Neue Option `gpu_layers` (Standard 99 = alle Schichten).
+- Integration 0.7.2: Bei der Einrichtung nimmt sie das GPU-Add-on, wenn eines
+  installiert ist, sonst das CPU-Add-on.
+- CPU-Add-on unverändert bis auf das gemeinsame Startskript.
+
 ## 0.8.1
 
 - Eigenes Symbol und Logo für Add-on und Integration. Die Integration bringt

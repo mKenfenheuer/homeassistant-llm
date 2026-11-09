@@ -49,6 +49,10 @@ AUTO_UPDATE="$(opt auto_update)"
 INTERVAL="$(opt update_interval)"
 AUTO_UPDATE="${AUTO_UPDATE:-true}"
 INTERVAL="${INTERVAL:-6}"
+# cpu, cuda or vulkan, set by the Dockerfile of each add-on
+BACKEND="${HA_LLM_BACKEND:-cpu}"
+GPU_LAYERS="$(opt gpu_layers)"
+GPU_LAYERS="${GPU_LAYERS:-99}"
 
 for u in "${LEGACY_URLS[@]}"; do
     if [ "$MODEL_URL" = "$u" ] || [ "$MODEL_URL" = "$DEFAULT_URL" ]; then
@@ -62,7 +66,21 @@ if [ -z "$MODEL_URL" ] && [ -z "$MODEL_PATH" ]; then
     MANAGED=true
 fi
 
-if ! grep -qw avx2 /proc/cpuinfo; then
+if [ "$BACKEND" != "cpu" ]; then
+    # llama.cpp lists the GPUs of the backend; without one it runs on the CPU
+    DEVICES="$(/app/llama-server --list-devices 2>&1 | grep -E '^ +[A-Za-z]+[0-9]+:' || true)"
+    if [ -n "$DEVICES" ]; then
+        echo "[INFO] GPU (${BACKEND}):"
+        echo "$DEVICES"
+    else
+        echo "[WARNING] ============================================================"
+        echo "[WARNING] llama.cpp findet keine GPU für ${BACKEND}, das Modell läuft auf der CPU."
+        echo "[WARNING] Das Add-on braucht Home Assistant OS mit GPU-Unterstützung"
+        echo "[WARNING] (Option gpu im Supervisor) und den passenden Treiber auf dem Host."
+        echo "[WARNING] ============================================================"
+        /app/llama-server --list-devices 2>&1 | tail -5 || true
+    fi
+elif ! grep -qw avx2 /proc/cpuinfo; then
     CPU_MODEL="$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')"
     echo "[WARNING] ============================================================"
     echo "[WARNING] Die CPU (${CPU_MODEL:-unbekannt}) unterstützt kein AVX2."
@@ -210,6 +228,9 @@ start_server() {
                 --ctx-size "$CTX" --parallel 1 --jinja --cache-reuse 256)
     if [ "${THREADS:-0}" != "0" ]; then
         args+=(--threads "$THREADS")
+    fi
+    if [ "$BACKEND" != "cpu" ]; then
+        args+=(--n-gpu-layers "$GPU_LAYERS")
     fi
     echo "[INFO] Starte llama-server: ${args[*]} ${EXTRA}"
     # shellcheck disable=SC2086

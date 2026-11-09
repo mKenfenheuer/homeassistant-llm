@@ -11,6 +11,8 @@ CONF_USE_LOCATION = "use_location"
 
 # hostname of the local add-on "ha_llm_inference" inside the HA network
 DEFAULT_URL = "http://local-ha-llm-inference:8080"
+# slug endings of the inference add-ons, preferred first: NVIDIA, AMD/Intel, CPU
+ADDON_SUFFIXES = ("ha_llm_inference_cuda", "ha_llm_inference_vulkan", "ha_llm_inference")
 DEFAULT_TEMPERATURE = 0.0
 DEFAULT_MAX_HISTORY = 6        # previous user turns kept per conversation
 DEFAULT_TIMEOUT = 300          # seconds per LLM request (CPU inference is slow)

@@ -31,6 +31,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import (
+    ADDON_SUFFIXES,
     CONF_MAX_ENTITIES,
     CONF_MAX_HISTORY,
     CONF_TEMPERATURE,
@@ -52,6 +53,8 @@ def _default_url(hass) -> str:
 
     A local add-on has the slug local_ha_llm_inference, one from a git
     repository <hash>_ha_llm_inference. The hostname is the slug with dashes.
+    The GPU add-ons end with _cuda or _vulkan and are preferred over the CPU
+    add-on.
     """
     try:
         from homeassistant.helpers.hassio import is_hassio
@@ -60,10 +63,14 @@ def _default_url(hass) -> str:
             return DEFAULT_URL
         from homeassistant.components.hassio import get_addons_info
 
+        found: dict[int, str] = {}
         for slug, info in (get_addons_info(hass) or {}).items():
-            if slug.endswith("ha_llm_inference"):
-                host = (info or {}).get("hostname") or slug.replace("_", "-")
-                return f"http://{host}:8080"
+            for rank, suffix in enumerate(ADDON_SUFFIXES):
+                if slug.endswith(suffix) and rank not in found:
+                    host = (info or {}).get("hostname") or slug.replace("_", "-")
+                    found[rank] = f"http://{host}:8080"
+        if found:
+            return found[min(found)]
     except Exception:  # noqa: BLE001 - Supervisor not ready or API changed
         pass
     return DEFAULT_URL

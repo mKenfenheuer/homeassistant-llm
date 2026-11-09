@@ -1,0 +1,44 @@
+name: HA LLM Inference (NVIDIA)
+version: "0.9.0"
+slug: ha_llm_inference_cuda
+description: llama.cpp-Server mit NVIDIA-GPU (CUDA) für das deutsche Home-Assistant-Sprachmodell
+arch:
+  - amd64
+stage: experimental
+startup: services
+boot: auto
+ports:
+  8080/tcp: null
+ports_description:
+  8080/tcp: OpenAI-kompatible API (nur für Zugriff außerhalb von Home Assistant)
+map:
+  - type: share
+    read_only: false
+watchdog: http://[HOST]:[PORT:8080]/health
+# GPU access with the GPU support of Home Assistant OS: /dev/dri, /dev/kfd
+# and the CDI devices of the host driver (NVIDIA libraries)
+gpu: true
+# /dev/dri on Supervisors without the gpu option
+video: true
+options:
+  auto_update: true
+  update_interval: 6
+  model_url: ""
+  model_sha256: ""
+  model_path: ""
+  hf_token: ""
+  ctx_size: 8192
+  threads: 0
+  gpu_layers: 99
+  extra_args: ""
+schema:
+  auto_update: bool
+  update_interval: int(1,168)
+  model_url: str?
+  model_sha256: str?
+  model_path: str?
+  hf_token: password?
+  ctx_size: int(2048,32768)
+  threads: int(0,128)
+  gpu_layers: int(0,999)
+  extra_args: str?
