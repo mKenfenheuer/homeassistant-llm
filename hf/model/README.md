@@ -32,6 +32,15 @@ output).
 | `latest.json` | manifest of the current model, used by the add-on for automatic updates |
 | `chat_template.jinja` | chat template embedded in the GGUF |
 
+## Home Assistant
+
+The project repository [homeassistant-llm](https://github.com/mKenfenheuer/homeassistant-llm) contains an add-on that
+runs this model on the Home Assistant host and updates it automatically, and
+the integration *HA LLM Agent (lokal)*, a conversation agent for Assist. Add
+`https://github.com/mKenfenheuer/homeassistant-llm` as an add-on repository and as a custom HACS repository (type
+Integration). A server with a GPU works as well: the integration only needs
+the URL of a `llama-server`.
+
 ## Usage
 
 ```bash
@@ -47,7 +56,7 @@ The model expects the system prompt and the two tools from
 (prompt schema 5): a German instruction, the list of exposed entities
 (`entity_id | name | area`), `control` (calls Home Assistant services, for
 lights also by `area`, `"*"` for the whole house) and `get_state`. The Home
-Assistant integration and add-on of the project repository build this prompt
+Assistant integration and add-on of the [project repository](https://github.com/mKenfenheuer/homeassistant-llm) build this prompt
 automatically; the integration resolves areas to entity_ids.
 
 ### Example system prompt

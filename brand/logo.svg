@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 850 256" width="850" height="256">
+  <title>HA LLM</title>
+  <g transform="scale(0.5)">
+  <defs>
+    <linearGradient id="house" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#41BDF5"/>
+      <stop offset="1" stop-color="#0A84C6"/>
+    </linearGradient>
+  </defs>
+  <!-- house -->
+  <path d="M256 28 L484 236 Q496 248 482 262 Q470 274 456 262 L436 244 V452 Q436 484 404 484 H108 Q76 484 76 452 V244 L56 262 Q42 274 30 262 Q16 248 28 236 Z"
+        fill="url(#house)"/>
+  <!-- speech bubble -->
+  <path d="M164 214 H348 Q384 214 384 250 V352 Q384 388 348 388 H246 L188 432 V388 H164 Q128 388 128 352 V250 Q128 214 164 214 Z"
+        fill="#FFFFFF"/>
+  <!-- model: three connected nodes -->
+  <g stroke="#0A84C6" stroke-width="14" stroke-linecap="round">
+    <line x1="194" y1="301" x2="256" y2="268"/>
+    <line x1="256" y1="268" x2="318" y2="301"/>
+    <line x1="194" y1="301" x2="318" y2="301"/>
+  </g>
+  <g fill="#0A84C6">
+    <circle cx="194" cy="301" r="24"/>
+    <circle cx="256" cy="262" r="24"/>
+    <circle cx="318" cy="301" r="24"/>
+  </g>
+  <circle cx="256" cy="262" r="10" fill="#FFC107"/>
+  </g>
+  <text x="284" y="150" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-weight="700" font-size="128" fill="#1F2937">HA LLM</text>
+  <text x="290" y="218" font-family="Liberation Sans, Arial, Helvetica, sans-serif" font-size="52" fill="#4B5563">lokaler Sprachassistent</text>
+</svg>

@@ -32,6 +32,21 @@ names and partly cryptic entity_ids like `light.shelly1_3c61a5`. A model
 trained on it learns to resolve names via the device list in the system prompt
 instead of memorising one house.
 
+## Project
+
+The dataset belongs to [homeassistant-llm](https://github.com/mKenfenheuer/homeassistant-llm). That repository holds the
+generator, the training scripts and everything needed to run the model in
+Home Assistant:
+
+- **Add-on** *HA LLM Inference*: runs `llama-server` with the model on the
+  Home Assistant host and keeps the model up to date. Add `https://github.com/mKenfenheuer/homeassistant-llm` under
+  Settings → Add-ons → Add-on Store → ⋮ → Repositories.
+- **Integration** *HA LLM Agent (lokal)*: a conversation agent for Assist that
+  builds the system prompt from the exposed entities and executes the tool
+  calls. Install it via HACS as a custom repository (type Integration).
+- **Model**: [mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF](https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF),
+  Qwen2.5-3B-Instruct fine-tuned on this dataset.
+
 | Split | Samples | Seed |
 |-------|---------|------|
 | train | 8,000 | 15 |
@@ -54,7 +69,7 @@ strings. `meta` holds the category and the gold tool calls for evaluation.
 ```
 
 The tool schema (`TOOLS`) is not part of each row; it is defined in
-`llm_schema.py` of the project repository and passed to the chat template
+`llm_schema.py` of the [project repository](https://github.com/mKenfenheuer/homeassistant-llm) and passed to the chat template
 during training.
 
 ## Categories (train)

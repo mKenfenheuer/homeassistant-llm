@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.1
+
+- Eigenes Symbol und Logo für Add-on und Integration. Die Integration bringt
+  sie unter `custom_components/ha_llm_agent/brand/` mit, Home Assistant
+  2026.3 und neuer zeigt sie ohne Eintrag im Brands-Repository an
+  (Integration 0.7.1). Die SVG-Quellen liegen unter `brand/`.
+- Modell- und Datensatzkarte auf Hugging Face verweisen auf dieses
+  Repository mit Add-on und Integration.
+
 ## 0.8.0
 
 - Automatische Modell-Updates: Mit `auto_update` (Standard: an) prüft das
