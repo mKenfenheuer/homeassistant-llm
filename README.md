@@ -64,7 +64,7 @@ einen Erfolg behauptet, den das Werkzeugergebnis nicht hergibt.
 
 ```bash
 ./run_train.sh       # 8.000 Trainings- und 300 Testproben, LoRA r=32, 2,5 Epochen
-./run_export.sh output/merged qwen2.5-3b-ha-v11  # -> model/qwen2.5-3b-ha-v11-Q4_K_M.gguf
+./run_export.sh output/merged qwen2.5-3b-ha-v15  # -> model/qwen2.5-3b-ha-v15-Q4_K_M.gguf
 ./run_test.sh        # Bewertung auf data/eval.jsonl (GPU, Docker)
 ```
 
@@ -72,6 +72,19 @@ Das Training braucht rund 17 GB VRAM und auf der RTX 3090 etwa 5,5 Stunden.
 Konvertierung und Quantisierung laufen im offiziellen Image
 `ghcr.io/ggml-org/llama.cpp:full-cuda`, ein eigener llama.cpp-Build ist nicht
 nötig.
+
+**Quantisierung** Liegt `model/calib.txt` vor, berechnet `run_export.sh` vor
+der Quantisierung eine Importance Matrix. Die Datei entsteht aus 300
+Trainingsgesprächen:
+`.venv/bin/python src/make_calib.py data/train.jsonl model/calib.txt 300`.
+Die Testdaten fließen nicht ein. `QUANTS="Q4_K_M Q5_K_M"` erzeugt mehrere
+Formate in einem Lauf.
+
+**Model Soup** `src/soup.py` mittelt die LoRA-Änderungen mehrerer Läufe auf
+demselben Basismodell, ohne neues Training:
+`.venv/bin/python src/soup.py output/merged-soup output/lora-v13 output/lora-v14 output/lora-v15`.
+Das veröffentlichte Modell v15-soup entstand so aus drei Läufen mit den Seeds
+13, 14 und 15.
 
 Wer `llm_schema.py` ändert, muss neu trainieren. Training und Integration
 lesen dieselbe Datei, damit der Prompt zur Laufzeit exakt dem Training
@@ -131,7 +144,7 @@ Bereiche erhalten.
 HA_URL=http://localhost:18123 HA_TOKEN=... python3 src/ha_e2e_test.py
 ```
 
-## Ergebnisse (Stand 08.11.2026)
+## Ergebnisse (Stand 09.11.2026)
 
 **Testdatensatz** 300 Proben aus Häusern, die im Training nicht vorkamen
 (`./run_test.sh`):
@@ -149,6 +162,8 @@ HA_URL=http://localhost:18123 HA_TOKEN=... python3 src/ha_e2e_test.py
 | v4, v7-Testdaten | 96,3 % | 100 % |
 | v7 (LoRA, 2,5 Epochen ab Basismodell), v7-Testdaten | 98,0 % | 100 % |
 | v11 (LoRA, 2,5 Epochen ab Basismodell), v11-Testdaten | 98,7 % | 98,7 % |
+| v11, v15-Testdaten | 98,0 % | 97,1 % |
+| v15-soup (Mittel aus v13, v14, v15), v15-Testdaten | 99,7 % | 100 % |
 
 Die v2-Testdaten sind schwerer als die v1-Testdaten: Häuser mit bis zu 110
 Entitäten, Gruppen, Räume ohne Licht und Geräte, die nicht in der Liste
@@ -160,7 +175,9 @@ Modus-Schalter der Heizung. Die v11-Testdaten nutzen Schema 5 mit Bereichen
 und enthalten Türkontakte, Elektroautos sowie Außentemperatur neben
 Vorhersage-Sensoren. v7 lässt sich darauf nicht direkt messen, weil es
 `area` nicht kennt. v11 lehnt alle 15 Anfragen nach fehlenden Geräten ab und
-beantwortet 78 von 81 Zustandsfragen mit dem richtigen Aufruf.
+beantwortet 78 von 81 Zustandsfragen mit dem richtigen Aufruf. Auf den
+v15-Testdaten löst v15-soup alle 118 Befehle, alle 17 Anfragen nach fehlenden
+Geräten und 71 von 72 Zustandsfragen.
 
 **Echtes Haus** Der Abnahmetest läuft auf einer realen Installation mit über
 100 freigegebenen Entitäten: 26 Sätze auf einem älteren Stand der
@@ -171,9 +188,13 @@ aktuellen Stands mit je 8 fehlenden Geräten.
 |--------|---------------|-----------------|-----------|
 | v7 | 24/26 | 32/32 | 123/128 |
 | v11 | 26/26 | 32/32 | 128/128 |
+| v15-soup | 26/26 | 32/32 | 128/128 |
 
 v7 fragte bei „Ist die Balkontür im Wohnzimmer offen?“ die Wohnungstür ab und
-bei der Reichweite des Elektroautos den Ladestand. v11 löst beide.
+bei der Reichweite des Elektroautos den Ladestand. v11 löst beide. Fragen
+nach Geräten, die in einem Raum fehlen, beantwortet v15-soup in allen 30
+Fällen auf dem echten Haus und seinen Varianten mit dem Raum, ohne ein
+anderes Gerät zu nennen.
 
 **Dialoge** `src/agent_sim.py` spielt Gespräche über mehrere Runden gegen ein
 simuliertes Haus durch. In 19 Szenarien meldet v11 nicht erreichbare Geräte in
@@ -181,16 +202,19 @@ jeder Runde als Fehler. Sind zwei von vier Küchenlampen nicht erreichbar,
 schaltet v11 „das Licht in der Küche“ über den Bereich und nennt die
 geschalteten und die nicht erreichbaren Lampen getrennt. Die Korrektur „Nein,
 ich meinte im Esszimmer“ schaltet jetzt alle Küchenlampen aus, v7 nur eine.
-Zwei Schwächen bleiben. Steht im Schlafzimmer nur der Media Player eines
-Sprachassistenten, schaltet v11 auf „Mach den Fernseher im Schlafzimmer an“
-korrekt nichts, nennt in der Antwort aber den Media Player statt des Raums.
-In der ersten Antwort zur teilweise erreichbaren Küche nennt v11 nur eine
-der beiden nicht erreichbaren Lampen.
+v15-soup behebt die beiden Schwächen von v11: Beim fehlenden Fernseher im
+Schlafzimmer nennt es den Raum statt des Media Players eines
+Sprachassistenten, und zur teilweise erreichbaren Küche nennt es beide nicht
+erreichbaren Lampen. „Bewässere die Balkonpflanzen“ öffnet das Balkon-Ventil,
+und „Welche Heizungen hast du verstellt?“ nennt beide verstellten Heizungen.
+Gerätenamen gibt es in Antworten nicht immer in der Schreibweise der Liste
+wieder, etwa mit Leerzeichen in einem zusammengesetzten Namen.
 
 **Home Assistant** Der Ende-zu-Ende-Test mit Add-on (CPU, 8 Threads) und
-Integration besteht mit v11 24 von 24 Fällen. Dazu gehören eine nicht
+Integration besteht mit v15-soup 24 von 24 Fällen. Dazu gehören eine nicht
 erreichbare Lampe und eine Rückfrage im selben Gespräch. Die Antwortzeit
-liegt im Median bei 3,2 Sekunden, die längste Anfrage braucht 5,3 Sekunden.
+liegt im Median bei 2,9 Sekunden, die längste Anfrage braucht 8,6 Sekunden
+(erste Anfrage nach dem Start).
 
 ## Hardware für das Add-on
 
@@ -215,7 +239,7 @@ Rechner laufen, etwa per Docker auf einem Server mit GPU:
 docker run -d --name ha-llm-server --restart unless-stopped --gpus all \
   -p 8080:8080 -v $PWD/model:/models:ro \
   ghcr.io/ggml-org/llama.cpp:full-cuda --server \
-  -m /models/qwen2.5-3b-ha-v11-Q4_K_M.gguf --host 0.0.0.0 --port 8080 \
+  -m /models/qwen2.5-3b-ha-v15-soup-Q4_K_M.gguf --host 0.0.0.0 --port 8080 \
   --alias ha-llm --jinja -ngl 99 -c 8192 -np 1 --cache-reuse 256
 ```
 
@@ -228,7 +252,7 @@ bestehenden Eintrag über „Neu konfigurieren“ auf diese URL umstellen.
   anlegen oder Timer beherrscht es nicht. Wettervorhersagen beantwortet es
   nur über freigegebene Vorhersage-Sensoren.
 - Integration und Modell gehören zusammen. Integration 0.7.0 braucht Modell
-  v11, ältere Modelle kennen `area` nicht.
+  v11 oder neuer, ältere Modelle kennen `area` nicht.
 - Ab etwa 250 Entitäten reicht die Kontextlänge von 8.192 Tokens nicht mehr.
   Die Integration kürzt dann die Liste (Option „Maximale Anzahl Entitäten“).
 - Die Option „Bereich des Sprachgeräts verwenden“ ist standardmäßig aus. Der

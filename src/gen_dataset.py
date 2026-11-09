@@ -152,6 +152,14 @@ BRAND_MEDIA = [("LG webOS Smart TV", "Fernseher", "m"), ("Samsung TV", "Fernsehe
                ("Sony Bravia", "Fernseher", "m"), ("Philips Ambilight", "Fernseher", "m"),
                ("Sonos One", "Lautsprecher", "m"), ("Echo Dot", "Lautsprecher", "m"),
                ("HomePod", "Lautsprecher", "m"), ("Bose Soundbar", "Soundbar", "f")]
+# voice satellites expose a media_player that is no TV
+def voice_media_name():
+    hx = "".join(R.choice("0123456789abcdef") for _ in range(6))
+    return R.choice([f"Home Assistant Voice {hx} Media Player", f"Home Assistant Voice {hx[:6]}",
+                     f"ESPHome Voice {hx[:4]} Media Player", "Echo Show", "Nest Mini",
+                     f"Atom Echo {hx[:6]} Media Player"])
+
+
 BRAND_VACUUM = ["S8 MaxV Ultra", "Roborock S7", "Dreame L10s", "Roomba i7",
                 "Deebot X1", "Valetudo"]
 MOWERS = ["Automower", "Mählanie", "Rasenroboter", "Gardena Sileno", "Worx Landroid"]
@@ -301,6 +309,15 @@ class House:
         self.ents.append(e)
         return e
 
+    def add_voice_media(self, room):
+        name = voice_media_name()
+        if name in self.used_names:
+            return None
+        return self.add("media_player", room, "Lautsprecher", "m",
+                        [name.lower().replace(" ", "_"), "voice_media_player"], name=name,
+                        state=R.choice(["idle", "idle", "off"]),
+                        attrs={"volume_level": R.choice([0.3, 0.5, 0.7])})
+
     def _populate(self, size: int):
         for room in self.rooms:
             outdoor = room in OUTDOOR
@@ -399,6 +416,8 @@ class House:
                          name=brand[0] if brand and brand[0] not in self.used_names else None,
                          state="playing" if playing else R.choice(["off", "paused", "idle"]),
                          attrs={k: v for k, v in attrs.items() if v != ""})
+            if not outdoor and R.random() < 0.12:
+                self.add_voice_media(room)
             if room in ("Schlafzimmer", "Büro", "Wohnzimmer", "Dachboden") \
                     and R.random() < 0.2:
                 ft = R.choice(TYPES["fan"])
@@ -1172,6 +1191,34 @@ def i_irrigation(h, loc):
         [f"{e.name} ist ausgelöst.", f"Ich habe {e.name} gestartet."])
 
 
+def i_irrigation_pair(h, loc):
+    """A plant valve on the balcony or patio next to an area-less garden
+    button, as many real installs have it. "Bewässere die Balkonpflanzen"
+    opens the valve, "Bewässere den Garten" presses the button (v13 mixed
+    them up because this pairing was rare in the data)."""
+    rooms = [r for r in h.rooms if r in ("Balkon", "Terrasse")]
+    if not rooms or irrigation(h):
+        return None
+    room = R.choice(rooms)
+    valve = h.add("valve", room, "Bewässerung", "f", ["pflanzen", "bewaesserung"],
+                  name=R.choice([f"{room} Pflanzen", f"Pflanzen {room}",
+                                 f"Bewässerung {room}", "Wasserventil"]),
+                  state=R.choice(["open", "closed", "closed"]))
+    button = h.add("button", None, "Bewässerung", "f", ["bewaesserung_garten"],
+                   name=R.choice(["Bewässerung Garten", "Gartenbewässerung"]),
+                   state="unknown")
+    if R.random() < 0.6:
+        prep = ROOM_BY_NAME[room][1]
+        user = R.choice([f"Bewässere {AREA_PLANTS[room]}", f"Gieß die Pflanzen {prep}",
+                         f"Starte die Bewässerung {prep}", f"Bewässere die Pflanzen {prep}"])
+        return user, [action("valve.open_valve", [valve])], R.choice(
+            [f"{valve.name} ist geöffnet.", f"Ich habe {valve.name} geöffnet."])
+    user = R.choice(["Bewässere den Garten", "Starte die Gartenbewässerung",
+                     "Gieß den Garten", "Starte die Bewässerung im Garten"])
+    return user, [action("button.press", [button])], R.choice(
+        [f"{button.name} ist ausgelöst.", f"Ich habe {button.name} gestartet."])
+
+
 def i_cover(h, loc):
     ref = pick_target(h, "cover", loc)
     if not ref:
@@ -1411,7 +1458,7 @@ COMMANDS = [
     (i_light_color, 4), (i_switch, 6), (i_fan_pct, 1), (i_cover, 9),
     (i_climate, 7), (i_lock, 3), (i_alarm, 3), (i_media, 5), (i_vacuum, 3),
     (i_scene, 4), (i_all, 6), (i_awning, 2), (i_mower, 2), (i_valve, 1),
-    (i_toggle, 2), (i_appliance, 3), (i_button, 2), (i_irrigation, 12),
+    (i_toggle, 2), (i_appliance, 3), (i_button, 2), (i_irrigation, 12), (i_irrigation_pair, 2),
     (i_heating_mode, 4),
 ]
 
@@ -1869,7 +1916,10 @@ MISSING_TYPES = [
 def s_missing_type(h, loc):
     """Room exists, but has no device of the requested kind -> no tool call.
     If the kind exists in another room, name it instead of switching it."""
-    dom, phrase, kein, rel, on, off, ein, svcs, words, filt = R.choice(MISSING_TYPES)
+    mt = FORCE.get("mtype")
+    dom, phrase, kein, rel, on, off, ein, svcs, words, filt = R.choice(
+        [m for m in MISSING_TYPES if m[0] == mt] if mt not in (None, "other") else
+        [m for m in MISSING_TYPES if m[0] != "media_player"] if mt == "other" else MISSING_TYPES)
 
     def match(e):
         if filt == "plain":
@@ -1882,6 +1932,15 @@ def s_missing_type(h, loc):
         return None
     room = R.choice(rooms)
     prep = ROOM_BY_NAME[room][1]
+    # the room often holds a same-domain device of another kind (speaker, voice
+    # satellite); it is no TV and must not stand in for the room in the answer
+    if dom == "media_player" and R.random() < 0.6 and \
+            not any(e.area == room for e in h.of(dom)):
+        if R.random() < 0.6:
+            h.add_voice_media(room)
+        else:
+            mt = R.choice([t for t in TYPES["media_player"] if t[0] != "Fernseher"])
+            h.add("media_player", room, mt[0], mt[1], mt[2], state=R.choice(["idle", "off"]))
     turn_on = R.random() < 0.5
     verb = on if turn_on else off
     user = R.choice([f"Mach {phrase} {prep} {verb}",
@@ -2096,12 +2155,18 @@ def _error_room(h, loc):
     # rooms with a light named like the room are the hard case ("Küche" is
     # down, "Küche Links" is not), so they come up more often
     named_rooms = [r for r in rooms if any(e.name == r for e in h.of("light", r))]
-    room = R.choice(named_rooms) if named_rooms and R.random() < 0.6 else R.choice(rooms)
+    # forced variant: question about a room whose light named like the room is
+    # down next to others ("Küche" and "Deckenstern" down, "Küche Links" off);
+    # the model tended to drop the room-named light from the answer
+    named_q = FORCE.get("eroom") == "named_q"
+    if named_q and not named_rooms:
+        return None
+    room = R.choice(named_rooms) if named_rooms and (named_q or R.random() < 0.6) else R.choice(rooms)
     ents = [e for e in h.of("light", room) if e.label != "__group__"]
     k = len(ents) if R.random() < 0.15 else R.randint(1, len(ents) - 1)
     down = R.sample(ents, k)
     named = [e for e in ents if e.name == room]
-    if named and named[0] not in down and R.random() < 0.6:
+    if named and named[0] not in down and (named_q or R.random() < 0.6):
         down[0] = named[0]
     for e in down:
         e.state, e.attrs = "unavailable", {}
@@ -2111,7 +2176,7 @@ def _error_room(h, loc):
     nd = _names(h, [e.eid for e in down])
     down_txt = f"{nd} {sein(len(down) > 1)} gerade nicht erreichbar."
     msgs = base_msgs(h, loc)
-    if R.random() < 0.5:
+    if named_q or R.random() < 0.5:
         # question
         user, kind = R.choice([(f"Ist das Licht {prep} an?", "yn"),
                                (f"Brennt {prep} noch Licht?", "yn"),
@@ -2654,11 +2719,33 @@ def turn_summary(c):
     """'Was hast du alles gemacht?' over the whole conversation."""
     if len(c.done) < 2:
         return False
-    c.user(R.choice(["Was hast du alles gemacht?", "Was hast du bisher geschaltet?",
-                     "Fass mal zusammen, was du gemacht hast"]))
-    parts = [describe(c.h, x) for x in c.done]
+    # "Welche Heizungen hast du verstellt?" after Bad + "Und in der Küche
+    # auch": every action on that device type, not only the last one (v13
+    # named only the kitchen)
+    by_dom = {}
+    for x in c.done:
+        by_dom.setdefault(x["service"].split(".")[0], []).append(x)
+    multi = [d for d, xs in by_dom.items() if len(xs) >= 2 and d in SUMMARY_ASK]
+    if multi and R.random() < 0.6:
+        d = R.choice(multi)
+        c.user(R.choice(SUMMARY_ASK[d]))
+        parts = [describe(c.h, x) for x in by_dom[d]]
+    else:
+        c.user(R.choice(["Was hast du alles gemacht?", "Was hast du bisher geschaltet?",
+                         "Fass mal zusammen, was du gemacht hast"]))
+        parts = [describe(c.h, x) for x in c.done]
     c.say("Ich habe " + ", ".join(parts[:-1]) + " und " + parts[-1] + ".")
     return True
+
+
+SUMMARY_ASK = {
+    "climate": ["Welche Heizungen hast du verstellt?", "Welche Thermostate hast du geändert?",
+                "Was hast du an den Heizungen geändert?", "Welche Heizungen hast du eingestellt?"],
+    "light": ["Welche Lichter hast du geschaltet?", "Welche Lampen hast du geschaltet?",
+              "Was hast du an den Lichtern gemacht?"],
+    "cover": ["Welche Rollläden hast du bewegt?", "Welche Rollos hast du gefahren?",
+              "Was hast du an den Rollläden gemacht?"],
+}
 
 
 def turn_undo(c):
@@ -2719,6 +2806,16 @@ def turn_correct(c):
     acts = [undo, new]
     c.control(acts, f"Okay, ich habe {describe(c.h, acts[0])} und {describe(c.h, acts[1])}.")
     return True
+
+
+def turn_correct_recap(c):
+    """Correction followed by "Was hast du alles gemacht?": the recap lists
+    exactly the executed actions (v14 invented "Esszimmer ausgeschaltet")."""
+    if not turn_correct(c):
+        return False
+    if R.random() < 0.7:
+        return turn_summary(c)
+    return turn_which(c)
 
 
 def turn_also(c):
@@ -2866,12 +2963,20 @@ def build_cases():
     cases += [("compound", s_compound, {}), ("relative_climate", s_relative_climate, {}),
               ("unknown:device", s_unknown, {"unknown": "device"}),
               ("unknown:room", s_unknown, {"unknown": "room"}),
-              ("unknown:missing_type", s_missing_type, {}), ("chat", s_chat, {}),
+              ("chat", s_chat, {}),
               ("appliance_question", s_appliance_question, {}),
               ("followup", s_followup, {}), ("error:single", s_error_single, {}),
               ("error:partial", _error_partial, {}), ("error:question", _error_question, {}),
-              ("error:room", _error_room, {}), ("named_room_light", _named_room_light, {}),
+              ("error:room", _error_room, {}),
+              ("error:room_named_q", _error_room, {"eroom": "named_q"}),
+              ("named_room_light", _named_room_light, {}),
               ("no_areas", s_no_areas, {})]
+    # "Fernseher im Schlafzimmer" while the only TV is in the living room: one
+    # case per device kind, otherwise each kind gets a sixth of one case
+    # v12 had one case per kind: the refusal share almost doubled and the
+    # model refused real commands; keep one mixed case plus the TV case
+    cases += [("unknown:missing_type", s_missing_type, {"mtype": "other"}),
+              ("unknown:missing_media_player", s_missing_type, {"mtype": "media_player"})]
     seen = set()
     for fn, _ in NEXT:
         if fn not in seen:
@@ -2881,6 +2986,8 @@ def build_cases():
     # kitchen light, switch every dining room light
     cases.append(("conversation:room_correct", s_conversation,
                   {"conv_turn": turn_correct, "intent": i_light_room_phrase}))
+    cases.append(("conversation:correct_recap", s_conversation,
+                  {"conv_turn": turn_correct_recap, "intent": i_light_room_phrase}))
     return cases
 
 

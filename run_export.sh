@@ -24,8 +24,20 @@ docker run --rm --user "$(id -u):$(id -g)" \
     -v "$SRC_ABS":/src:ro -v "$PWD/model":/out "$IMG" \
     --convert /src --outtype f16 --outfile "/out/${NAME}-f16.gguf"
 
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/model":/out "$IMG" \
-    --quantize "/out/${NAME}-f16.gguf" "/out/${NAME}-Q4_K_M.gguf" Q4_K_M
+# Importance matrix from our own conversations (src/make_calib.py): without it
+# Q4_K_M can break single training runs (v13: 291/300 in f16, 243/300 in Q4).
+CALIB="${CALIB:-model/calib.txt}"
+QARGS=()
+if [ -f "$CALIB" ]; then
+    docker run --rm --gpus all --user "$(id -u):$(id -g)" -v "$PWD/model":/out \
+        --entrypoint /app/llama-imatrix "$IMG" -m "/out/${NAME}-f16.gguf" -f "/out/$(basename "$CALIB")" \
+        -o "/out/${NAME}.imatrix" -ngl 99 -c 4096
+    QARGS=(--imatrix "/out/${NAME}.imatrix")
+fi
+for Q in ${QUANTS:-Q4_K_M}; do
+    docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/model":/out "$IMG" \
+        --quantize "${QARGS[@]}" "/out/${NAME}-f16.gguf" "/out/${NAME}-${Q}.gguf" "$Q"
+done
 
 rm -f "model/${NAME}-f16.gguf"
-ls -lh "model/${NAME}-Q4_K_M.gguf"
+ls -lh model/${NAME}-*.gguf

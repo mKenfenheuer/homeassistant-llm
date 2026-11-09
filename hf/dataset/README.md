@@ -34,8 +34,8 @@ instead of memorising one house.
 
 | Split | Samples | Seed |
 |-------|---------|------|
-| train | 8,000 | 11 |
-| test | 300 | 1011 (different houses) |
+| train | 8,000 | 15 |
+| test | 300 | 1015 (different houses) |
 
 ## Format
 
@@ -61,17 +61,17 @@ during training.
 
 | Category | Samples | Content |
 |----------|---------|---------|
-| command | 2,894 | single commands: lights (also by area), covers, awning, climate, locks, alarm, media, fans, vacuum, lawn mower, valves, buttons, scenes, group entities, appliance power switches, heating mode switches |
-| question | 2,042 | state questions answered via `get_state`: appliance status sensors, door contacts, electric cars, outdoor temperature next to forecast and weather sensors, lights of an area |
-| conversation | 1,630 | 3 to 6 turns: undo, corrections, "Welches Licht hast du ausgeschaltet?", checks, topic changes |
-| error | 450 | unreachable devices, partial success, rooms where only some lights are reachable, retries: the answer reports the failure |
-| unknown | 439 | devices or rooms that do not exist, or a room without that device type: no tool call, other rooms suggested, also when the user insists twice; houses without areas |
-| followup | 189 | two-turn conversations ("und wieder aus", "Nee, ist es nicht", accepting a suggested other room) |
-| compound | 125 | two commands in one sentence |
-| relative | 125 | "Mach es im Bad wärmer": read state, then set |
-| chat | 106 | greetings, thanks, capabilities |
+| command | 2,850 | single commands: lights (also by area), covers, awning, climate, locks, alarm, media, fans, vacuum, lawn mower, valves, buttons, scenes, group entities, appliance power switches, heating mode switches |
+| question | 1,917 | state questions answered via `get_state`: appliance status sensors, door contacts, electric cars, outdoor temperature next to forecast and weather sensors, lights of an area |
+| conversation | 1,641 | 3 to 6 turns: undo, corrections, "Welches Licht hast du ausgeschaltet?", "Welche Heizungen hast du verstellt?", recaps after a correction, checks, topic changes |
+| error | 546 | unreachable devices, partial success, rooms where only some lights are reachable, retries: the answer reports the failure |
+| unknown | 501 | devices or rooms that do not exist, or a room without that device type: no tool call, other rooms suggested, also when the user insists twice; houses without areas |
+| followup | 198 | two-turn conversations ("und wieder aus", "Nee, ist es nicht", accepting a suggested other room) |
+| compound | 118 | two commands in one sentence |
+| relative | 118 | "Mach es im Bad wärmer": read state, then set |
+| chat | 111 | greetings, thanks, capabilities |
 
-The generator draws from 64 cases with equal quotas (106 to 126 samples each),
+The generator draws from 68 cases with equal quotas (111 to 118 samples each),
 so rare situations are as frequent as common ones.
 
 `src/check_dataset.py` verifies every assistant answer against the preceding
@@ -84,4 +84,9 @@ learns to act on the latest request only.
 ## Generation
 
 Created with `src/gen_dataset.py` (template-based, no LLM involved):
-`python src/gen_dataset.py data/train.jsonl 8000 11`.
+`python src/gen_dataset.py data/train.jsonl 8000 15`.
+
+The current model averages three runs trained on sets from seeds 13, 14 and
+15 with successive generator versions; this repository holds the set of the
+last run (seed 15), which the published generator reproduces. The vendor id
+prefixes in the generator (Homematic, Shelly) are fictional.

@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.7.1
+
+- Neues Modell v15-soup (`qwen2.5-3b-ha-v15-soup-Q4_K_M.gguf`). Es mittelt
+  die LoRA-Gewichte der drei Trainingsläufe v13, v14 und v15 („Model Soup“).
+  Jeder Einzellauf machte eigene Einzelfehler, die Mittelung gleicht sie aus.
+  Auf 300 Testgesprächen sind 99,7 % der Werkzeugaufrufe korrekt (v11:
+  98,0 %).
+- Quantisierung mit Importance Matrix aus eigenen Trainingsgesprächen. Ohne
+  sie beschädigte Q4_K_M einzelne Läufe (v13: 291 von 300 unquantisiert,
+  243 von 300 in Q4). Die Datei bleibt 1,9 GB groß und gleich schnell.
+- „Mach den Fernseher im Schlafzimmer an“ nennt jetzt das Schlafzimmer statt
+  des Media Players eines Sprachassistenten im Raum.
+- „Bewässere die Balkonpflanzen“ öffnet das Ventil am Balkon, auch wenn ein
+  Taster „Bewässerung Garten“ ohne Bereich daneben steht.
+- „Welche Heizungen hast du verstellt?“ nennt alle verstellten Heizungen im
+  Gespräch, nicht nur die letzte.
+- Die Frage nach einem Raum mit teilweise nicht erreichbaren Lampen nennt
+  alle nicht erreichbaren Lampen, auch die mit dem Namen des Raums.
+- Integration unverändert, das Modell nutzt weiter Schema 5 (Integration
+  0.7.0).
+
 ## 0.7.0
 
 - Neues Modell v11 (`qwen2.5-3b-ha-v11-Q4_K_M.gguf`), neu trainiert ab
