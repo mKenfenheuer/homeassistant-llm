@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1
+
+- Die AVX2-Warnung erscheint nur noch auf x86-CPUs, nicht mehr auf ARM.
+- Die GPU-Add-ons laufen ohne GPU auf der CPU und bekommen die GPU über die
+  Option `video`.
+
 ## 0.9.0
 
 - Zwei neue Add-ons für GPUs im Home-Assistant-Host, beide experimentell:

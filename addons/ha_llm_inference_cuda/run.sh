@@ -66,21 +66,22 @@ if [ -z "$MODEL_URL" ] && [ -z "$MODEL_PATH" ]; then
     MANAGED=true
 fi
 
+ON_GPU=false
 if [ "$BACKEND" != "cpu" ]; then
     # llama.cpp lists the GPUs of the backend; without one it runs on the CPU
     DEVICES="$(/app/llama-server --list-devices 2>&1 | grep -E '^ +[A-Za-z]+[0-9]+:' || true)"
     if [ -n "$DEVICES" ]; then
+        ON_GPU=true
         echo "[INFO] GPU (${BACKEND}):"
         echo "$DEVICES"
     else
-        echo "[WARNING] ============================================================"
-        echo "[WARNING] llama.cpp findet keine GPU für ${BACKEND}, das Modell läuft auf der CPU."
-        echo "[WARNING] Das Add-on braucht Home Assistant OS mit GPU-Unterstützung"
-        echo "[WARNING] (Option gpu im Supervisor) und den passenden Treiber auf dem Host."
-        echo "[WARNING] ============================================================"
-        /app/llama-server --list-devices 2>&1 | tail -5 || true
+        echo "[INFO] Keine GPU für ${BACKEND} gefunden, das Modell läuft auf der CPU."
+        echo "[INFO] Für die GPU braucht der Host den passenden Treiber, bei NVIDIA"
+        echo "[INFO] die NVIDIA-Variante von Home Assistant OS."
     fi
-elif ! grep -qw avx2 /proc/cpuinfo; then
+fi
+# the AVX2 warning only applies to x86 CPUs
+if [ "$ON_GPU" = false ] && [ "$(uname -m)" = x86_64 ] && ! grep -qw avx2 /proc/cpuinfo; then
     CPU_MODEL="$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ *//')"
     echo "[WARNING] ============================================================"
     echo "[WARNING] Die CPU (${CPU_MODEL:-unbekannt}) unterstützt kein AVX2."

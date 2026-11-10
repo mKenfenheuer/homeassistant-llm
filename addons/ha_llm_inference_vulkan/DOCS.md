@@ -7,14 +7,13 @@ auf einer AMD- oder Intel-GPU über Vulkan (Mesa: RADV, ANV). Modell, automatisc
 
 ## Voraussetzungen
 
-Das Add-on braucht Home Assistant OS mit GPU-Unterstützung für Apps
-(Option `gpu` im Supervisor). Diese ist noch nicht offiziell veröffentlicht,
-Testimages gibt es unter
-[mKenfenheuer/operating-system](https://github.com/mKenfenheuer/operating-system/releases).
-Ohne GPU-Zugriff läuft das Modell auf der CPU, das Log zeigt dann eine
-Warnung.
+Das Add-on läuft auf jedem amd64- und aarch64-System. Findet llama.cpp keine
+GPU, rechnet das Modell auf der CPU, das Log zeigt das beim Start.
 
-Unterstützte Hardware: AMD-GPUs mit dem Treiber `amdgpu` (GCN 3 und neuer) und Intel-GPUs mit `i915` oder `xe`. Die Treiber stecken im Kernel, eine Erweiterung ist nicht nötig. Getestet mit einer Radeon RX 6900 XT.
+Das Add-on bekommt die GPU über die Option `video` (`/dev/dri`). Das reicht für
+Vulkan auf AMD und Intel, auch mit dem heutigen Home Assistant OS.
+
+Unterstützte Hardware: AMD-GPUs mit dem Treiber `amdgpu` (GCN 3 und neuer) und Intel-GPUs mit `i915` oder `xe`. Die Treiber stecken im Kernel, eine Erweiterung ist nicht nötig. Getestet mit einer Radeon RX 6900 XT. Auf aarch64 nutzt llama.cpp Vulkan, wenn Mesa die GPU unterstützt (etwa V3D auf dem Raspberry Pi 5), ungetestet.
 
 ## Integration
 

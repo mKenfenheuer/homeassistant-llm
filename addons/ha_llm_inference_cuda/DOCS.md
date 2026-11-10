@@ -7,14 +7,16 @@ auf einer NVIDIA-GPU über CUDA 12.8. Modell, automatische Updates und Optionen 
 
 ## Voraussetzungen
 
-Das Add-on braucht Home Assistant OS mit GPU-Unterstützung für Apps
-(Option `gpu` im Supervisor). Diese ist noch nicht offiziell veröffentlicht,
-Testimages gibt es unter
-[mKenfenheuer/operating-system](https://github.com/mKenfenheuer/operating-system/releases).
-Ohne GPU-Zugriff läuft das Modell auf der CPU, das Log zeigt dann eine
-Warnung.
+Das Add-on läuft auf jedem amd64-System. Findet llama.cpp keine NVIDIA-GPU,
+rechnet das Modell auf der CPU, das Log zeigt das beim Start.
 
-Unterstützte Hardware: NVIDIA-GPUs ab Maxwell (GeForce GTX 900) mit der Treibererweiterung `nvidia` (Turing und neuer) oder `nvidia-legacy` (Maxwell bis Volta). Getestet mit einer GeForce GTX 1060.
+Für die GPU braucht der Host den NVIDIA-Treiber: Home Assistant OS in der
+Variante `nvidia` oder `nvidia-legacy`. Diese ist noch nicht offiziell
+veröffentlicht, Testimages gibt es unter
+[mKenfenheuer/operating-system](https://github.com/mKenfenheuer/operating-system/releases).
+Das Add-on bekommt die GPU über die Option `video`.
+
+Unterstützte Hardware: NVIDIA-GPUs ab Maxwell (GeForce GTX 900) mit der Home-Assistant-OS-Variante `nvidia` (Turing und neuer) oder `nvidia-legacy` (Maxwell bis Volta). Getestet mit einer GeForce GTX 1060.
 
 ## Integration
 
