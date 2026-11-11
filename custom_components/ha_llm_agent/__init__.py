@@ -6,10 +6,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 
-from .const import CONF_TYPE, TYPE_CONVERSATION, TYPE_STT
+from .const import CONF_TYPE, TYPE_CONVERSATION, TYPE_STT, TYPE_TTS
 
 # entries of earlier versions have no type and are conversation agents
-PLATFORMS = {TYPE_CONVERSATION: [Platform.CONVERSATION], TYPE_STT: [Platform.STT]}
+PLATFORMS = {
+    TYPE_CONVERSATION: [Platform.CONVERSATION],
+    TYPE_STT: [Platform.STT],
+    TYPE_TTS: [Platform.TTS],
+}
 
 
 def _platforms(entry: ConfigEntry) -> list[Platform]:

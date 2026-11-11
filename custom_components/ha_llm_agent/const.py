@@ -7,6 +7,7 @@ CONF_URL = "url"
 CONF_TYPE = "type"
 TYPE_CONVERSATION = "conversation"
 TYPE_STT = "stt"
+TYPE_TTS = "tts"
 CONF_TEMPERATURE = "temperature"
 CONF_MAX_HISTORY = "max_history"
 CONF_TIMEOUT = "timeout"
@@ -22,6 +23,12 @@ ADDON_SUFFIXES = ("ha_llm_inference", "ha_llm_inference_cuda", "ha_llm_inference
 DEFAULT_WHISPER_URL = "http://local-ha-whisper:8080"
 WHISPER_ADDON_SUFFIXES = ("ha_whisper",)
 STT_TIMEOUT = 60               # seconds per transcription
+# hostname and slug ending of the text-to-speech app "ha_tts"
+DEFAULT_TTS_URL = "http://local-ha-tts:8080"
+TTS_ADDON_SUFFIXES = ("ha_tts",)
+TTS_TIMEOUT = 120              # seconds per sentence
+# reference recordings for voice cloning (Qwen3-TTS), shared with the app
+TTS_VOICE_DIR = "/share/ha_tts/voices"
 DEFAULT_TEMPERATURE = 0.0
 DEFAULT_MAX_HISTORY = 6        # previous user turns kept per conversation
 DEFAULT_TIMEOUT = 300          # seconds per LLM request (CPU inference is slow)

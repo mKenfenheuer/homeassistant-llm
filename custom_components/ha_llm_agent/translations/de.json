@@ -5,7 +5,8 @@
         "title": "Lokale KI",
         "menu_options": {
           "conversation": "Gesprächsagent (llama.cpp, App \"HA LLM Inference\")",
-          "stt": "Spracherkennung (whisper.cpp, App \"HA Whisper\")"
+          "stt": "Spracherkennung (whisper.cpp, App \"HA Whisper\")",
+          "tts": "Sprachausgabe (llama.cpp, App \"HA TTS\")"
         }
       },
       "conversation": {
@@ -18,6 +19,13 @@
       "stt": {
         "title": "Lokaler Whisper-Server",
         "description": "URL des whisper.cpp-Servers (App \"HA Whisper\" oder eigener whisper-server).",
+        "data": {
+          "url": "Server-URL"
+        }
+      },
+      "tts": {
+        "title": "Lokaler TTS-Server",
+        "description": "URL des llama.cpp-Servers mit einem Sprachausgabe-Modell (App \"HA TTS\" oder eigener llama-server).",
         "data": {
           "url": "Server-URL"
         }

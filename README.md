@@ -9,11 +9,10 @@ text-to-speech.
 |-----------|----------------------|----------|
 | App "HA Whisper" (whisper.cpp server) | Speech-to-text | `addons/ha_whisper/` |
 | App "HA LLM Inference" (llama.cpp server) | Conversation | `addons/ha_llm_inference/` |
-| Integration "HA LLM Agent (local)" | Speech-to-text entity and conversation agent for Assist | `custom_components/ha_llm_agent/` |
+| App "HA TTS" (llama.cpp server with LFM3-Omni or Qwen3-TTS) | Text-to-speech | `addons/ha_tts/` |
+| Integration "HA LLM Agent (local)" | Speech-to-text, conversation agent and text-to-speech for Assist | `custom_components/ha_llm_agent/` |
 | Model | Conversation | [mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF](https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF) |
 | Dataset | Conversation | [mkenfenheuer/homeassistant-tool-calling-de](https://huggingface.co/datasets/mkenfenheuer/homeassistant-tool-calling-de) |
-
-Text-to-speech will follow as a third app.
 
 The conversation model is Qwen2.5-3B-Instruct with LoRA (Built with Qwen,
 Qwen RESEARCH LICENSE, non-commercial use only). It is 1.9 GB (GGUF, Q4_K_M)
@@ -27,15 +26,18 @@ engines for the rest of the Assist pipeline, for example the local Whisper
 app for speech-to-text and a cloud conversation agent.
 
 1. **Apps:** In Settings → Apps → App store → ⋮ → Repositories add the URL of
-   this repository. Install and start "HA Whisper" and/or "HA LLM Inference".
+   this repository. Install and start "HA Whisper", "HA LLM Inference"
+   and/or "HA TTS".
    On the first start each app downloads its model.
 2. **Integration:** In HACS → ⋮ → Custom repositories add the same URL with
    type "Integration". Install "HA LLM Agent (local)" and restart Home
    Assistant.
 3. **Setup:** Add "HA LLM Agent (local)" once per app and choose
-   "Speech-to-text" or "Conversation agent". The URL of the installed app is
-   filled in. In Settings → Voice assistants select "Whisper" as
-   speech-to-text and "Local LLM" as conversation agent (entries from earlier versions are called "Lokales LLM").
+   "Speech-to-text", "Conversation agent" or "Text-to-speech". The URL of the
+   installed app is filled in. In Settings → Voice assistants select
+   "Whisper" as speech-to-text, "Local LLM" as conversation agent and "Local
+   TTS" as text-to-speech. Conversation agents set up with earlier versions
+   are called "Lokales LLM".
 
 The model only sees the entities exposed to Assist under "Expose entities".
 
@@ -65,6 +67,13 @@ Conversation with 95 entities on 4 cores:
 
 An RTX 3090 generates 210 tokens per second, a Radeon RX 6900 XT 130.
 
+Text-to-speech on an RTX 3090, two sentences with 8 s of speech:
+
+| Model | First audio | Complete |
+|-------|-------------|----------|
+| LFM3-Omni 2B | 0.01–0.04 s | 0.8–1.0 s |
+| Qwen3-TTS 1.7B | 1.0 s | 1.9–2.3 s |
+
 Without AVX2 and without a GPU the model should run on another machine. Enter
 the URL of that server in the integration under "Reconfigure":
 
@@ -82,6 +91,11 @@ docker run -d --name ha-llm --restart unless-stopped --gpus all \
 pipeline and sends it with the language of the pipeline to whisper-server.
 Whisper transcribes complete recordings, so the text arrives after the user
 stops speaking.
+
+**Text-to-speech** The integration splits the answer into sentences while
+the conversation agent is still writing and streams the audio of each
+sentence from llama-server (`POST /tts`). Numbers, times and units become
+words first ("21,5 °C" → "einundzwanzig Komma fünf Grad Celsius").
 
 **Conversation** The integration sends the exposed entities
 (`entity_id | name | area`) and two tools to the model. `control` calls Home
@@ -128,4 +142,6 @@ of three runs. Training and integration read the same prompt from
 - With more than about 250 entities, 8,192 tokens of context aren't enough.
   The integration then shortens the list.
 - Speech-to-text isn't streaming yet: whisper.cpp needs the complete
-  recording.
+  recording. Text-to-speech streams sentence by sentence.
+- Text-to-speech writes numbers and units as words only for German and
+  English. Other languages get the text as it is.

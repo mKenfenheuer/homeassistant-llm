@@ -8,10 +8,11 @@
   "config_flow": true,
   "dependencies": [
     "conversation",
-    "stt"
+    "stt",
+    "tts"
   ],
   "integration_type": "service",
   "iot_class": "local_polling",
   "requirements": [],
-  "version": "0.8.0"
+  "version": "0.9.0"
 }

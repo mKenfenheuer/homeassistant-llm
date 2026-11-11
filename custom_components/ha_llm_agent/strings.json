@@ -5,7 +5,8 @@
         "title": "Local AI",
         "menu_options": {
           "conversation": "Conversation agent (llama.cpp, app \"HA LLM Inference\")",
-          "stt": "Speech-to-text (whisper.cpp, app \"HA Whisper\")"
+          "stt": "Speech-to-text (whisper.cpp, app \"HA Whisper\")",
+          "tts": "Text-to-speech (llama.cpp, app \"HA TTS\")"
         }
       },
       "conversation": {
@@ -18,6 +19,13 @@
       "stt": {
         "title": "Local Whisper server",
         "description": "URL of the whisper.cpp server (app \"HA Whisper\" or your own whisper-server).",
+        "data": {
+          "url": "Server URL"
+        }
+      },
+      "tts": {
+        "title": "Local TTS server",
+        "description": "URL of the llama.cpp server with a text-to-speech model (app \"HA TTS\" or your own llama-server).",
         "data": {
           "url": "Server URL"
         }

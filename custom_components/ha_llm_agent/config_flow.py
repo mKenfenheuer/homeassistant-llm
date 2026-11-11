@@ -45,12 +45,22 @@ from .const import (
     DEFAULT_TIMEOUT,
     DEFAULT_URL,
     DEFAULT_USE_LOCATION,
+    DEFAULT_TTS_URL,
     DEFAULT_WHISPER_URL,
     DOMAIN,
+    TTS_ADDON_SUFFIXES,
     TYPE_CONVERSATION,
     TYPE_STT,
+    TYPE_TTS,
     WHISPER_ADDON_SUFFIXES,
 )
+
+# app slug endings and default URL per kind of entry
+_APPS = {
+    TYPE_CONVERSATION: (ADDON_SUFFIXES, DEFAULT_URL),
+    TYPE_STT: (WHISPER_ADDON_SUFFIXES, DEFAULT_WHISPER_URL),
+    TYPE_TTS: (TTS_ADDON_SUFFIXES, DEFAULT_TTS_URL),
+}
 
 
 def _default_url(hass, kind: str = TYPE_CONVERSATION) -> str:
@@ -60,8 +70,7 @@ def _default_url(hass, kind: str = TYPE_CONVERSATION) -> str:
     <hash>_<name>. The hostname is the slug with dashes. Earlier suffixes in
     the list are preferred.
     """
-    suffixes, default = ((ADDON_SUFFIXES, DEFAULT_URL) if kind == TYPE_CONVERSATION
-                         else (WHISPER_ADDON_SUFFIXES, DEFAULT_WHISPER_URL))
+    suffixes, default = _APPS[kind]
     try:
         from homeassistant.helpers.hassio import is_hassio
 
@@ -88,7 +97,7 @@ async def _probe(hass, url: str, kind: str = TYPE_CONVERSATION) -> str | None:
     llama-server on /health, whisper-server on its start page.
     """
     session = async_get_clientsession(hass)
-    path = "/health" if kind == TYPE_CONVERSATION else "/"
+    path = "/" if kind == TYPE_STT else "/health"
     try:
         async with session.get(url.rstrip("/") + path,
                                timeout=aiohttp.ClientTimeout(total=10)) as resp:
@@ -107,7 +116,8 @@ class HaLlmAgentConfigFlow(ConfigFlow, domain=DOMAIN):
                               ) -> ConfigFlowResult:
         """Choose what to set up: conversation agent or speech-to-text."""
         return self.async_show_menu(step_id="user",
-                                    menu_options=[TYPE_CONVERSATION, TYPE_STT])
+                                    menu_options=[TYPE_CONVERSATION, TYPE_STT,
+                                                  TYPE_TTS])
 
     async def async_step_conversation(self, user_input: dict[str, Any] | None = None
                                       ) -> ConfigFlowResult:
@@ -117,6 +127,10 @@ class HaLlmAgentConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_stt(self, user_input: dict[str, Any] | None = None
                              ) -> ConfigFlowResult:
         return await self._async_step_server(TYPE_STT, "Whisper", user_input)
+
+    async def async_step_tts(self, user_input: dict[str, Any] | None = None
+                             ) -> ConfigFlowResult:
+        return await self._async_step_server(TYPE_TTS, "Local TTS", user_input)
 
     async def _async_step_server(self, kind: str, title: str,
                                  user_input: dict[str, Any] | None

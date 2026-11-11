@@ -1,0 +1,32 @@
+name: HA TTS
+version: "0.1.0"
+slug: ha_tts
+description: Text-to-speech with llama.cpp (LFM3-Omni or Qwen3-TTS) on the GPU (NVIDIA, AMD, Intel) or the CPU
+url: https://github.com/mKenfenheuer/homeassistant-llm
+arch:
+  - amd64
+  - aarch64
+startup: services
+boot: auto
+ports:
+  8080/tcp: null
+ports_description:
+  8080/tcp: llama-server HTTP API with POST /tts (only needed outside Home Assistant)
+map:
+  - type: share
+    read_only: false
+watchdog: http://[HOST]:[PORT:8080]/health
+# GPU access: /dev/dri everywhere; on Home Assistant OS with GPU support
+# also /dev/kfd and the NVIDIA devices and libraries through CDI.
+# Without a GPU llama.cpp runs on the CPU.
+video: true
+options:
+  model: lfm3-omni
+  gpu: true
+  threads: 0
+  extra_args: ""
+schema:
+  model: list(lfm3-omni|qwen3-tts)
+  gpu: bool
+  threads: int(0,128)
+  extra_args: str?

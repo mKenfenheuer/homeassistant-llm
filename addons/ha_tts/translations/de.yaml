@@ -1,0 +1,15 @@
+configuration:
+  model:
+    name: Modell
+    description: "lfm3-omni: 19 Sprachen, eingebaute weibliche und männliche Stimme, am schnellsten. qwen3-tts: 10 Sprachen, bildet die Stimme einer Referenzaufnahme in /share/ha_tts/voices/ nach."
+  gpu:
+    name: GPU verwenden
+    description: Aus = die Sprachausgabe läuft immer auf der CPU, etwa um die GPU für andere Apps freizuhalten.
+  threads:
+    name: CPU-Threads
+    description: 0 = automatisch
+  extra_args:
+    name: Zusätzliche Argumente
+    description: Weitere llama-server-Parameter
+network:
+  8080/tcp: llama-server-HTTP-API mit POST /tts (nur für Zugriff außerhalb von Home Assistant)
