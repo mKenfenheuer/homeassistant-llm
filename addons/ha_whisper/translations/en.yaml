@@ -1,0 +1,18 @@
+configuration:
+  model:
+    name: Model
+    description: "Whisper model. auto = large-v3-turbo on a GPU, small on the CPU. Larger models recognize better but need more memory and time."
+  language:
+    name: Default language
+    description: "Language code like en or de, or auto for detection. Only used if a request has no language; the integration sends the language of the Assist pipeline."
+  gpu:
+    name: Use GPU
+    description: Off = speech recognition always runs on the CPU, for example to keep the GPU free for the language model.
+  threads:
+    name: CPU threads
+    description: 0 = automatic
+  extra_args:
+    name: Extra arguments
+    description: Additional whisper-server parameters, e.g. --beam-size 5
+network:
+  8080/tcp: whisper.cpp HTTP API (only needed outside Home Assistant)

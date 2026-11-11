@@ -1,179 +1,195 @@
 # Changelog
 
+## 0.11.0
+
+- New option `language`: the app downloads the model of the selected
+  language from `mkenfenheuer/qwen2.5-3b-homeassistant-<language>-GGUF`.
+  Available today: German (`de`). Models of other languages go to
+  `/share/ha_llm/<language>/`.
+- The CUDA cache is kept in `/data` across restarts. GPUs without prebuilt
+  code (e.g. Pascal) don't compile it again on every start.
+- Documentation, option descriptions and log messages in English. The
+  settings are translated into English and German.
+- New app "HA Whisper" in this repository: speech-to-text with whisper.cpp on
+  the GPU or the CPU.
+- Integration 0.8.0, now "HA LLM Agent (local)": adding the integration asks
+  for the kind of entry, conversation agent or speech-to-text. The
+  speech-to-text entry uses the HA Whisper app and sends the language of the
+  Assist pipeline. Existing entries stay conversation agents.
+
 ## 0.10.0
 
-- Ein Add-on für CPU und GPU: „HA LLM Inference“ nutzt eine NVIDIA-GPU (CUDA),
-  eine AMD- oder Intel-GPU (Vulkan) oder die CPU, je nachdem, was es findet.
-  Die Add-ons „HA LLM Inference (NVIDIA)“ und „(AMD/Intel)“ entfallen. Wer
-  eines davon nutzt, installiert „HA LLM Inference“ und deinstalliert das
-  alte; die Integration findet das Add-on bei der Einrichtung, eine bestehende
-  lässt sich über „Neu konfigurieren“ umstellen. Das Modell unter
-  `/share/ha_llm/` bleibt.
-- Neue Option `gpu_layers` (Standard 99 = alle Schichten, 0 = nur CPU).
-- Das Image ist auf amd64 größer (etwa 5,9 GB statt 1,2 GB), weil es die
-  CUDA-Laufzeit enthält.
+- One app for CPU and GPU: "HA LLM Inference" uses an NVIDIA GPU (CUDA), an
+  AMD or Intel GPU (Vulkan) or the CPU, depending on what it finds. The apps
+  "HA LLM Inference (NVIDIA)" and "(AMD/Intel)" are discontinued. If you use
+  one of them, install "HA LLM Inference" and uninstall the old one; the
+  integration finds the app during setup, and you can switch an existing
+  entry over with "Reconfigure". The model under `/share/ha_llm/` stays.
+- New option `gpu_layers` (default 99 = all layers, 0 = CPU only).
+- The image is larger on amd64 (about 5.9 GB instead of 1.2 GB) because it
+  contains the CUDA runtime.
 
 ## 0.9.1
 
-- Die AVX2-Warnung erscheint nur noch auf x86-CPUs, nicht mehr auf ARM.
-- Die GPU-Add-ons laufen ohne GPU auf der CPU und bekommen die GPU über die
-  Option `video`.
+- The AVX2 warning now appears only on x86 CPUs, no longer on ARM.
+- The GPU apps run on the CPU when no GPU is present and get the GPU through
+  the `video` option.
 
 ## 0.9.0
 
-- Zwei neue Add-ons für GPUs im Home-Assistant-Host, beide experimentell:
-  „HA LLM Inference (NVIDIA)“ mit CUDA 12.8 (ab Maxwell, getestet mit einer
-  GTX 1060) und „HA LLM Inference (AMD/Intel)“ mit Vulkan (getestet mit einer
-  Radeon RX 6900 XT, 130 Tokens pro Sekunde). Sie brauchen Home Assistant OS
-  mit GPU-Unterstützung für Apps (Option `gpu`), die es bisher nur als
-  Testimage gibt. Neue Option `gpu_layers` (Standard 99 = alle Schichten).
-- Integration 0.7.2: Bei der Einrichtung nimmt sie das GPU-Add-on, wenn eines
-  installiert ist, sonst das CPU-Add-on.
-- CPU-Add-on unverändert bis auf das gemeinsame Startskript.
+- Two new apps for GPUs in the Home Assistant host, both experimental:
+  "HA LLM Inference (NVIDIA)" with CUDA 12.8 (Maxwell and newer, tested with a
+  GTX 1060) and "HA LLM Inference (AMD/Intel)" with Vulkan (tested with a
+  Radeon RX 6900 XT, 130 tokens per second). They need Home Assistant OS
+  with GPU support for apps (option `gpu`), which so far exists only as a
+  test image. New option `gpu_layers` (default 99 = all layers).
+- Integration 0.7.2: During setup it picks the GPU app if one is installed,
+  otherwise the CPU app.
+- CPU app unchanged except for the shared start script.
 
 ## 0.8.1
 
-- Eigenes Symbol und Logo für Add-on und Integration. Die Integration bringt
-  sie unter `custom_components/ha_llm_agent/brand/` mit, Home Assistant
-  2026.3 und neuer zeigt sie ohne Eintrag im Brands-Repository an
-  (Integration 0.7.1). Die SVG-Quellen liegen unter `brand/`.
-- Modell- und Datensatzkarte auf Hugging Face verweisen auf dieses
-  Repository mit Add-on und Integration.
+- Custom icon and logo for app and integration. The integration ships them
+  under `custom_components/ha_llm_agent/brand/`, and Home Assistant 2026.3
+  and newer shows them without an entry in the brands repository
+  (integration 0.7.1). The SVG sources are under `brand/`.
+- The model and dataset cards on Hugging Face link to this repository with
+  the app and integration.
 
 ## 0.8.0
 
-- Automatische Modell-Updates: Mit `auto_update` (Standard: an) prüft das
-  Add-on beim Start und alle 6 Stunden (`update_interval`) die Datei
-  `latest.json` auf Hugging Face. Ein neues Modell lädt es im laufenden
-  Betrieb, prüft die SHA-256-Summe, wechselt darauf und löscht das alte.
-  Ohne Netz startet es mit dem zuletzt geladenen Modell. Eigene `model_url`
-  oder `model_path` schalten die Updates ab.
-- Modell v15.1 (`qwen2.5-3b-ha-v15.1-Q4_K_M.gguf`): Gewichte wie v15-soup,
-  die eingebettete Chat-Vorlage nutzt ohne Systemnachricht einen deutschen
-  Standard-Systemprompt statt „You are Qwen“. Mit Systemnachricht, wie von
-  der Integration gesendet, ändert sich am Prompt nichts. Testergebnisse
-  identisch: 299 von 300 Werkzeugaufrufen, 24 von 24 im Home-Assistant-Test.
-- Auf Hugging Face liegt nur noch das aktuelle Modell.
+- Automatic model updates: With `auto_update` (default: on), the app checks
+  the file `latest.json` on Hugging Face at startup and every 6 hours
+  (`update_interval`). It downloads a new model while running, verifies the
+  SHA-256 checksum, switches to it and deletes the old one. Without a network
+  it starts with the last downloaded model. A custom `model_url` or
+  `model_path` turns updates off.
+- Model v15.1 (`qwen2.5-3b-ha-v15.1-Q4_K_M.gguf`): Same weights as v15-soup;
+  without a system message, the embedded chat template uses a German default
+  system prompt instead of "You are Qwen". With a system message, as the
+  integration sends it, the prompt does not change. Test results are
+  identical: 299 of 300 tool calls, 24 of 24 in the Home Assistant test.
+- Hugging Face now hosts only the current model.
 
 ## 0.7.1
 
-- Neues Modell v15-soup (`qwen2.5-3b-ha-v15-soup-Q4_K_M.gguf`). Es mittelt
-  die LoRA-Gewichte der drei Trainingsläufe v13, v14 und v15 („Model Soup“).
-  Jeder Einzellauf machte eigene Einzelfehler, die Mittelung gleicht sie aus.
-  Auf 300 Testgesprächen sind 99,7 % der Werkzeugaufrufe korrekt (v11:
-  98,0 %).
-- Quantisierung mit Importance Matrix aus eigenen Trainingsgesprächen. Ohne
-  sie beschädigte Q4_K_M einzelne Läufe (v13: 291 von 300 unquantisiert,
-  243 von 300 in Q4). Die Datei bleibt 1,9 GB groß und gleich schnell.
-- „Mach den Fernseher im Schlafzimmer an“ nennt jetzt das Schlafzimmer statt
-  des Media Players eines Sprachassistenten im Raum.
-- „Bewässere die Balkonpflanzen“ öffnet das Ventil am Balkon, auch wenn ein
-  Taster „Bewässerung Garten“ ohne Bereich daneben steht.
-- „Welche Heizungen hast du verstellt?“ nennt alle verstellten Heizungen im
-  Gespräch, nicht nur die letzte.
-- Die Frage nach einem Raum mit teilweise nicht erreichbaren Lampen nennt
-  alle nicht erreichbaren Lampen, auch die mit dem Namen des Raums.
-- Integration unverändert, das Modell nutzt weiter Schema 5 (Integration
+- New model v15-soup (`qwen2.5-3b-ha-v15-soup-Q4_K_M.gguf`). It averages
+  the LoRA weights of the three training runs v13, v14 and v15 ("Model Soup").
+  Each single run made its own individual errors; averaging evens them out.
+  On 300 test conversations, 99.7 % of tool calls are correct (v11:
+  98.0 %).
+- Quantization with an importance matrix from our own training conversations.
+  Without it, Q4_K_M damaged individual runs (v13: 291 of 300 unquantized,
+  243 of 300 in Q4). The file stays 1.9 GB and equally fast.
+- "Mach den Fernseher im Schlafzimmer an" now names the bedroom instead of
+  the media player of a voice assistant in the room.
+- "Bewässere die Balkonpflanzen" opens the valve on the balcony, even when a
+  button "Bewässerung Garten" without an area is listed next to it.
+- "Welche Heizungen hast du verstellt?" names all heaters changed in the
+  conversation, not only the last one.
+- A question about a room with partly unavailable lamps names all
+  unavailable lamps, including the one named after the room.
+- Integration unchanged; the model still uses schema 5 (integration
   0.7.0).
 
 ## 0.7.0
 
-- Neues Modell v11 (`qwen2.5-3b-ha-v11-Q4_K_M.gguf`), neu trainiert ab
-  Qwen2.5-3B-Instruct mit 8.000 Beispielen und 2,5 Epochen. Jeder der 64
-  Fälle im Generator hat dieselbe Quote, seltene Fälle eingeschlossen.
-- Schema 5: „Mach das Licht in der Küche an“ schaltet alle Lichter des
-  Bereichs über `area`, „alle Lichter“ über `area: "*"`. Die Integration löst
-  den Bereich selbst auf und meldet die geschalteten Lampen zurück. Bisher
-  musste das Modell jede entity_id abschreiben und ließ bei vier Lampen
-  gelegentlich eine aus.
-- `get_state` fragt mit `domain` und `area` alle Lichter eines Bereichs ab.
-- Türkontakte und Elektroautos sind im Training: „Ist die Balkontür offen?“
-  fragt den Kontakt der Balkontür ab, nicht die Wohnungstür, „Wie weit kommt
-  das Auto noch?“ die Reichweite statt des Ladestands.
-- Außentemperatur neben Vorhersage-, Taupunkt- und Gefühlte-Temperatur-Sensoren:
-  „Wie warm ist es draußen?“ liest den Außensensor, „Wie warm wird es
-  morgen?“ die Vorhersage.
-- Korrektur „Nein, ich meinte im Esszimmer“ schaltet alle Küchenlampen aus,
-  nicht nur eine.
-- Add-on: Ein Update auf das neue Standardmodell löscht die Modelldateien
-  früherer Versionen in `/share/ha_llm/` (bisher blieben 1,9 GB pro Version
-  liegen).
-- Integration und Modell gehören zusammen: Integration 0.7.0 braucht Modell
-  v11, ältere Modelle kennen `area` nicht.
+- New model v11 (`qwen2.5-3b-ha-v11-Q4_K_M.gguf`), retrained from
+  Qwen2.5-3B-Instruct with 8,000 examples and 2.5 epochs. Each of the 64
+  cases in the generator has the same share, rare cases included.
+- Schema 5: "Mach das Licht in der Küche an" switches all lights in the
+  area through `area`, "alle Lichter" through `area: "*"`. The integration
+  resolves the area itself and reports the switched lamps back. Before, the
+  model had to copy every entity_id and with four lamps occasionally left
+  one out.
+- `get_state` queries all lights in an area with `domain` and `area`.
+- Door contacts and electric cars are in the training data: "Ist die
+  Balkontür offen?" queries the balcony door contact, not the front door,
+  and "Wie weit kommt das Auto noch?" the range instead of the charge level.
+- Outdoor temperature next to forecast, dew point and feels-like temperature
+  sensors: "Wie warm ist es draußen?" reads the outdoor sensor, "Wie warm
+  wird es morgen?" the forecast.
+- The correction "Nein, ich meinte im Esszimmer" turns off all kitchen
+  lamps, not just one.
+- App: An update to the new default model deletes the model files of
+  earlier versions in `/share/ha_llm/` (before, 1.9 GB per version stayed
+  behind).
+- Integration and model belong together: integration 0.7.0 needs model
+  v11; older models do not know `area`.
 
 ## 0.6.2
 
-- Integration: „Neu konfigurieren“ lädt den Eintrag über dessen
-  Update-Listener neu. HA warnte bisher, weil der Ablauf zusätzlich selbst neu
-  lud; ab HA 2026.12 wäre das ein Fehler.
+- Integration: "Reconfigure" reloads the entry through its update listener.
+  HA used to warn because the flow also reloaded it itself; from HA 2026.12
+  on this would be an error.
 
 ## 0.6.1
 
-- Integration: Die Server-URL lässt sich über „Neu konfigurieren“ am Eintrag
-  ändern, etwa beim Wechsel vom Add-on auf llama-server auf einem GPU-Rechner.
-  Die Integration prüft die neue URL über `/health`, bevor sie sie übernimmt.
-  Agent und Optionen bleiben erhalten. Bisher musste der Eintrag gelöscht und
-  neu angelegt werden.
-- Add-on und Modell (v7) sind unverändert.
+- Integration: You can change the server URL with "Reconfigure" on the
+  entry, for example when moving from the app to llama-server on a GPU
+  machine. The integration checks the new URL through `/health` before it
+  applies it. Agent and options are kept. Before, the entry had to be deleted
+  and created again.
+- App and model (v7) are unchanged.
 
 ## 0.6.0
 
-- Neues Modell v7 (`qwen2.5-3b-ha-v7-Q4_K_M.gguf`), neu trainiert ab
-  Qwen2.5-3B-Instruct mit 8.000 Beispielen und 2,5 Epochen.
-- Räume mit teilweise nicht erreichbaren Lampen: „Ist das Licht in der Küche
-  an?“ nennt die erreichbaren Lampen mit ihrem Zustand und die übrigen als
-  nicht erreichbar. Bisher antwortete das Modell „Alle Lichter sind aus“.
-- „Mach das Licht in der Küche an“ schaltet bei teilweise nicht erreichbaren
-  Lampen die übrigen und nennt beide Teile.
-- Besteht der Nutzer mehrmals auf einem Gerät, das nicht in der Liste steht,
-  lehnt das Modell jedes Mal ab, statt eine entity_id zu erfinden.
-- Modus-Schalter der Heizung: „Aktiviere den Abwesenheitsmodus der Heizung“
-  schaltet den Schalter „Heizung … Abwesenheitsmodus“, nicht das Thermostat.
-- „das Licht im Flur“ meint immer alle Lampen im Raum. Nur der Name allein
-  („Mach Küche an“) meint die Lampe, die so heißt wie der Raum.
-- Bekannte Schwäche: Fragen nach Türkontakten („Ist die Balkontür im
-  Wohnzimmer offen?“) treffen je nach Geräteliste manchmal den falschen
-  Kontakt.
+- New model v7 (`qwen2.5-3b-ha-v7-Q4_K_M.gguf`), retrained from
+  Qwen2.5-3B-Instruct with 8,000 examples and 2.5 epochs.
+- Rooms with partly unavailable lamps: "Ist das Licht in der Küche an?"
+  names the available lamps with their state and the rest as unavailable.
+  Before, the model answered "Alle Lichter sind aus".
+- "Mach das Licht in der Küche an" with partly unavailable lamps switches
+  the others and names both parts.
+- If the user insists several times on a device that is not in the list,
+  the model refuses each time instead of inventing an entity_id.
+- Heating mode switches: "Aktiviere den Abwesenheitsmodus der Heizung"
+  switches the switch "Heizung … Abwesenheitsmodus", not the thermostat.
+- "das Licht im Flur" always means all lamps in the room. Only the name
+  alone ("Mach Küche an") means the lamp named like the room.
+- Known weakness: Questions about door contacts ("Ist die Balkontür im
+  Wohnzimmer offen?") sometimes hit the wrong contact, depending on the
+  device list.
 
 ## 0.5.0
 
-- Neues Modell v4 (`qwen2.5-3b-ha-v4-Q4_K_M.gguf`), neu trainiert ab
-  Qwen2.5-3B-Instruct mit 8.000 Beispielen und 2,5 Epochen.
-- „Licht in der Küche“ schaltet alle Lampen im Raum, auch wenn eine Lampe
-  selbst „Küche“ heißt und daneben „Küche Links“ und „Küche Rechts“ stehen.
-- Mehrere Bewässerungen: „Bewässere die Balkonpflanzen“ öffnet das Ventil auf
-  dem Balkon und startet nicht die Gartenbewässerung.
-- Teilerfolge nennen beide Teile: „Gartenbeleuchtung ist gerade nicht
-  erreichbar. Den Rest habe ich erledigt: Flur eingeschaltet.“
-- Kontrollfragen wie „Ist es jetzt an?“ beginnen mit „Ja“ oder „Nein“, passend
-  zum Zustand.
-- Kennt Gerätestatus wie `in_use`, `program_ended` oder `not_connected`.
-- Integration: Enthält eine Aktion mehrere Geräte und ist eines davon nicht
-  erreichbar, schaltet sie die übrigen und meldet nur dieses als Fehler.
-  Bisher schlug die ganze Aktion fehl.
+- New model v4 (`qwen2.5-3b-ha-v4-Q4_K_M.gguf`), retrained from
+  Qwen2.5-3B-Instruct with 8,000 examples and 2.5 epochs.
+- "Licht in der Küche" switches all lamps in the room, even when one lamp
+  itself is called "Küche" and "Küche Links" and "Küche Rechts" are next to
+  it.
+- Multiple irrigation systems: "Bewässere die Balkonpflanzen" opens the valve
+  on the balcony and does not start the garden irrigation.
+- Partial successes name both parts: "Gartenbeleuchtung ist gerade nicht
+  erreichbar. Den Rest habe ich erledigt: Flur eingeschaltet."
+- Check questions like "Ist es jetzt an?" start with "Ja" or "Nein",
+  matching the state.
+- Knows device states like `in_use`, `program_ended` or `not_connected`.
+- Integration: If an action contains several devices and one of them is
+  unavailable, it switches the others and reports only that one as an error.
+  Before, the whole action failed.
 
 ## 0.4.0
 
-- Neues Modell v3 (`qwen2.5-3b-ha-v3-Q4_K_M.gguf`), neu trainiert ab
+- New model v3 (`qwen2.5-3b-ha-v3-Q4_K_M.gguf`), retrained from
   Qwen2.5-3B-Instruct.
-- Gespräche über mehrere Runden: „Und wieder aus“, „Welches Licht hast du
-  ausgeschaltet?“, „Nein, ich meinte im Esszimmer“, „Mach das rückgängig“.
-- Ist ein Gerät nicht erreichbar, meldet das Modell den Fehler, statt Erfolg
-  zu behaupten. Bei mehreren Befehlen meldet es, dass nur ein Teil geklappt hat.
-- Geräte, die nicht in der Liste stehen, lehnt das Modell ab, statt ein
-  ähnliches Gerät zu schalten. Gibt es das Gerät in einem anderen Raum, nennt
-  es diesen.
-- Unterscheidet Status-Sensor und Steckdose eines Geräts („Trockner“ und
-  „Trockner Power“) und kennt Markise, Mähroboter, Ventile, Gruppen und
-  Buttons.
-- Leere Optionen `model_url` und `model_sha256` laden das Modell, das zur
-  Add-on-Version gehört. Ein Add-on-Update bringt damit auch das neue Modell.
-  Ältere Standardmodelle werden nach dem Download entfernt.
+- Conversations over several turns: "Und wieder aus", "Welches Licht hast du
+  ausgeschaltet?", "Nein, ich meinte im Esszimmer", "Mach das rückgängig".
+- If a device is unavailable, the model reports the error instead of
+  claiming success. With several commands it reports that only some worked.
+- The model refuses devices that are not in the list instead of switching a
+  similar device. If the device exists in another room, it names that room.
+- Tells apart the status sensor and the smart plug of a device ("Trockner"
+  and "Trockner Power") and knows awnings, robot mowers, valves, groups and
+  buttons.
+- Empty options `model_url` and `model_sha256` load the model that belongs
+  to the app version. An app update thus also brings the new model.
+  Older default models are removed after the download.
 
 ## 0.3.1
 
-- Warnung im Log und in Home Assistant, wenn die CPU kein AVX2 unterstützt.
+- Warning in the log and in Home Assistant if the CPU does not support AVX2.
 
 ## 0.3.0
 
-- Erste Version mit Download von Hugging Face und SHA-256-Prüfung.
+- First version with download from Hugging Face and SHA-256 verification.

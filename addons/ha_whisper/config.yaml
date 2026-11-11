@@ -1,0 +1,34 @@
+name: HA Whisper
+version: "0.1.0"
+slug: ha_whisper
+description: Speech-to-text with whisper.cpp on the GPU (NVIDIA, AMD, Intel) or the CPU
+url: https://github.com/mKenfenheuer/homeassistant-llm
+arch:
+  - amd64
+  - aarch64
+startup: services
+boot: auto
+ports:
+  8080/tcp: null
+ports_description:
+  8080/tcp: whisper.cpp HTTP API (only needed outside Home Assistant)
+map:
+  - type: share
+    read_only: false
+watchdog: http://[HOST]:[PORT:8080]/
+# GPU access: /dev/dri everywhere; on Home Assistant OS with GPU support
+# also /dev/kfd and the NVIDIA devices and libraries through CDI.
+# Without a GPU whisper.cpp runs on the CPU.
+video: true
+options:
+  model: auto
+  language: auto
+  gpu: true
+  threads: 0
+  extra_args: ""
+schema:
+  model: list(auto|tiny|base|small|medium|large-v3-turbo|large-v3)
+  language: str
+  gpu: bool
+  threads: int(0,128)
+  extra_args: str?

@@ -1,4 +1,7 @@
 configuration:
+  language:
+    name: Language
+    description: "Language of the model. The app downloads the model of this language. Available today: German (de)."
   auto_update:
     name: Update model automatically
     description: Downloads new models from Hugging Face as soon as they are published. Only applies if model URL and local model file are empty.

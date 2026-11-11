@@ -2,22 +2,36 @@
   "config": {
     "step": {
       "user": {
+        "title": "Lokale KI",
+        "menu_options": {
+          "conversation": "Gesprächsagent (llama.cpp, App \"HA LLM Inference\")",
+          "stt": "Spracherkennung (whisper.cpp, App \"HA Whisper\")"
+        }
+      },
+      "conversation": {
         "title": "Lokaler LLM-Server",
-        "description": "URL des llama.cpp-Servers (Add-on \"HA LLM Inference\" oder eigener llama-server).",
+        "description": "URL des llama.cpp-Servers (App \"HA LLM Inference\" oder eigener llama-server).",
+        "data": {
+          "url": "Server-URL"
+        }
+      },
+      "stt": {
+        "title": "Lokaler Whisper-Server",
+        "description": "URL des whisper.cpp-Servers (App \"HA Whisper\" oder eigener whisper-server).",
         "data": {
           "url": "Server-URL"
         }
       },
       "reconfigure": {
-        "title": "LLM-Server ändern",
-        "description": "Neue URL des llama.cpp-Servers, z. B. Add-on \"HA LLM Inference\" oder llama-server auf einem GPU-Rechner. Der Sprachassistent und seine Einstellungen bleiben erhalten.",
+        "title": "Server ändern",
+        "description": "Neue URL des Servers, z. B. das App oder ein Server auf einem GPU-Rechner. Die Entität und ihre Einstellungen bleiben erhalten.",
         "data": {
           "url": "Server-URL"
         }
       }
     },
     "error": {
-      "cannot_connect": "llama-server ist unter dieser URL nicht erreichbar (GET /health)."
+      "cannot_connect": "Der Server ist unter dieser URL nicht erreichbar."
     },
     "abort": {
       "already_configured": "Dieser Server ist bereits eingerichtet.",

@@ -33,6 +33,7 @@ from homeassistant.helpers.selector import (
 from .const import (
     ADDON_SUFFIXES,
     CONF_MAX_ENTITIES,
+    CONF_TYPE,
     CONF_MAX_HISTORY,
     CONF_TEMPERATURE,
     CONF_TIMEOUT,
@@ -44,28 +45,33 @@ from .const import (
     DEFAULT_TIMEOUT,
     DEFAULT_URL,
     DEFAULT_USE_LOCATION,
+    DEFAULT_WHISPER_URL,
     DOMAIN,
+    TYPE_CONVERSATION,
+    TYPE_STT,
+    WHISPER_ADDON_SUFFIXES,
 )
 
 
-def _default_url(hass) -> str:
-    """URL of the installed HA LLM Inference add-on, if any.
+def _default_url(hass, kind: str = TYPE_CONVERSATION) -> str:
+    """URL of the installed app of this kind, if any.
 
-    A local add-on has the slug local_ha_llm_inference, one from a git
-    repository <hash>_ha_llm_inference. The hostname is the slug with dashes.
-    The GPU add-ons end with _cuda or _vulkan and are preferred over the CPU
-    add-on.
+    A local app has the slug local_<name>, one from a git repository
+    <hash>_<name>. The hostname is the slug with dashes. Earlier suffixes in
+    the list are preferred.
     """
+    suffixes, default = ((ADDON_SUFFIXES, DEFAULT_URL) if kind == TYPE_CONVERSATION
+                         else (WHISPER_ADDON_SUFFIXES, DEFAULT_WHISPER_URL))
     try:
         from homeassistant.helpers.hassio import is_hassio
 
         if not is_hassio(hass):
-            return DEFAULT_URL
+            return default
         from homeassistant.components.hassio import get_addons_info
 
         found: dict[int, str] = {}
         for slug, info in (get_addons_info(hass) or {}).items():
-            for rank, suffix in enumerate(ADDON_SUFFIXES):
+            for rank, suffix in enumerate(suffixes):
                 if slug.endswith(suffix) and rank not in found:
                     host = (info or {}).get("hostname") or slug.replace("_", "-")
                     found[rank] = f"http://{host}:8080"
@@ -73,14 +79,18 @@ def _default_url(hass) -> str:
             return found[min(found)]
     except Exception:  # noqa: BLE001 - Supervisor not ready or API changed
         pass
-    return DEFAULT_URL
+    return default
 
 
-async def _probe(hass, url: str) -> str | None:
-    """Return an error key or None if llama-server answers on /health."""
+async def _probe(hass, url: str, kind: str = TYPE_CONVERSATION) -> str | None:
+    """Return an error key or None if the server answers.
+
+    llama-server on /health, whisper-server on its start page.
+    """
     session = async_get_clientsession(hass)
+    path = "/health" if kind == TYPE_CONVERSATION else "/"
     try:
-        async with session.get(url.rstrip("/") + "/health",
+        async with session.get(url.rstrip("/") + path,
                                timeout=aiohttp.ClientTimeout(total=10)) as resp:
             # 503 = server is up but still loading the model
             if resp.status in (200, 503):
@@ -95,34 +105,51 @@ class HaLlmAgentConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None
                               ) -> ConfigFlowResult:
+        """Choose what to set up: conversation agent or speech-to-text."""
+        return self.async_show_menu(step_id="user",
+                                    menu_options=[TYPE_CONVERSATION, TYPE_STT])
+
+    async def async_step_conversation(self, user_input: dict[str, Any] | None = None
+                                      ) -> ConfigFlowResult:
+        return await self._async_step_server(TYPE_CONVERSATION, "Local LLM",
+                                             user_input)
+
+    async def async_step_stt(self, user_input: dict[str, Any] | None = None
+                             ) -> ConfigFlowResult:
+        return await self._async_step_server(TYPE_STT, "Whisper", user_input)
+
+    async def _async_step_server(self, kind: str, title: str,
+                                 user_input: dict[str, Any] | None
+                                 ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
             url = user_input[CONF_URL].rstrip("/")
             await self.async_set_unique_id(url)
             self._abort_if_unique_id_configured()
-            if (err := await _probe(self.hass, url)) is not None:
+            if (err := await _probe(self.hass, url, kind)) is not None:
                 errors["base"] = err
             else:
                 return self.async_create_entry(
-                    title="Lokales LLM", data={CONF_URL: url})
+                    title=title, data={CONF_URL: url, CONF_TYPE: kind})
         schema = vol.Schema({
-            vol.Required(CONF_URL, default=_default_url(self.hass)): TextSelector(
-                TextSelectorConfig(type=TextSelectorType.URL)),
+            vol.Required(CONF_URL, default=_default_url(self.hass, kind)):
+                TextSelector(TextSelectorConfig(type=TextSelectorType.URL)),
         })
-        return self.async_show_form(step_id="user", data_schema=schema,
+        return self.async_show_form(step_id=kind, data_schema=schema,
                                     errors=errors)
 
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None
                                      ) -> ConfigFlowResult:
         """Point an existing entry at another llama-server (add-on, GPU host)."""
         entry = self._get_reconfigure_entry()
+        kind = entry.data.get(CONF_TYPE, TYPE_CONVERSATION)
         errors: dict[str, str] = {}
         if user_input is not None:
             url = user_input[CONF_URL].rstrip("/")
             if any(e.unique_id == url and e.entry_id != entry.entry_id
                    for e in self._async_current_entries(include_ignore=False)):
                 return self.async_abort(reason="already_configured")
-            if (err := await _probe(self.hass, url)) is not None:
+            if (err := await _probe(self.hass, url, kind)) is not None:
                 errors["base"] = err
             else:
                 # the entry's update listener reloads it
@@ -140,6 +167,12 @@ class HaLlmAgentConfigFlow(ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
         return HaLlmAgentOptionsFlow()
+
+    @classmethod
+    @callback
+    def async_supports_options_flow(cls, config_entry: ConfigEntry) -> bool:
+        """Only the conversation agent has options."""
+        return config_entry.data.get(CONF_TYPE, TYPE_CONVERSATION) == TYPE_CONVERSATION
 
 
 class HaLlmAgentOptionsFlow(OptionsFlow):

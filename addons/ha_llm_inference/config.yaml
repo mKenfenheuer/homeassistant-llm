@@ -1,7 +1,7 @@
 name: HA LLM Inference
-version: "0.10.0"
+version: "0.11.0"
 slug: ha_llm_inference
-description: llama.cpp-Server für das deutsche Home-Assistant-Sprachmodell, auf der GPU (NVIDIA, AMD, Intel) oder der CPU
+description: llama.cpp server with the Home Assistant language model, on the GPU (NVIDIA, AMD, Intel) or the CPU
 arch:
   - amd64
   - aarch64
@@ -10,7 +10,7 @@ boot: auto
 ports:
   8080/tcp: null
 ports_description:
-  8080/tcp: OpenAI-kompatible API (nur für Zugriff außerhalb von Home Assistant)
+  8080/tcp: OpenAI-compatible API (only needed outside Home Assistant)
 map:
   - type: share
     read_only: false
@@ -22,6 +22,7 @@ homeassistant_api: true
 # Without a GPU llama.cpp runs on the CPU.
 video: true
 options:
+  language: de
   auto_update: true
   update_interval: 6
   model_url: ""
@@ -33,6 +34,7 @@ options:
   gpu_layers: 99
   extra_args: ""
 schema:
+  language: list(de)
   auto_update: bool
   update_interval: int(1,168)
   model_url: str?

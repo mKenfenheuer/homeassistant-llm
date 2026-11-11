@@ -1,5 +1,5 @@
 {
-  "name": "HA LLM Agent (lokal)",
+  "name": "HA LLM Agent (local)",
   "homeassistant": "2026.10.0",
   "render_readme": true
 }

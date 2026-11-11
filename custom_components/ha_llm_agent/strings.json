@@ -2,22 +2,36 @@
   "config": {
     "step": {
       "user": {
+        "title": "Local AI",
+        "menu_options": {
+          "conversation": "Conversation agent (llama.cpp, app \"HA LLM Inference\")",
+          "stt": "Speech-to-text (whisper.cpp, app \"HA Whisper\")"
+        }
+      },
+      "conversation": {
         "title": "Local LLM server",
-        "description": "URL of the llama.cpp server (add-on \"HA LLM Inference\" or your own llama-server).",
+        "description": "URL of the llama.cpp server (app \"HA LLM Inference\" or your own llama-server).",
+        "data": {
+          "url": "Server URL"
+        }
+      },
+      "stt": {
+        "title": "Local Whisper server",
+        "description": "URL of the whisper.cpp server (app \"HA Whisper\" or your own whisper-server).",
         "data": {
           "url": "Server URL"
         }
       },
       "reconfigure": {
-        "title": "Change LLM server",
-        "description": "New URL of the llama.cpp server, e.g. the add-on \"HA LLM Inference\" or llama-server on a GPU host. The conversation agent and its settings are kept.",
+        "title": "Change server",
+        "description": "New URL of the server, e.g. the app or a server on a GPU host. The entity and its settings are kept.",
         "data": {
           "url": "Server URL"
         }
       }
     },
     "error": {
-      "cannot_connect": "Cannot reach llama-server at this URL (GET /health)."
+      "cannot_connect": "Cannot reach the server at this URL."
     },
     "abort": {
       "already_configured": "This server is already configured.",

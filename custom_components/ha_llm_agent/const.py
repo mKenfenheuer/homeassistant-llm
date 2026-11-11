@@ -3,6 +3,10 @@
 DOMAIN = "ha_llm_agent"
 
 CONF_URL = "url"
+# kind of config entry: conversation agent (llama.cpp) or speech-to-text (whisper.cpp)
+CONF_TYPE = "type"
+TYPE_CONVERSATION = "conversation"
+TYPE_STT = "stt"
 CONF_TEMPERATURE = "temperature"
 CONF_MAX_HISTORY = "max_history"
 CONF_TIMEOUT = "timeout"
@@ -11,8 +15,13 @@ CONF_USE_LOCATION = "use_location"
 
 # hostname of the local add-on "ha_llm_inference" inside the HA network
 DEFAULT_URL = "http://local-ha-llm-inference:8080"
-# slug endings of the inference add-ons, preferred first: NVIDIA, AMD/Intel, CPU
-ADDON_SUFFIXES = ("ha_llm_inference_cuda", "ha_llm_inference_vulkan", "ha_llm_inference")
+# slug endings of the inference apps, preferred first. The NVIDIA and AMD/Intel
+# apps of versions up to 0.9 are still found.
+ADDON_SUFFIXES = ("ha_llm_inference", "ha_llm_inference_cuda", "ha_llm_inference_vulkan")
+# hostname and slug ending of the speech-to-text app "ha_whisper"
+DEFAULT_WHISPER_URL = "http://local-ha-whisper:8080"
+WHISPER_ADDON_SUFFIXES = ("ha_whisper",)
+STT_TIMEOUT = 60               # seconds per transcription
 DEFAULT_TEMPERATURE = 0.0
 DEFAULT_MAX_HISTORY = 6        # previous user turns kept per conversation
 DEFAULT_TIMEOUT = 300          # seconds per LLM request (CPU inference is slow)

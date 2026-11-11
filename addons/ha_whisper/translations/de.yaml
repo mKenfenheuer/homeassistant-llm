@@ -1,0 +1,18 @@
+configuration:
+  model:
+    name: Modell
+    description: "Whisper-Modell. auto = large-v3-turbo auf einer GPU, small auf der CPU. Größere Modelle erkennen besser, brauchen aber mehr Speicher und Zeit."
+  language:
+    name: Standardsprache
+    description: "Sprachcode wie de oder en, oder auto für die Erkennung. Gilt nur, wenn eine Anfrage keine Sprache mitgibt; die Integration sendet die Sprache der Assist-Pipeline."
+  gpu:
+    name: GPU verwenden
+    description: Aus = die Spracherkennung läuft immer auf der CPU, etwa um die GPU für das Sprachmodell freizuhalten.
+  threads:
+    name: CPU-Threads
+    description: 0 = automatisch
+  extra_args:
+    name: Zusätzliche Argumente
+    description: Weitere whisper-server-Parameter, z. B. --beam-size 5
+network:
+  8080/tcp: whisper.cpp-HTTP-API (nur für Zugriff außerhalb von Home Assistant)

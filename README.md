@@ -1,55 +1,72 @@
 <img src="brand/logo.svg" alt="HA LLM" height="80">
 
-Ein lokales deutsches Sprachmodell für Home Assistant. Es schaltet Geräte und
-beantwortet Fragen zu ihrem Zustand, ohne Cloud. Basis ist
-Qwen2.5-3B-Instruct mit LoRA (Built with Qwen, Qwen RESEARCH LICENSE, nur
-nicht-kommerzielle Nutzung). Das Modell ist 1,9 GB groß (GGUF, Q4_K_M) und
-läuft auf der CPU des Home-Assistant-Hosts oder auf einer GPU.
+Local voice assistant components for Home Assistant, running on the GPU of
+the Home Assistant host (NVIDIA, AMD, Intel) or on the CPU, without cloud. The
+goal is the complete Assist pipeline locally: speech-to-text, conversation and
+text-to-speech.
 
-| Komponente | Ort |
-|------------|-----|
-| Add-on „HA LLM Inference“ (llama.cpp-Server, GPU oder CPU) | `addons/ha_llm_inference/` |
-| Integration „HA LLM Agent (lokal)“ (Gesprächsagent für Assist) | `custom_components/ha_llm_agent/` |
-| Modell | [mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF](https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF) |
-| Datensatz | [mkenfenheuer/homeassistant-tool-calling-de](https://huggingface.co/datasets/mkenfenheuer/homeassistant-tool-calling-de) |
+| Component | Part of the pipeline | Location |
+|-----------|----------------------|----------|
+| App "HA Whisper" (whisper.cpp server) | Speech-to-text | `addons/ha_whisper/` |
+| App "HA LLM Inference" (llama.cpp server) | Conversation | `addons/ha_llm_inference/` |
+| Integration "HA LLM Agent (local)" | Speech-to-text entity and conversation agent for Assist | `custom_components/ha_llm_agent/` |
+| Model | Conversation | [mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF](https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF) |
+| Dataset | Conversation | [mkenfenheuer/homeassistant-tool-calling-de](https://huggingface.co/datasets/mkenfenheuer/homeassistant-tool-calling-de) |
+
+Text-to-speech will follow as a third app.
+
+The conversation model is Qwen2.5-3B-Instruct with LoRA (Built with Qwen,
+Qwen RESEARCH LICENSE, non-commercial use only). It is 1.9 GB (GGUF, Q4_K_M)
+and available in German today. The app has a `language` option, so models for
+more languages can be added.
 
 ## Installation
 
-1. **Add-on:** Unter Einstellungen → Add-ons → Add-on-Store → ⋮ →
-   Repositories die URL dieses Repositorys eintragen. Danach „HA LLM
-   Inference“ installieren und starten. Beim ersten Start lädt das Add-on
-   das Modell. Danach prüft es alle 6 Stunden, ob ein neues Modell vorliegt
-   (`auto_update`).
-2. **Integration:** In HACS → ⋮ → Benutzerdefinierte Repositories dieselbe
-   URL mit Typ „Integration“ eintragen. Danach „HA LLM Agent (lokal)“
-   installieren und Home Assistant neu starten.
-3. **Einrichtung:** „HA LLM Agent (lokal)“ hinzufügen. Die URL des Add-ons
-   ist vorausgefüllt. Unter Einstellungen → Sprachassistenten „Lokales LLM“
-   als Gesprächsagenten wählen.
+Every part is optional. Install only the apps you need and pick other
+engines for the rest of the Assist pipeline, for example the local Whisper
+app for speech-to-text and a cloud conversation agent.
 
-Das Modell sieht nur die Entitäten, die unter „Entitäten freigeben“ für
-Assist freigegeben sind.
+1. **Apps:** In Settings → Apps → App store → ⋮ → Repositories add the URL of
+   this repository. Install and start "HA Whisper" and/or "HA LLM Inference".
+   On the first start each app downloads its model.
+2. **Integration:** In HACS → ⋮ → Custom repositories add the same URL with
+   type "Integration". Install "HA LLM Agent (local)" and restart Home
+   Assistant.
+3. **Setup:** Add "HA LLM Agent (local)" once per app and choose
+   "Speech-to-text" or "Conversation agent". The URL of the installed app is
+   filled in. In Settings → Voice assistants select "Whisper" as
+   speech-to-text and "Local LLM" as conversation agent (entries from earlier versions are called "Lokales LLM").
+
+The model only sees the entities exposed to Assist under "Expose entities".
 
 ## Hardware
 
-Das Add-on rechnet auf einer GPU des Hosts, wenn es eine findet, sonst auf
-der CPU. Ohne GPU braucht es eine CPU mit AVX2, z. B. einen Intel N100 oder
-Ryzen. Gemessen mit 95 Entitäten auf 4 Kernen:
+Both apps use a GPU of the host if they find one, otherwise the CPU: NVIDIA
+through CUDA, AMD and Intel through Vulkan. Vulkan works with today's Home
+Assistant OS. NVIDIA needs the NVIDIA variant of Home Assistant OS, so far only
+available as a [test image](https://github.com/mKenfenheuer/operating-system/releases).
+Both apps share the same base images, Docker stores them only once.
 
-| Rechner | Erste Anfrage | Folgende Befehle |
-|---------|---------------|------------------|
-| CPU mit AVX2 | 34 s | 2–3 s |
-| CPU ohne AVX2 (Atom, Celeron J4125) | 19 min | 30–40 s |
+Speech-to-text, 11 s of audio:
+
+| Hardware | Whisper model | Time |
+|----------|---------------|------|
+| GeForce RTX 3090 | large-v3-turbo | 0.15 s |
+| CPU (Intel, 8 threads) | small | 3.7 s |
+| CPU (Intel, 8 threads) | large-v3-turbo | 15.8 s |
+
+Conversation with 95 entities on 4 cores:
+
+| Hardware | First request | Following commands |
+|----------|---------------|--------------------|
+| CPU with AVX2 | 34 s | 2–3 s |
+| CPU without AVX2 (Atom, Celeron J4125) | 19 min | 30–40 s |
 | GTX 1060 6 GB | 4 s | 1–2 s |
 
-NVIDIA-GPUs nutzt das Add-on über CUDA, AMD- und Intel-GPUs über Vulkan.
-Vulkan funktioniert mit dem heutigen Home Assistant OS, NVIDIA braucht die
-NVIDIA-Variante, die es bisher nur als
-[Testimage](https://github.com/mKenfenheuer/operating-system/releases) gibt.
-Eine RTX 3090 erzeugt 210 Tokens pro Sekunde, eine Radeon RX 6900 XT 130.
+An RTX 3090 generates 210 tokens per second, a Radeon RX 6900 XT 130.
 
-Ohne AVX2 und ohne GPU sollte das Modell auf einem anderen Rechner laufen. Die URL des
-Servers trägt man dann in der Integration unter „Neu konfigurieren“ ein:
+Without AVX2 and without a GPU the model should run on another machine. Enter
+the URL of that server in the integration under "Reconfigure":
 
 ```bash
 docker run -d --name ha-llm --restart unless-stopped --gpus all \
@@ -59,49 +76,56 @@ docker run -d --name ha-llm --restart unless-stopped --gpus all \
   --alias ha-llm --jinja -ngl 99 -fa on -c 16384 -np 1 --cache-reuse 256
 ```
 
-## Funktionsweise
+## How it works
 
-Die Integration schickt dem Modell die freigegebenen Entitäten
-(`entity_id | Name | Bereich`) und zwei Werkzeuge. `control` ruft
-Home-Assistant-Dienste auf, bei Lichtern auch für einen ganzen Bereich
-(„Licht in der Küche an“ → `"area": "Küche"`). `get_state` liest Zustände und
-Messwerte. Die Integration lässt nur freigegebene Entitäten und die Dienste
-aus `llm_schema.SERVICES` zu.
+**Speech-to-text** The integration collects the recording of the Assist
+pipeline and sends it with the language of the pipeline to whisper-server.
+Whisper transcribes complete recordings, so the text arrives after the user
+stops speaking.
 
-Meldet ein Gerät einen Fehler, sagt das Modell das, statt einen Erfolg zu
-behaupten. Das Verhalten stammt aus den Trainingsdaten, die Integration
-erzwingt es nicht durch Regeln.
+**Conversation** The integration sends the exposed entities
+(`entity_id | name | area`) and two tools to the model. `control` calls Home
+Assistant services, for lights also for a whole area ("Licht in der Küche an"
+→ `"area": "Küche"`). `get_state` reads states and measurements. The
+integration only allows exposed entities and the services in
+`llm_schema.SERVICES`.
 
-## Ergebnisse
+If a device reports an error, the model says so instead of claiming success.
+This behavior comes from the training data, the integration doesn't enforce it
+with rules.
 
-| Test | Modell v15.1 |
-|------|--------------|
-| 300 Testgespräche in unbekannten Häusern: korrekte Werkzeugaufrufe | 99,7 % |
-| dieselben Gespräche: Antworten passend zum Werkzeugergebnis | 100 % |
-| Echtes Haus mit über 100 Entitäten: 58 Sätze plus 4 Varianten | 186/186 |
-| Home Assistant Ende zu Ende (CPU, 8 Threads) | 24/24, Median 2,9 s |
+## Results
+
+| Test | Model v15.1 |
+|------|-------------|
+| 300 test conversations in unseen houses: correct tool calls | 99.7 % |
+| same conversations: answers matching the tool result | 100 % |
+| Real house with more than 100 entities: 58 sentences plus 4 variants | 186/186 |
+| Home Assistant end to end (CPU, 8 threads) | 24/24, median 2.9 s |
 
 ## Training
 
 ```bash
-./run_train.sh                                  # 8.000 synthetische Gespräche, LoRA r=32, ~5,5 h auf RTX 3090
-./run_export.sh output/merged qwen2.5-3b-ha-vX  # GGUF Q4_K_M mit Importance Matrix und Chat-Vorlage
-./run_test.sh                                   # Bewertung auf data/eval.jsonl
+./run_train.sh                                  # 8,000 synthetic conversations, LoRA r=32, ~5.5 h on an RTX 3090
+./run_export.sh output/merged qwen2.5-3b-ha-vX  # GGUF Q4_K_M with importance matrix and chat template
+./run_test.sh                                   # evaluation on data/eval.jsonl
 ```
 
-`src/gen_dataset.py` erzeugt jedes Gespräch in einem neu gewürfelten Haus.
-`src/soup.py` mittelt die LoRA-Gewichte mehrerer Läufe. v15.1 ist das Mittel
-aus drei Läufen. Training und Integration lesen denselben Prompt aus
-`llm_schema.py`. Ändert sich diese Datei, muss das Modell neu trainiert
-werden.
+`src/gen_dataset.py` creates every conversation in a newly randomized house.
+`src/soup.py` averages the LoRA weights of several runs. v15.1 is the average
+of three runs. Training and integration read the same prompt from
+`llm_schema.py`. If this file changes, the model must be trained again.
 
-`src/upload_hf.py` lädt ein neues Modell auf Hugging Face hoch und schreibt
-`latest.json`. Ab diesem Moment aktualisieren sich alle Add-ons mit
-`auto_update`.
+`src/upload_hf.py` uploads a new model to Hugging Face and writes
+`latest.json`. From then on all apps with `auto_update` update themselves.
 
-## Grenzen
+## Limits
 
-- Nur Deutsch, nur die Dienste in `llm_schema.SERVICES`. Das Modell legt
-  keine Timer oder Automationen an und beantwortet keine Wissensfragen.
-- Bei mehr als etwa 250 Entitäten reichen 8.192 Tokens Kontext nicht. Die
-  Integration kürzt dann die Liste.
+- The conversation model is German only and only uses the services in
+  `llm_schema.SERVICES`. It doesn't create timers or automations and doesn't
+  answer general knowledge questions. A model for another language also needs
+  the prompt of the integration in that language.
+- With more than about 250 entities, 8,192 tokens of context aren't enough.
+  The integration then shortens the list.
+- Speech-to-text isn't streaming yet: whisper.cpp needs the complete
+  recording.
