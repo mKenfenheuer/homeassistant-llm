@@ -8,9 +8,7 @@ läuft auf der CPU des Home-Assistant-Hosts oder auf einer GPU.
 
 | Komponente | Ort |
 |------------|-----|
-| Add-on „HA LLM Inference“ (llama.cpp-Server, CPU) | `addons/ha_llm_inference/` |
-| Add-on „HA LLM Inference (NVIDIA)“ (CUDA) | `addons/ha_llm_inference_cuda/` |
-| Add-on „HA LLM Inference (AMD/Intel)“ (Vulkan) | `addons/ha_llm_inference_vulkan/` |
+| Add-on „HA LLM Inference“ (llama.cpp-Server, GPU oder CPU) | `addons/ha_llm_inference/` |
 | Integration „HA LLM Agent (lokal)“ (Gesprächsagent für Assist) | `custom_components/ha_llm_agent/` |
 | Modell | [mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF](https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF) |
 | Datensatz | [mkenfenheuer/homeassistant-tool-calling-de](https://huggingface.co/datasets/mkenfenheuer/homeassistant-tool-calling-de) |
@@ -34,8 +32,9 @@ Assist freigegeben sind.
 
 ## Hardware
 
-Das Add-on braucht eine CPU mit AVX2, z. B. einen Intel N100 oder Ryzen.
-Gemessen mit 95 Entitäten auf 4 Kernen:
+Das Add-on rechnet auf einer GPU des Hosts, wenn es eine findet, sonst auf
+der CPU. Ohne GPU braucht es eine CPU mit AVX2, z. B. einen Intel N100 oder
+Ryzen. Gemessen mit 95 Entitäten auf 4 Kernen:
 
 | Rechner | Erste Anfrage | Folgende Befehle |
 |---------|---------------|------------------|
@@ -43,13 +42,11 @@ Gemessen mit 95 Entitäten auf 4 Kernen:
 | CPU ohne AVX2 (Atom, Celeron J4125) | 19 min | 30–40 s |
 | GTX 1060 6 GB | 4 s | 1–2 s |
 
-Mit einer GPU im Home-Assistant-Host rechnet das Modell dort: „HA LLM
-Inference (NVIDIA)“ für NVIDIA-GPUs, „HA LLM Inference (AMD/Intel)“ für AMD-
-und Intel-GPUs. Ohne GPU rechnen beide auf der CPU. Vulkan auf AMD und Intel
-funktioniert mit dem heutigen Home Assistant OS, NVIDIA braucht die
+NVIDIA-GPUs nutzt das Add-on über CUDA, AMD- und Intel-GPUs über Vulkan.
+Vulkan funktioniert mit dem heutigen Home Assistant OS, NVIDIA braucht die
 NVIDIA-Variante, die es bisher nur als
 [Testimage](https://github.com/mKenfenheuer/operating-system/releases) gibt.
-Auf einer Radeon RX 6900 XT erzeugt das Vulkan-Add-on 130 Tokens pro Sekunde.
+Eine RTX 3090 erzeugt 210 Tokens pro Sekunde, eine Radeon RX 6900 XT 130.
 
 Ohne AVX2 und ohne GPU sollte das Modell auf einem anderen Rechner laufen. Die URL des
 Servers trägt man dann in der Integration unter „Neu konfigurieren“ ein:

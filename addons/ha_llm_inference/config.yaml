@@ -1,7 +1,7 @@
 name: HA LLM Inference
-version: "0.9.1"
+version: "0.10.0"
 slug: ha_llm_inference
-description: llama.cpp-Server (CPU) für das deutsche Home-Assistant-Sprachmodell
+description: llama.cpp-Server für das deutsche Home-Assistant-Sprachmodell, auf der GPU (NVIDIA, AMD, Intel) oder der CPU
 arch:
   - amd64
   - aarch64
@@ -17,6 +17,10 @@ map:
 watchdog: http://[HOST]:[PORT:8080]/health
 # only used to post a notification if the CPU has no AVX2
 homeassistant_api: true
+# GPU access: /dev/dri everywhere; on Home Assistant OS with GPU support
+# also /dev/kfd and the NVIDIA devices and libraries through CDI.
+# Without a GPU llama.cpp runs on the CPU.
+video: true
 options:
   auto_update: true
   update_interval: 6
@@ -26,6 +30,7 @@ options:
   hf_token: ""
   ctx_size: 8192
   threads: 0
+  gpu_layers: 99
   extra_args: ""
 schema:
   auto_update: bool
@@ -36,4 +41,5 @@ schema:
   hf_token: password?
   ctx_size: int(2048,32768)
   threads: int(0,128)
+  gpu_layers: int(0,999)
   extra_args: str?

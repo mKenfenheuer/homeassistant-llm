@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.10.0
+
+- Ein Add-on für CPU und GPU: „HA LLM Inference“ nutzt eine NVIDIA-GPU (CUDA),
+  eine AMD- oder Intel-GPU (Vulkan) oder die CPU, je nachdem, was es findet.
+  Die Add-ons „HA LLM Inference (NVIDIA)“ und „(AMD/Intel)“ entfallen. Wer
+  eines davon nutzt, installiert „HA LLM Inference“ und deinstalliert das
+  alte; die Integration findet das Add-on bei der Einrichtung, eine bestehende
+  lässt sich über „Neu konfigurieren“ umstellen. Das Modell unter
+  `/share/ha_llm/` bleibt.
+- Neue Option `gpu_layers` (Standard 99 = alle Schichten, 0 = nur CPU).
+- Das Image ist auf amd64 größer (etwa 5,9 GB statt 1,2 GB), weil es die
+  CUDA-Laufzeit enthält.
+
 ## 0.9.1
 
 - Die AVX2-Warnung erscheint nur noch auf x86-CPUs, nicht mehr auf ARM.

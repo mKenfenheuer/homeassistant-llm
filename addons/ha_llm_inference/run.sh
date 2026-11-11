@@ -49,8 +49,6 @@ AUTO_UPDATE="$(opt auto_update)"
 INTERVAL="$(opt update_interval)"
 AUTO_UPDATE="${AUTO_UPDATE:-true}"
 INTERVAL="${INTERVAL:-6}"
-# cpu, cuda or vulkan, set by the Dockerfile of each add-on
-BACKEND="${HA_LLM_BACKEND:-cpu}"
 GPU_LAYERS="$(opt gpu_layers)"
 GPU_LAYERS="${GPU_LAYERS:-99}"
 
@@ -66,19 +64,24 @@ if [ -z "$MODEL_URL" ] && [ -z "$MODEL_PATH" ]; then
     MANAGED=true
 fi
 
+# llama.cpp loads the backends it finds hardware for. With an NVIDIA GPU
+# both CUDA and Vulkan list it, so take the devices of one backend only:
+# CUDA, else Vulkan (AMD, Intel, ARM), else the CPU.
 ON_GPU=false
-if [ "$BACKEND" != "cpu" ]; then
-    # llama.cpp lists the GPUs of the backend; without one it runs on the CPU
-    DEVICES="$(/app/llama-server --list-devices 2>&1 | grep -E '^ +[A-Za-z]+[0-9]+:' || true)"
+GPU_DEVICES=""
+DEVICE_LIST="$(/app/llama-server --list-devices 2>/dev/null | grep -E '^ +[A-Za-z]+[0-9]+:' || true)"
+for backend in CUDA Vulkan; do
+    DEVICES="$(echo "$DEVICE_LIST" | grep -E "^ +${backend}[0-9]+:" || true)"
     if [ -n "$DEVICES" ]; then
         ON_GPU=true
-        echo "[INFO] GPU (${BACKEND}):"
+        GPU_DEVICES="$(echo "$DEVICES" | sed -E 's/^ +([A-Za-z]+[0-9]+):.*/\1/' | paste -sd, -)"
+        echo "[INFO] GPU (${backend}):"
         echo "$DEVICES"
-    else
-        echo "[INFO] Keine GPU für ${BACKEND} gefunden, das Modell läuft auf der CPU."
-        echo "[INFO] Für die GPU braucht der Host den passenden Treiber, bei NVIDIA"
-        echo "[INFO] die NVIDIA-Variante von Home Assistant OS."
+        break
     fi
+done
+if [ "$ON_GPU" = false ]; then
+    echo "[INFO] Keine GPU gefunden, das Modell läuft auf der CPU."
 fi
 # the AVX2 warning only applies to x86 CPUs
 if [ "$ON_GPU" = false ] && [ "$(uname -m)" = x86_64 ] && ! grep -qw avx2 /proc/cpuinfo; then
@@ -230,8 +233,10 @@ start_server() {
     if [ "${THREADS:-0}" != "0" ]; then
         args+=(--threads "$THREADS")
     fi
-    if [ "$BACKEND" != "cpu" ]; then
-        args+=(--n-gpu-layers "$GPU_LAYERS")
+    if [ "$ON_GPU" = true ] && [ "${GPU_LAYERS}" != "0" ]; then
+        args+=(--device "$GPU_DEVICES" --n-gpu-layers "$GPU_LAYERS")
+    else
+        args+=(--device none)
     fi
     echo "[INFO] Starte llama-server: ${args[*]} ${EXTRA}"
     # shellcheck disable=SC2086

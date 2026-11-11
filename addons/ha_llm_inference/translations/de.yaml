@@ -23,6 +23,9 @@ configuration:
   threads:
     name: CPU-Threads
     description: 0 = automatisch
+  gpu_layers:
+    name: GPU-Schichten
+    description: Anzahl der Modellschichten auf der GPU. 99 = alle, 0 = nur CPU.
   extra_args:
     name: Zusätzliche Argumente
     description: Weitere llama-server-Parameter, z. B. --mlock
