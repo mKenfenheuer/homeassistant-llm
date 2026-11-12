@@ -50,6 +50,11 @@ The app gets the GPU through the `video` option. Switch `gpu` off to keep the
 GPU free, for example for the language model; speech recognition then runs on
 the CPU.
 
+With `large-v3-turbo` the app needs about 900 to 1100 MiB of GPU memory. If
+another app holds the GPU memory, loading fails. The app then waits until the
+other app has finished loading and tries again, three times, and then runs on
+the CPU. A restart of the app tries the GPU again.
+
 Tested with a GeForce RTX 3090: 11 s of audio take 0.15 s with
 `large-v3-turbo`. On the CPU (8 threads) the same audio takes 3.7 s with
 `small`.

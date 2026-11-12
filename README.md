@@ -49,6 +49,12 @@ Assistant OS. NVIDIA needs the NVIDIA variant of Home Assistant OS, so far only
 available as a [test image](https://github.com/mKenfenheuer/operating-system/releases).
 Both apps share the same base images, Docker stores them only once.
 
+All three apps fit on a GPU with 6 GB: HA LLM Inference needs about 2300 MiB,
+HA TTS 2600 MiB and HA Whisper 900 to 1100 MiB. On a smaller GPU the option
+`gpu_memory` of HA LLM Inference and HA TTS sets a budget, the rest of the
+model then runs on the CPU. If an app doesn't get enough GPU memory at the
+start, it tries again and at last runs on the CPU instead of stopping.
+
 Speech-to-text, 11 s of audio:
 
 | Hardware | Whisper model | Time |

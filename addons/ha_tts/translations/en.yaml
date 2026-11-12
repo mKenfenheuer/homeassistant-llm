@@ -5,6 +5,9 @@ configuration:
   gpu:
     name: Use GPU
     description: Off = speech synthesis always runs on the CPU, for example to keep the GPU free for other apps.
+  gpu_memory:
+    name: GPU memory budget (MiB)
+    description: "0 = no limit. Otherwise the app keeps at most this much GPU memory and puts the remaining layers on the CPU. LFM3-Omni needs about 2600 MiB."
   threads:
     name: CPU threads
     description: 0 = automatic

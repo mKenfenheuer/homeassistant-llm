@@ -96,26 +96,54 @@ for f in "$MODEL_DIR"/ggml-*.bin "$MODEL_DIR"/ggml-*.bin.part; do
     fi
 done
 
-args=(-m "$MODEL_PATH" --host 0.0.0.0 --port 8080 -l "$LANGUAGE")
-if [ "${THREADS:-0}" != "0" ]; then
-    args+=(-t "$THREADS")
-fi
-if [ "$ON_GPU" = false ]; then
-    args+=(-ng)
-fi
-echo "[INFO] Starting whisper-server: ${args[*]} ${EXTRA}"
-# shellcheck disable=SC2086
-/app/whisper-server "${args[@]}" ${EXTRA} &
-SERVER=$!
-trap 'kill "$SERVER" 2>/dev/null; wait "$SERVER"; exit 0' TERM INT
+SERVER=""
+trap '[ -n "$SERVER" ] && kill "$SERVER" 2>/dev/null; wait; exit 0' TERM INT
+# 0 as soon as whisper-server answers, 1 if it exits before
+wait_ready() {
+    while kill -0 "$SERVER" 2>/dev/null; do
+        curl -sf -o /dev/null http://127.0.0.1:8080/ && return 0
+        sleep 1
+    done
+    wait "$SERVER" 2>/dev/null || true
+    return 1
+}
+
+# If another app holds the GPU memory, loading fails: wait until it has
+# finished loading and try again, at last on the CPU.
+modes=(cpu)
+$ON_GPU && modes=(gpu gpu gpu cpu)
+attempt=0
+STARTED=false
+for mode in "${modes[@]}"; do
+    attempt=$((attempt + 1))
+    args=(-m "$MODEL_PATH" --host 0.0.0.0 --port 8080 -l "$LANGUAGE")
+    if [ "${THREADS:-0}" != "0" ]; then
+        args+=(-t "$THREADS")
+    fi
+    if [ "$mode" = cpu ]; then
+        args+=(-ng)
+    fi
+    echo "[INFO] Starting whisper-server: ${args[*]} ${EXTRA}"
+    # shellcheck disable=SC2086
+    /app/whisper-server "${args[@]}" ${EXTRA} &
+    SERVER=$!
+    if wait_ready; then
+        if [ "$mode" = cpu ] && $ON_GPU; then
+            echo "[WARNING] Not enough GPU memory, running on the CPU. A restart tries the GPU again."
+        fi
+        STARTED=true
+        break
+    fi
+    if [ "$attempt" -lt "${#modes[@]}" ]; then
+        echo "[WARNING] whisper-server didn't start (attempt ${attempt} of ${#modes[@]}), trying again in $((attempt * 15)) s"
+        sleep $((attempt * 15)) &
+        wait $! || true
+    fi
+done
+$STARTED || fail "whisper-server didn't start."
 
 # Warm up with one second of silence, so the first request of a user doesn't
 # wait for model buffers and GPU code
-for _ in $(seq 120); do
-    curl -sf -o /dev/null http://127.0.0.1:8080/ && break
-    kill -0 "$SERVER" 2>/dev/null || break
-    sleep 1
-done
 python3 -c 'import wave,sys; w=wave.open(sys.argv[1],"wb"); w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000); w.writeframes(bytes(32000)); w.close()' /tmp/warmup.wav
 START=$(date +%s)
 if curl -sf -o /dev/null --max-time 300 http://127.0.0.1:8080/inference -F file=@/tmp/warmup.wav; then

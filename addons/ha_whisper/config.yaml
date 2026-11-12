@@ -1,5 +1,5 @@
 name: HA Whisper
-version: "0.1.0"
+version: "0.1.1"
 slug: ha_whisper
 description: Speech-to-text with whisper.cpp on the GPU (NVIDIA, AMD, Intel) or the CPU
 url: https://github.com/mKenfenheuer/homeassistant-llm

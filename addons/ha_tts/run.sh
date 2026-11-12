@@ -105,28 +105,91 @@ for f in "$MODEL_DIR"/*.gguf "$MODEL_DIR"/*.gguf.part; do
     fi
 done
 
-args=(-m "${MODEL_DIR}/${FILE}" -mm "${MODEL_DIR}/${MMPROJ}" --host 0.0.0.0 --port 8080
-      --alias "$MODEL" --parallel 1)
-if [ "${THREADS:-0}" != "0" ]; then
-    args+=(--threads "$THREADS")
-fi
+GPU_MEMORY="$(opt gpu_memory)"
+GPU_MEMORY="${GPU_MEMORY:-0}"
+SERVER=""
+# Free memory of the first GPU in MiB, as llama.cpp reports it
+gpu_free_mib() {
+    /app/llama-server --list-devices 2>/dev/null \
+        | grep -E "^ +${GPU_DEVICES%%,*}:" | sed -nE 's/.*, ([0-9]+) MiB free.*/\1/p' | head -1
+}
+# GPU arguments for a start attempt:
+#   gpu  all layers, or with gpu_memory as many as fit the budget
+#   fit  as many layers as fit the free memory (llama.cpp --fit)
+#   cpu  no GPU
+gpu_args() {
+    local free target
+    case "$1" in
+        gpu)
+            if [ "${GPU_MEMORY}" != "0" ]; then
+                free="$(gpu_free_mib)"
+                free="${free:-0}"
+                # --fit keeps the target free and fills the rest of the GPU. It
+                # doesn't count the about 300 MiB of the CUDA or Vulkan context.
+                target=$(( free - GPU_MEMORY + 300 ))
+                [ "$target" -lt 256 ] && target=256
+                echo "[INFO] GPU memory budget ${GPU_MEMORY} MiB, ${free} MiB free" >&2
+                echo "--device $GPU_DEVICES --fit on --fit-target $target"
+            else
+                echo "--device $GPU_DEVICES --n-gpu-layers 99"
+            fi
+            ;;
+        fit) echo "--device $GPU_DEVICES --fit on" ;;
+        cpu) echo "--device none" ;;
+    esac
+}
+# 0 as soon as llama-server answers, 1 if it exits before
+wait_ready() {
+    while kill -0 "$SERVER" 2>/dev/null; do
+        curl -sf -o /dev/null http://127.0.0.1:8080/health && return 0
+        sleep 1
+    done
+    wait "$SERVER" 2>/dev/null || true
+    return 1
+}
+trap '[ -n "$SERVER" ] && kill "$SERVER" 2>/dev/null; wait; exit 0' TERM INT
+
+# If another app holds the GPU memory, loading fails: wait until it has
+# finished loading and try again, then with fewer layers on the GPU, at last
+# on the CPU.
+modes=(cpu)
 if [ "$ON_GPU" = true ]; then
-    args+=(--device "$GPU_DEVICES" --n-gpu-layers 99)
-else
-    args+=(--device none)
+    modes=(gpu gpu gpu fit cpu)
+    [ "${GPU_MEMORY}" != "0" ] && modes=(gpu gpu gpu cpu)
 fi
-echo "[INFO] Starting llama-server: ${args[*]} ${EXTRA}"
-# shellcheck disable=SC2086
-/app/llama-server "${args[@]}" ${EXTRA} &
-SERVER=$!
-trap 'kill "$SERVER" 2>/dev/null; wait "$SERVER"; exit 0' TERM INT
+attempt=0
+STARTED=false
+for mode in "${modes[@]}"; do
+    attempt=$((attempt + 1))
+    # A fixed context: without it llama-server takes the 128k tokens of the
+    # model and as much GPU memory as is free. A sentence needs far less.
+    args=(-m "${MODEL_DIR}/${FILE}" -mm "${MODEL_DIR}/${MMPROJ}" --host 0.0.0.0 --port 8080
+          --alias "$MODEL" --parallel 1 --ctx-size 4096)
+    if [ "${THREADS:-0}" != "0" ]; then
+        args+=(--threads "$THREADS")
+    fi
+    gpu="$(gpu_args "$mode")"
+    # shellcheck disable=SC2206
+    args+=($gpu)
+    echo "[INFO] Starting llama-server: ${args[*]} ${EXTRA}"
+    # shellcheck disable=SC2086
+    /app/llama-server "${args[@]}" ${EXTRA} &
+    SERVER=$!
+    if wait_ready; then
+        [ "$mode" = gpu ] || [ "$ON_GPU" = false ] \
+            || echo "[WARNING] Not enough GPU memory, running with mode ${mode}. A restart tries the GPU again."
+        STARTED=true
+        break
+    fi
+    if [ "$attempt" -lt "${#modes[@]}" ]; then
+        echo "[WARNING] llama-server didn't start (attempt ${attempt} of ${#modes[@]}), trying again in $((attempt * 15)) s"
+        sleep $((attempt * 15)) &
+        wait $! || true
+    fi
+done
+$STARTED || fail "llama-server didn't start."
 
 # Warm up with a short sentence, so the first answer doesn't wait for GPU code
-for _ in $(seq 180); do
-    curl -sf -o /dev/null http://127.0.0.1:8080/health && break
-    kill -0 "$SERVER" 2>/dev/null || break
-    sleep 1
-done
 START=$(date +%s)
 if curl -sf -o /dev/null --max-time 300 http://127.0.0.1:8080/tts \
         -H 'Content-Type: application/json' -d '{"input": "Hello.", "lang": "en"}'; then

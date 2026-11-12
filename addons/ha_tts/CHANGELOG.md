@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0
+
+- Fixed context of 4096 tokens. Without it llama-server took the 128k tokens
+  of the model and all free GPU memory, if the app started before the others.
+- New option `gpu_memory`: a budget for the GPU memory in MiB.
+- If another app holds the GPU memory, the app waits, tries again three times,
+  then starts with fewer layers on the GPU and at last on the CPU.
+
 ## 0.1.0
 
 - First version: llama-server of llama.cpp b12063 with `POST /tts` on CUDA,

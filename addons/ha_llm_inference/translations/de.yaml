@@ -29,6 +29,9 @@ configuration:
   gpu_layers:
     name: GPU-Schichten
     description: Anzahl der Modellschichten auf der GPU. 99 = alle, 0 = nur CPU.
+  gpu_memory:
+    name: GPU-Speicherbudget (MiB)
+    description: "0 = keine Grenze. Sonst belegt die App höchstens so viel GPU-Speicher und rechnet die übrigen Schichten auf der CPU. Ersetzt GPU-Schichten. Das Modell braucht etwa 2300 MiB."
   extra_args:
     name: Zusätzliche Argumente
     description: Weitere llama-server-Parameter, z. B. --mlock

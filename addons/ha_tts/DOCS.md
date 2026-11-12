@@ -56,6 +56,16 @@ through CUDA (needs the `nvidia` or `nvidia-legacy` variant of Home Assistant
 OS), AMD and Intel through Vulkan. It gets the GPU through the `video` option.
 Switch `gpu` off to keep the GPU free; speech synthesis then runs on the CPU.
 
+LFM3-Omni needs about 2600 MiB of GPU memory. `gpu_memory` (MiB, default 0 =
+no limit) is a budget: the app keeps at most this much and puts the remaining
+layers on the CPU. The budgets of all apps together must fit into the GPU
+memory.
+
+If another app holds the GPU memory, loading fails. The app then waits until
+the other app has finished loading and tries again, three times. After that it
+starts with fewer layers on the GPU and at last on the CPU, and says so in the
+log. A restart of the app tries the GPU again.
+
 ## Licenses
 
 LFM3-Omni: LFM Open License v1.0 by Liquid AI. Qwen3-TTS: Apache 2.0. Check

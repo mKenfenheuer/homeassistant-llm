@@ -5,6 +5,9 @@ configuration:
   gpu:
     name: GPU verwenden
     description: Aus = die Sprachausgabe läuft immer auf der CPU, etwa um die GPU für andere Apps freizuhalten.
+  gpu_memory:
+    name: GPU-Speicherbudget (MiB)
+    description: "0 = keine Grenze. Sonst belegt die App höchstens so viel GPU-Speicher und rechnet die übrigen Schichten auf der CPU. LFM3-Omni braucht etwa 2600 MiB."
   threads:
     name: CPU-Threads
     description: 0 = automatisch

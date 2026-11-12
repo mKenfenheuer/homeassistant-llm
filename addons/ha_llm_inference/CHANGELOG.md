@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.12.0
+
+- New option `gpu_memory`: a budget for the GPU memory in MiB. The app keeps
+  at most this much and puts the remaining layers on the CPU.
+- If another app holds the GPU memory, the app no longer stops with "unable to
+  allocate CUDA0 buffer". It waits, tries again three times, then starts with
+  fewer layers on the GPU and at last on the CPU.
+- HA TTS 0.2.0 with a fixed context of 4096 tokens: started first, it took
+  128k tokens and so much GPU memory that the language model didn't fit.
+
 ## 0.11.0
 
 - New option `language`: the app downloads the model of the selected

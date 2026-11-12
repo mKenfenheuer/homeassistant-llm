@@ -68,6 +68,8 @@ AUTO_UPDATE="${AUTO_UPDATE:-true}"
 INTERVAL="${INTERVAL:-6}"
 GPU_LAYERS="$(opt gpu_layers)"
 GPU_LAYERS="${GPU_LAYERS:-99}"
+GPU_MEMORY="$(opt gpu_memory)"
+GPU_MEMORY="${GPU_MEMORY:-0}"
 
 for u in "${LEGACY_URLS[@]+"${LEGACY_URLS[@]}"}"; do
     if [ "$MODEL_URL" = "$u" ] || [ "$MODEL_URL" = "$DEFAULT_URL" ]; then
@@ -247,21 +249,82 @@ if $MANAGED; then
 fi
 
 SERVER=""
+# Free memory of the first GPU in MiB, as llama.cpp reports it
+gpu_free_mib() {
+    /app/llama-server --list-devices 2>/dev/null \
+        | grep -E "^ +${GPU_DEVICES%%,*}:" | sed -nE 's/.*, ([0-9]+) MiB free.*/\1/p' | head -1
+}
+# GPU arguments for a start attempt:
+#   gpu  the configured layers, or with gpu_memory as many as fit the budget
+#   fit  as many layers as fit the free memory (llama.cpp --fit)
+#   cpu  no GPU
+gpu_args() {
+    local free
+    case "$1" in
+        gpu)
+            if [ "${GPU_MEMORY}" != "0" ]; then
+                free="$(gpu_free_mib)"
+                free="${free:-0}"
+                # --fit keeps the target free and fills the rest of the GPU, so
+                # leave everything but the budget free. --fit doesn't count the
+                # about 300 MiB of the CUDA or Vulkan context.
+                local target=$(( free - GPU_MEMORY + 300 ))
+                [ "$target" -lt 256 ] && target=256
+                echo "[INFO] GPU memory budget ${GPU_MEMORY} MiB, ${free} MiB free" >&2
+                echo "--device $GPU_DEVICES --fit on --fit-target $target"
+            else
+                echo "--device $GPU_DEVICES --n-gpu-layers $GPU_LAYERS"
+            fi
+            ;;
+        fit) echo "--device $GPU_DEVICES --fit on" ;;
+        cpu) echo "--device none" ;;
+    esac
+}
+# 0 as soon as llama-server answers, 1 if it exits before
+wait_ready() {
+    while kill -0 "$SERVER" 2>/dev/null; do
+        curl -sf -o /dev/null http://127.0.0.1:8080/health && return 0
+        sleep 1
+    done
+    wait "$SERVER" 2>/dev/null || true
+    SERVER=""
+    return 1
+}
+# Starts llama-server. If another app holds the GPU memory, loading fails:
+# wait until it has finished loading and try again, then with fewer layers on
+# the GPU, at last on the CPU.
 start_server() {
-    local args=(-m "$MODEL_PATH" --host 0.0.0.0 --port 8080 --alias ha-llm
-                --ctx-size "$CTX" --parallel 1 --jinja --cache-reuse 256)
-    if [ "${THREADS:-0}" != "0" ]; then
-        args+=(--threads "$THREADS")
-    fi
+    local modes=(cpu) attempt=0 mode gpu
     if [ "$ON_GPU" = true ] && [ "${GPU_LAYERS}" != "0" ]; then
-        args+=(--device "$GPU_DEVICES" --n-gpu-layers "$GPU_LAYERS")
-    else
-        args+=(--device none)
+        modes=(gpu gpu gpu fit cpu)
+        # with a budget, fewer layers mean the budget doesn't fit at all
+        [ "${GPU_MEMORY}" != "0" ] && modes=(gpu gpu gpu cpu)
     fi
-    echo "[INFO] Starting llama-server: ${args[*]} ${EXTRA}"
-    # shellcheck disable=SC2086
-    /app/llama-server "${args[@]}" ${EXTRA} &
-    SERVER=$!
+    for mode in "${modes[@]}"; do
+        attempt=$((attempt + 1))
+        local args=(-m "$MODEL_PATH" --host 0.0.0.0 --port 8080 --alias ha-llm
+                    --ctx-size "$CTX" --parallel 1 --jinja --cache-reuse 256)
+        if [ "${THREADS:-0}" != "0" ]; then
+            args+=(--threads "$THREADS")
+        fi
+        gpu="$(gpu_args "$mode")"
+        # shellcheck disable=SC2206
+        args+=($gpu)
+        echo "[INFO] Starting llama-server: ${args[*]} ${EXTRA}"
+        # shellcheck disable=SC2086
+        /app/llama-server "${args[@]}" ${EXTRA} &
+        SERVER=$!
+        if wait_ready; then
+            [ "$mode" = gpu ] || echo "[WARNING] Not enough GPU memory, running with mode ${mode}. A restart tries the GPU again."
+            return 0
+        fi
+        if [ "$attempt" -lt "${#modes[@]}" ]; then
+            echo "[WARNING] llama-server didn't start (attempt ${attempt} of ${#modes[@]}), trying again in $((attempt * 15)) s"
+            sleep $((attempt * 15)) &
+            wait $! || true
+        fi
+    done
+    fail "llama-server didn't start."
 }
 stop_server() {
     if [ -n "$SERVER" ]; then
@@ -274,8 +337,8 @@ trap 'stop_server; exit 0' TERM INT
 
 if ! $MANAGED || [ "$AUTO_UPDATE" != "true" ]; then
     start_server
-    wait "$SERVER"
-    exit $?
+    wait "$SERVER" || fail "llama-server stopped."
+    exit 0
 fi
 
 start_server

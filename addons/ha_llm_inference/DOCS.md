@@ -50,8 +50,21 @@ The app gets the GPU through the `video` option. With an NVIDIA GPU it uses
 CUDA, otherwise Vulkan.
 
 `gpu_layers` (default 99) sets how many layers of the model run on the GPU.
-The model has 36 layers and needs about 2.5 GB of GPU memory with a context of
-8192 tokens. With 0 only the CPU computes.
+The model has 36 layers and needs about 2300 MiB of GPU memory with a context
+of 8192 tokens. With 0 only the CPU computes.
+
+`gpu_memory` (MiB, default 0 = no limit) is a budget for the GPU memory. The
+app then keeps at most this much and puts the remaining layers on the CPU
+(llama.cpp `--fit`). It replaces `gpu_layers`. Use it if several apps share a
+small GPU: the budgets of all apps together must fit into the GPU memory.
+Example for a 6 GB GPU with all three apps of this repository: HA LLM
+Inference 2300 MiB, HA TTS 2600 MiB, HA Whisper 900 to 1100 MiB (no budget
+option, its memory is fixed by the model).
+
+If another app holds the GPU memory, loading fails. The app then waits until
+the other app has finished loading and tries again, three times. After that it
+starts with fewer layers on the GPU and at last on the CPU, and says so in the
+log. A restart of the app tries the GPU again.
 
 Tested with a GeForce RTX 3090 (CUDA, 210 tokens per second) and a Radeon
 RX 6900 XT (Vulkan, 130 tokens per second).

@@ -29,6 +29,9 @@ configuration:
   gpu_layers:
     name: GPU layers
     description: Number of model layers on the GPU. 99 = all, 0 = CPU only.
+  gpu_memory:
+    name: GPU memory budget (MiB)
+    description: "0 = no limit. Otherwise the app keeps at most this much GPU memory and puts the remaining layers on the CPU. Replaces GPU layers. The model needs about 2300 MiB."
   extra_args:
     name: Extra arguments
     description: Additional llama-server parameters, e.g. --mlock

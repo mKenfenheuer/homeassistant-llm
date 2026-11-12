@@ -1,5 +1,5 @@
 name: HA LLM Inference
-version: "0.11.0"
+version: "0.12.0"
 slug: ha_llm_inference
 description: llama.cpp server with the Home Assistant language model, on the GPU (NVIDIA, AMD, Intel) or the CPU
 arch:
@@ -32,6 +32,7 @@ options:
   ctx_size: 8192
   threads: 0
   gpu_layers: 99
+  gpu_memory: 0
   extra_args: ""
 schema:
   language: list(de)
@@ -44,4 +45,5 @@ schema:
   ctx_size: int(2048,32768)
   threads: int(0,128)
   gpu_layers: int(0,999)
+  gpu_memory: int(0,262144)
   extra_args: str?
