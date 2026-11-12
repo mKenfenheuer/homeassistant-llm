@@ -54,7 +54,9 @@
           "max_history": "Previous turns kept per conversation",
           "timeout": "Request timeout",
           "max_entities": "Maximum number of entities sent to the model",
-          "use_location": "Use the area of the voice device (slower on CPU)"
+          "use_location": "Use the area of the voice device (slower on CPU)",
+          "language": "Language of the model",
+          "verbosity": "Answer length"
         }
       }
     }
@@ -63,6 +65,16 @@
     "slow_inference": {
       "title": "llama-server is too slow for {entities} entities",
       "description": "Loading the device list into the model took {seconds} s (server: {url}). This usually means the CPU has no AVX2, so every voice command will take 30 seconds or more.\n\nRun llama-server on a machine with AVX2 or a GPU and enter its URL via \"Reconfigure\" on the HA LLM Agent entry, or expose fewer entities to Assist."
+    }
+  },
+  "selector": {
+    "verbosity": {
+      "options": {
+        "short": "Short",
+        "medium": "Medium",
+        "long": "Long",
+        "detailed": "Detailed"
+      }
     }
   }
 }

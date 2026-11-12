@@ -1,0 +1,10 @@
+{
+  "version": "16",
+  "date": "2026-11-12",
+  "file": "de/qwen2.5-3b-ha-v16-Q4_K_M.gguf",
+  "sha256": "68f5a613d55804002a55d75e4c993ef697fb5dcc4cd7924090fc0f22e55c3864",
+  "size": 1929902976,
+  "schema": 6,
+  "min_addon_version": "0.13.0",
+  "notes": "Musik, Timer, Uhrzeit, Durchsagen, Einkaufslisten, ausführliches Wetter, Antwortlänge"
+}

@@ -1,4 +1,6 @@
-"""LoRA SFT of Qwen2.5-3B-Instruct for German Home Assistant tool calling.
+"""LoRA SFT of Qwen2.5-3B-Instruct for Home Assistant tool calling, one model
+per language (--lang, default de; paths default to data/<lang>/ and
+output/<lang>/).
 
 - Prompt/tool schema: custom_components/ha_llm_agent/llm_schema.py (shared
   with the integration, so training and runtime render identical prompts).
@@ -28,9 +30,10 @@ import llm_schema  # noqa: E402
 
 DEFAULTS = dict(
     model="Qwen/Qwen2.5-3B-Instruct",
-    data="data/train.jsonl",
-    out="output/lora",
-    merged="output/merged",
+    lang="de",
+    data="data/{lang}/train.jsonl",
+    out="output/{lang}/lora",
+    merged="output/{lang}/merged",
     epochs=2, batch=1, accum=16, lr=2e-4, max_len=4096,
 )
 
@@ -94,13 +97,16 @@ def main():
     a = ap.parse_args()
     cfg = {k: getattr(a, k) if getattr(a, k) is not None else v
            for k, v in DEFAULTS.items()}
+    for k in ("data", "out", "merged"):
+        cfg[k] = cfg[k].format(lang=cfg["lang"])
+    tools = llm_schema.build_tools(cfg["lang"])
 
     tok = AutoTokenizer.from_pretrained(cfg["model"])
     pad_id = tok.pad_token_id if tok.pad_token_id is not None else tok.eos_token_id
     rows = [json.loads(l) for l in open(cfg["data"], encoding="utf-8")]
     enc, dropped = [], 0
     for r in rows:
-        ids, labels = encode(tok, r["messages"], llm_schema.TOOLS)
+        ids, labels = encode(tok, r["messages"], tools)
         if len(ids) > cfg["max_len"]:
             dropped += 1
             continue

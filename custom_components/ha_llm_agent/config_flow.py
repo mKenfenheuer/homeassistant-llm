@@ -22,6 +22,9 @@ from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     BooleanSelector,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -30,8 +33,11 @@ from homeassistant.helpers.selector import (
     TextSelectorType,
 )
 
+from . import llm_schema as S
 from .const import (
     ADDON_SUFFIXES,
+    CONF_LANGUAGE,
+    CONF_VERBOSITY,
     CONF_MAX_ENTITIES,
     CONF_TYPE,
     CONF_MAX_HISTORY,
@@ -217,5 +223,18 @@ class HaLlmAgentOptionsFlow(OptionsFlow):
             vol.Optional(CONF_USE_LOCATION,
                          default=opts.get(CONF_USE_LOCATION, DEFAULT_USE_LOCATION)):
                 BooleanSelector(),
+            vol.Optional(CONF_LANGUAGE,
+                         default=opts.get(CONF_LANGUAGE) or S.pick_language(
+                             self.hass.config.language)):
+                SelectSelector(SelectSelectorConfig(
+                    options=[{"value": k, "label": S.LANGUAGES[k]["name"]}
+                             for k in S.MODEL_LANGUAGES],
+                    mode=SelectSelectorMode.DROPDOWN)),
+            vol.Optional(CONF_VERBOSITY,
+                         default=opts.get(CONF_VERBOSITY, S.DEFAULT_VERBOSITY)):
+                SelectSelector(SelectSelectorConfig(
+                    options=S.VERBOSITY, translation_key="verbosity",
+                    mode=SelectSelectorMode.DROPDOWN)),
         })
         return self.async_show_form(step_id="init", data_schema=schema)
+

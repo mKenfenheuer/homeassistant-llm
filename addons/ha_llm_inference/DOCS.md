@@ -1,7 +1,7 @@
 # HA LLM Inference
 
 This app runs `llama-server` (llama.cpp) with the fine-tuned Home Assistant
-model [qwen2.5-3b-homeassistant-de-GGUF](https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF).
+model [qwen2.5-3b-homeassistant-GGUF](https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-GGUF).
 The "HA LLM Agent (local)" integration talks to the server at
 `http://local-ha-llm-inference:8080`. For an app from a Git repository the
 host name is `<prefix>-ha-llm-inference`, shown on the info page of the app.

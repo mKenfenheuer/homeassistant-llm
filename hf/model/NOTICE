@@ -3,4 +3,4 @@ Qwen is licensed under the Qwen RESEARCH LICENSE AGREEMENT, Copyright (c) Alibab
 Modified files: the model weights in this repository were fine-tuned with LoRA
 (merged into the base weights), converted to GGUF and quantized to Q4_K_M.
 The chat template embedded in the GGUF replaces the default system prompt
-of Qwen2.5 with a German one.
+of Qwen2.5 with one in the language of the model.

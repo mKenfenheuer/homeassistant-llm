@@ -1,14 +1,27 @@
 """Consistency check for generated data: every assistant answer must agree
-with the tool results before it. Usage: python src/check_dataset.py FILE"""
+with the tool results before it.
+Usage: python src/check_dataset.py [--lang de] FILE"""
 
 from __future__ import annotations
 
+import importlib
 import json
 import re
 import sys
+from pathlib import Path
 from collections import Counter
 
-FAIL_WORDS = ("nicht", "fehler", "erreichbar", "teilweise", "leider")
+# per language (src/gen/<lang>/check.py, WORDS): words that report a failure,
+# the word for "unreachable", and the sentence that lists switched-on devices
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+
+def words(lang):
+    return importlib.import_module(f"gen.{lang}.check").WORDS
+
+
+W = words("de")
+FAIL_WORDS = W["fail"]
 
 
 def check(row):
@@ -27,25 +40,27 @@ def check(row):
             continue
         ans = m["content"] or ""
         if isinstance(last_tool, dict):           # control result
-            if last_tool.get("success") is False and not any(w in ans.lower() for w in FAIL_WORDS):
+            # a failure is either reported or answered with a question back
+            if last_tool.get("success") is False and not ans.rstrip().endswith("?") \
+                    and not any(w in ans.lower() for w in FAIL_WORDS):
                 problems.append(("error not reported", ans))
-            if last_tool.get("success") is True and "erreichbar" in ans:
+            if last_tool.get("success") is True and W["unreachable"] in ans:
                 problems.append(("failure claimed after success", ans))
         elif isinstance(last_tool, list):         # get_state result
             blob = json.dumps(last_tool, ensure_ascii=False)
-            for num in re.findall(r"\d+(?:,\d+)?", ans):
+            for num in re.findall(r"\d+(?:[.,]\d+)?", ans):
                 if num.replace(",", ".") not in blob and num not in blob and \
                         str(round(float(num.replace(",", ".")) * 100)) not in blob:
                     problems.append(("number not in tool result", ans))
                     break
-            mo = re.match(r"(?:Ja\. |Nein\. )?(?:Offen|An) sind?: (.+)\.$", ans)
+            mo = re.match(W["listing"], ans)
             if mo:
-                listed = re.split(r", | und ", mo.group(1))
+                listed = re.split(W["list_split"], mo.group(1))
                 on = {x["name"] for x in last_tool if x.get("state") == "on"}
                 if set(listed) - on:
                     problems.append(("listed entity not on/open", ans))
             if any(x.get("state") == "unavailable" for x in last_tool) and \
-                    "erreichbar" not in ans:
+                    W["unreachable"] not in ans:
                 problems.append(("unavailable not reported", ans))
         else:                                     # answer without tool in this turn
             pass
@@ -53,7 +68,13 @@ def check(row):
 
 
 def main():
-    rows = [json.loads(l) for l in open(sys.argv[1], encoding="utf-8")]
+    global W, FAIL_WORDS
+    args = sys.argv[1:]
+    if args[0] == "--lang":
+        W = words(args[1])
+        FAIL_WORDS = W["fail"]
+        args = args[2:]
+    rows = [json.loads(l) for l in open(args[0], encoding="utf-8")]
     c = Counter()
     examples = {}
     for r in rows:

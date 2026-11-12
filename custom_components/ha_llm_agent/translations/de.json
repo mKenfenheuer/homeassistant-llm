@@ -54,7 +54,9 @@
           "max_history": "Gespeicherte Vorgänger-Anfragen pro Unterhaltung",
           "timeout": "Zeitlimit pro Anfrage",
           "max_entities": "Maximale Anzahl Entitäten im Prompt",
-          "use_location": "Bereich des Sprachgeräts verwenden (auf der CPU langsamer)"
+          "use_location": "Bereich des Sprachgeräts verwenden (auf der CPU langsamer)",
+          "language": "Sprache des Modells",
+          "verbosity": "Ausführlichkeit der Antworten"
         }
       }
     }
@@ -63,6 +65,16 @@
     "slow_inference": {
       "title": "llama-server ist für {entities} Entitäten zu langsam",
       "description": "Das Laden der Geräteliste in das Modell hat {seconds} s gedauert (Server: {url}). Meist fehlt der CPU AVX2, dann dauert jeder Sprachbefehl 30 Sekunden oder länger.\n\nllama-server auf einem Rechner mit AVX2 oder GPU betreiben und dessen URL über „Neu konfigurieren“ am Eintrag „HA LLM Agent“ angeben, oder weniger Entitäten für Assist freigeben."
+    }
+  },
+  "selector": {
+    "verbosity": {
+      "options": {
+        "short": "Kurz",
+        "medium": "Mittel",
+        "long": "Lang",
+        "detailed": "Ausführlich"
+      }
     }
   }
 }

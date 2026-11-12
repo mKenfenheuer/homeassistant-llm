@@ -9,7 +9,9 @@ and sent with the shared tool schema. Checks:
   - question: after feeding the gold tool result, the answer contains the
     expected values
 
-Usage: python src/eval_model.py http://127.0.0.1:8080 [data/eval.jsonl] [N]
+  - timer: same action, duration and name; get_time; broadcast with a message
+
+Usage: python src/eval_model.py http://127.0.0.1:8080 [data/de/eval.jsonl] [N] [--lang de]
 """
 
 from __future__ import annotations
@@ -25,13 +27,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]
                        / "custom_components" / "ha_llm_agent"))
 import llm_schema as S  # noqa: E402
 
-URL = sys.argv[1].rstrip("/") if len(sys.argv) > 1 else "http://127.0.0.1:8080"
-DATA = sys.argv[2] if len(sys.argv) > 2 else "data/eval.jsonl"
-LIMIT = int(sys.argv[3]) if len(sys.argv) > 3 else 10**9
+ARGS = sys.argv[1:]
+LANG = "de"
+if "--lang" in ARGS:
+    i = ARGS.index("--lang")
+    LANG = ARGS[i + 1]
+    del ARGS[i:i + 2]
+URL = ARGS[0].rstrip("/") if ARGS else "http://127.0.0.1:8080"
+DATA = ARGS[1] if len(ARGS) > 1 else f"data/{LANG}/eval.jsonl"
+LIMIT = int(ARGS[2]) if len(ARGS) > 2 else 10**9
+TOOLS = S.build_tools(LANG)
 
 
 def chat(messages):
-    body = json.dumps({"model": "ha-llm", "messages": messages, "tools": S.TOOLS,
+    body = json.dumps({"model": "ha-llm", "messages": messages, "tools": TOOLS,
                        "temperature": 0, "max_tokens": 400}).encode()
     req = urllib.request.Request(URL + "/v1/chat/completions", data=body,
                                  headers={"Content-Type": "application/json"})
@@ -42,7 +51,18 @@ def chat(messages):
 def norm_value(v):
     if isinstance(v, (int, float)) and not isinstance(v, bool):
         return round(float(v), 2)
+    if isinstance(v, str):
+        return v.strip().casefold()
     return v
+
+
+def timer_key(args):
+    """Same action, same total duration, same timer name; the delayed
+    command must be there when the gold has one (its wording is free)."""
+    secs = sum(int(args.get(k) or 0) * f for k, f in (("hours", 3600), ("minutes", 60),
+                                                      ("seconds", 1)))
+    return (args.get("action"), secs, norm_value(args.get("name") or ""),
+            bool(args.get("command")))
 
 
 def devices(prompt):
@@ -95,6 +115,12 @@ def check_call(gold, name, args, ents=(), groups=()):
     if gname == "control":
         return triples(args.get("actions"), ents, groups) == \
             triples(gargs["actions"], ents, groups)
+    if gname == "timer":
+        return timer_key(args) == timer_key(gargs)
+    if gname == "get_time":
+        return True
+    if gname == "broadcast":
+        return bool(str(args.get("message") or "").strip())
     got = resolve(args.get("entity_ids"), args.get("area"),
                   args.get("domain") or "light", ents, groups)
     want = resolve(gargs.get("entity_ids"), gargs.get("area"),

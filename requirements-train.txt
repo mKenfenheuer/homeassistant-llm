@@ -1,0 +1,7 @@
+# Training environment (tested on the RTX 3090 training server, Python 3.12).
+# torch comes from the CUDA image of the machine; install it first if missing.
+transformers==5.22.1
+peft==0.21.2
+datasets==5.1.0
+accelerate==1.15.0
+huggingface_hub

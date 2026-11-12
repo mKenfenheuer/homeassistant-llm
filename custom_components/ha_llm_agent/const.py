@@ -13,6 +13,10 @@ CONF_MAX_HISTORY = "max_history"
 CONF_TIMEOUT = "timeout"
 CONF_MAX_ENTITIES = "max_entities"
 CONF_USE_LOCATION = "use_location"
+# language of the model (llm_schema.LANGUAGES); empty: Home Assistant language
+CONF_LANGUAGE = "language"
+# answer length (llm_schema.VERBOSITY), written into the system prompt
+CONF_VERBOSITY = "verbosity"
 
 # hostname of the local add-on "ha_llm_inference" inside the HA network
 DEFAULT_URL = "http://local-ha-llm-inference:8080"

@@ -20,25 +20,26 @@ fail() {
     exit 1
 }
 
-# Language of the model. Every language has its own Hugging Face repository
-# mkenfenheuer/qwen2.5-3b-homeassistant-<language>-GGUF with a latest.json.
+# Language of the model. All languages share the Hugging Face repository
+# mkenfenheuer/qwen2.5-3b-homeassistant-GGUF; its models.json links every
+# language to its model file (<language>/<file>.gguf).
 # German keeps the model folder of earlier versions.
 LANGUAGE="$(opt language)"
 LANGUAGE="${LANGUAGE:-de}"
 [[ "$LANGUAGE" =~ ^[a-z]{2,3}$ ]] || fail "Invalid language ${LANGUAGE}."
-HF_REPO="${HA_LLM_REPO:-https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-${LANGUAGE}-GGUF/resolve/main}"
-MANIFEST_URL="${HF_REPO}/latest.json"
+HF_REPO="${HA_LLM_REPO:-https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-GGUF/resolve/main}"
+MANIFEST_URL="${HF_REPO}/models.json"
 # prompt schema of the integration released with this add-on version; a model
 # for a newer schema needs a newer integration and is not installed
-SUPPORTED_SCHEMA=5
+SUPPORTED_SCHEMA=6
 DEFAULT_URL=""
 DEFAULT_SHA=""
 LEGACY_URLS=()
 if [ "$LANGUAGE" = "de" ]; then
     MODEL_DIR=/share/ha_llm
     # model that belongs to this add-on version (fallback without network)
-    DEFAULT_URL="${HF_REPO}/qwen2.5-3b-ha-v15.1-Q4_K_M.gguf"
-    DEFAULT_SHA="1762d43726ece67157a105c96d332dcbc0227ed135435dcfa7b203b36431d6c7"
+    DEFAULT_URL="${HF_REPO}/de/qwen2.5-3b-ha-v16-Q4_K_M.gguf"
+    DEFAULT_SHA="68f5a613d55804002a55d75e4c993ef697fb5dcc4cd7924090fc0f22e55c3864"
     # default URLs of earlier versions: treated like "empty", old file removed
     LEGACY_URLS=(
         "${HF_REPO}/qwen2.5-3b-ha-Q4_K_M.gguf"
@@ -48,6 +49,8 @@ if [ "$LANGUAGE" = "de" ]; then
         "${HF_REPO}/qwen2.5-3b-ha-v7-Q4_K_M.gguf"
         "${HF_REPO}/qwen2.5-3b-ha-v11-Q4_K_M.gguf"
         "${HF_REPO}/qwen2.5-3b-ha-v15-soup-Q4_K_M.gguf"
+        "${HF_REPO}/qwen2.5-3b-ha-v15.1-Q4_K_M.gguf"
+        "https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-v15.1-Q4_K_M.gguf"
     )
 else
     MODEL_DIR="/share/ha_llm/${LANGUAGE}"
@@ -173,17 +176,20 @@ manifest() {
     fi
     curl -fsL --max-time 30 "${auth[@]}" "$MANIFEST_URL" 2>/dev/null | python3 -c '
 import json, re, sys
-repo, supported = sys.argv[1], int(sys.argv[2])
-m = json.load(sys.stdin)
+repo, supported, lang = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+m = json.load(sys.stdin).get("languages", {}).get(lang)
+if m is None:
+    print("[INFO] No model for language %s in models.json" % lang, file=sys.stderr)
+    sys.exit(3)
 f, sha = m["file"], m["sha256"].lower()
-if not re.fullmatch(r"[A-Za-z0-9._-]+\.gguf", f) or not re.fullmatch(r"[0-9a-f]{64}", sha):
+if not re.fullmatch(r"([a-z]{2,3}/)?[A-Za-z0-9._-]+\.gguf", f) or not re.fullmatch(r"[0-9a-f]{64}", sha):
     sys.exit("invalid manifest")
 if int(m.get("schema", 0)) > supported:
     print("[INFO] Model %s needs schema %s, available after an app update"
           % (m.get("version"), m["schema"]), file=sys.stderr)
     sys.exit(2)
 print(f"{repo}/{f}", sha, m.get("version", "?"))
-' "$HF_REPO" "$SUPPORTED_SCHEMA"
+' "$HF_REPO" "$SUPPORTED_SCHEMA" "$LANGUAGE"
 }
 
 # removes official model files other than the current one

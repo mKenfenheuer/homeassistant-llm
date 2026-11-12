@@ -3,7 +3,8 @@ Usage: python src/bench_cpu.py http://127.0.0.1:18090 95"""
 import json, sys, time, urllib.request
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import gen_dataset as G
+import gen.de as _de  # noqa: F401  (registers the Assist built-ins)
+from gen.de import core as G
 S = G.S
 URL, N = sys.argv[1], int(sys.argv[2])
 G.R.seed(5)

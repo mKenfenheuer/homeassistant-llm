@@ -11,8 +11,8 @@ text-to-speech.
 | App "HA LLM Inference" (llama.cpp server) | Conversation | `addons/ha_llm_inference/` |
 | App "HA TTS" (llama.cpp server with LFM3-Omni or Qwen3-TTS) | Text-to-speech | `addons/ha_tts/` |
 | Integration "HA LLM Agent (local)" | Speech-to-text, conversation agent and text-to-speech for Assist | `custom_components/ha_llm_agent/` |
-| Model | Conversation | [mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF](https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF) |
-| Dataset | Conversation | [mkenfenheuer/homeassistant-tool-calling-de](https://huggingface.co/datasets/mkenfenheuer/homeassistant-tool-calling-de) |
+| Model | Conversation | [mkenfenheuer/qwen2.5-3b-homeassistant-GGUF](https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-GGUF) |
+| Dataset | Conversation | [mkenfenheuer/homeassistant-tool-calling](https://huggingface.co/datasets/mkenfenheuer/homeassistant-tool-calling) |
 
 The conversation model is Qwen2.5-3B-Instruct with LoRA (Built with Qwen,
 Qwen RESEARCH LICENSE, non-commercial use only). It is 1.9 GB (GGUF, Q4_K_M)
@@ -87,7 +87,7 @@ the URL of that server in the integration under "Reconfigure":
 docker run -d --name ha-llm --restart unless-stopped --gpus all \
   -p 8080:8080 -v $PWD/model:/models:ro \
   ghcr.io/ggml-org/llama.cpp:server-cuda-b12063 \
-  -m /models/qwen2.5-3b-ha-v15.1-Q4_K_M.gguf --host 0.0.0.0 --port 8080 \
+  -m /models/de/qwen2.5-3b-ha-v16-Q4_K_M.gguf --host 0.0.0.0 --port 8080 \
   --alias ha-llm --jinja -ngl 99 -fa on -c 16384 -np 1 --cache-reuse 256
 ```
 
@@ -104,11 +104,29 @@ sentence from llama-server (`POST /tts`). Numbers, times and units become
 words first ("21,5 °C" → "einundzwanzig Komma fünf Grad Celsius").
 
 **Conversation** The integration sends the exposed entities
-(`entity_id | name | area`) and two tools to the model. `control` calls Home
-Assistant services, for lights also for a whole area ("Licht in der Küche an"
-→ `"area": "Küche"`). `get_state` reads states and measurements. The
+(`entity_id | name | area`) and five tools to the model. Together they cover
+the built-in Assist intents of Home Assistant:
+
+| Tool | What it does | Example |
+|------|--------------|---------|
+| `control` | Home Assistant services, for lights also for a whole area | "Licht in der Küche an" → `light.turn_on`, `"area": "Küche"` |
+| | music: search and play by artist, track, album, playlist or radio station (Music Assistant or `media_player.search_media`), shuffle, repeat, mute | "Spiel Musik von Queen auf dem Echo" |
+| | to-do lists: add, check off, remove | "Setz Milch auf die Einkaufsliste" |
+| `get_state` | states and measurements; weather with the course of the rest of the day and the next days; open list items | "Wie ist das Wetter?", "Was steht auf der Einkaufsliste?" |
+| `timer` | timers of the voice device: start (also named), cancel, pause, resume, add, subtract, status; delayed commands | "Stell einen Pizza-Timer auf 12 Minuten", "Mach in 10 Minuten das Licht aus" |
+| `get_time` | time, weekday and date | "Wie spät ist es?" |
+| `broadcast` | announcement on all other voice devices | "Sag allen, dass das Essen fertig ist" |
+
+Timers and broadcasts use the built-in intents of Home Assistant, so they
+need a voice device (for example Home Assistant Voice) as the source. The
 integration only allows exposed entities and the services in
 `llm_schema.SERVICES`.
+
+The option "Answer length" (short, medium, long, detailed) goes into the
+system prompt. The model answers accordingly: "Wie ist das Wetter?" gets the
+current weather (short), plus the course of the rest of the day (medium),
+today's range and rain chance (long), and humidity, wind and tomorrow
+(detailed).
 
 If a device reports an error, the model says so instead of claiming success.
 This behavior comes from the training data, the integration doesn't enforce it
@@ -116,35 +134,80 @@ with rules.
 
 ## Results
 
-| Test | Model v15.1 |
-|------|-------------|
-| 300 test conversations in unseen houses: correct tool calls | 99.7 % |
-| same conversations: answers matching the tool result | 100 % |
-| Real house with more than 100 entities: 58 sentences plus 4 variants | 186/186 |
-| Home Assistant end to end (CPU, 8 threads) | 24/24, median 2.9 s |
+| Test | Model v16 | Model v15.1 |
+|------|-----------|-------------|
+| 300 test conversations in unseen houses: correct tool calls | 98.0 % | – |
+| same conversations: answers matching the tool result | 100 % | – |
+| Real house, 42 scored turns incl. music, timers, lists, weather | 40/42 | 27/42 |
+| Home Assistant end to end: weather, timers on a satellite, Music Assistant | passed | – |
+
+The test conversations of v16 cover music, timers and lists, which v15.1
+does not know; v15.1 reached 99.7 % on its own, smaller test set.
 
 ## Training
 
 ```bash
-./run_train.sh                                  # 8,000 synthetic conversations, LoRA r=32, ~5.5 h on an RTX 3090
-./run_export.sh output/merged qwen2.5-3b-ha-vX  # GGUF Q4_K_M with importance matrix and chat template
-./run_test.sh                                   # evaluation on data/eval.jsonl
+HA_LANG=de ./run_train.sh                              # 25,252 synthetic conversations, LoRA r=32, ~18 h on an RTX 3090
+HA_LANG=de ./run_export.sh output/de/merged qwen2.5-3b-ha-vX  # GGUF Q4_K_M with importance matrix and chat template
+HA_LANG=de ./run_test.sh model/de/qwen2.5-3b-ha-vX-Q4_K_M.gguf  # evaluation on data/de/eval.jsonl
+python src/agent_sim.py URL scenarios.json             # scored dialogues against a simulated house
 ```
 
-`src/gen_dataset.py` creates every conversation in a newly randomized house.
-`src/soup.py` averages the LoRA weights of several runs. v15.1 is the average
-of three runs. Training and integration read the same prompt from
+`src/gen_dataset.py --lang de` creates every conversation in a newly
+randomized house. Each of the 107 cases (intents, question kinds, errors,
+conversation turns) gets the same share. `src/soup.py` averages the LoRA
+weights of several runs. Training and integration read the same prompt from
 `llm_schema.py`. If this file changes, the model must be trained again.
 
-`src/upload_hf.py` uploads a new model to Hugging Face and writes
-`latest.json`. From then on all apps with `auto_update` update themselves.
+`src/upload_hf.py --lang de --gguf FILE` uploads a model to Hugging Face and
+updates `models.json`; `--dataset-only` uploads only the dataset. From then on
+all apps with `auto_update` update themselves.
+
+## Languages
+
+Generators exist for German (`de`, released model), English (`en`), Spanish
+(`es`), French (`fr`), Italian (`it`) and Dutch (`nl`). Every language has its
+own model. Service names, tool names and JSON keys are the same for all
+languages; the texts differ:
+
+| Part | Where |
+|------|-------|
+| System prompt, tool descriptions, answer lengths, weekdays, weather conditions, durations, error texts | `LANGUAGES["<lang>"]` in `custom_components/ha_llm_agent/llm_schema.py` |
+| Dataset generator (sentences, grammar, device names) | `src/gen/<lang>/` with a `main(argv)` |
+| Consistency check (words that report a failure) | `src/gen/<lang>/check.py` |
+| Chat template with the default system prompt | `templates/chat_template.<lang>.jinja` |
+| Data, training output, models | `data/<lang>/`, `output/<lang>/`, `model/<lang>/` |
+| Release metadata | `hf/model/<lang>/latest.json` |
+| App option | `language` in `addons/ha_llm_inference/config.yaml` |
+
+All languages share one model repository on Hugging Face: `models.json` links
+each language to its model file (`<lang>/<file>.gguf`). The dataset repository
+holds all languages with a `locale` column. The integration offers the
+languages in `llm_schema.MODEL_LANGUAGES` (languages with a released model)
+and takes the model language from its options, by default the language of
+Home Assistant.
+
+```bash
+python src/gen_all.py --langs de,en,es,fr,it,nl   # data/<lang>/ for each, merged into data/all/
+python src/upload_hf.py --all                      # dataset of all languages to Hugging Face
+python src/check_languages.py                      # are all languages in step?
+```
+
+**Every change applies to all languages.** A new intent, a fixed answer, a new
+device type or a changed tool result goes into every generator in
+`src/gen/*/` and, for prompt texts, into every entry of `LANGUAGES`.
+`src/check_languages.py` enforces this: all languages need the same text
+keys and placeholders, the same case names, and per case the same category
+and the same tools and services. The GitHub action `Languages` runs it on
+every push together with the consistency check of each generator.
 
 ## Limits
 
-- The conversation model is German only and only uses the services in
-  `llm_schema.SERVICES`. It doesn't create timers or automations and doesn't
-  answer general knowledge questions. A model for another language also needs
-  the prompt of the integration in that language.
+- The conversation model is German only so far and only uses the services in
+  `llm_schema.SERVICES`. It doesn't create automations, doesn't set alarms
+  for a clock time and doesn't answer general knowledge questions.
+- Timers and broadcasts need a voice device as the source; typed requests in
+  the web interface get "not supported on this device".
 - With more than about 250 entities, 8,192 tokens of context aren't enough.
   The integration then shortens the list.
 - Speech-to-text isn't streaming yet: whisper.cpp needs the complete

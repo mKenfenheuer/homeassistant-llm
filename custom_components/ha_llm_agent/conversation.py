@@ -34,9 +34,12 @@ from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.start import async_at_started
+from homeassistant.util import dt as dt_util
 
 from . import llm_schema as S
 from .const import (
+    CONF_LANGUAGE,
+    CONF_VERBOSITY,
     CONF_MAX_ENTITIES,
     CONF_MAX_HISTORY,
     CONF_TEMPERATURE,
@@ -68,7 +71,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
 
 class HaLlmAgentEntity(conversation.ConversationEntity,
                        conversation.AbstractConversationAgent):
-    """German smart-home agent using a local llama.cpp server."""
+    """Smart-home agent using a local llama.cpp server (one model per language)."""
 
     _attr_has_entity_name = True
     _attr_name = None
@@ -112,7 +115,8 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
             return
         exposed = self._exposed()
         system = S.build_system_prompt(
-            [(eid, name, area) for eid, (name, area) in exposed.items()])
+            [(eid, name, area) for eid, (name, area) in exposed.items()], lang=self._lang,
+            verbosity=self._verbosity)
         digest = hashlib.sha1(system.encode()).hexdigest()
         if digest == self._cached_prompt:
             return
@@ -121,7 +125,7 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
         try:
             await self._complete(
                 [{"role": "system", "content": system},
-                 {"role": "user", "content": "Hallo"}],
+                 {"role": "user", "content": S.lang_texts(self._lang)["warmup_text"]}],
                 max_tokens=1, timeout=WARMUP_TIMEOUT)
             self._cached_prompt = digest
             took = time.monotonic() - start
@@ -157,6 +161,17 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
     # ------------------------------------------------------------------ opts
     def _opt(self, key, default):
         return self.entry.options.get(key, default)
+
+    @property
+    def _verbosity(self) -> str:
+        v = self._opt(CONF_VERBOSITY, S.DEFAULT_VERBOSITY)
+        return v if v in S.VERBOSITY else S.DEFAULT_VERBOSITY
+
+    @property
+    def _lang(self) -> str:
+        """Language of the model: option, else the Home Assistant language."""
+        return S.pick_language(self._opt(CONF_LANGUAGE, None)
+                               or self.hass.config.language)
 
     # -------------------------------------------------------------- entities
     def _exposed(self) -> dict[str, tuple[str, str | None]]:
@@ -211,25 +226,74 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
                               [(e, n, a) for e, (n, a) in exposed.items()], groups)
 
     async def _get_state(self, args: dict, exposed: dict) -> str:
+        t = S.lang_texts(self._lang)
         ids = args.get("entity_ids") or args.get("entity_id") or []
         if isinstance(ids, str):
             ids = [ids]
         if not ids and args.get("area"):
             domain = args.get("domain") or "light"
             if domain not in S.AREA_DOMAINS:
-                return S.dumps([{"error": f"area wird für {domain} nicht unterstützt"}])
+                return S.dumps([{"error": t["error_area_domain"].format(domain=domain)}])
             ids = self._area_ids(domain, args["area"], exposed)
             if ids is None:
-                return S.dumps([{"error": f"unbekannter Bereich {args['area']}"}])
+                return S.dumps([{"error": t["error_area_unknown"].format(area=args["area"])}])
         out = []
         for eid in ids[:100]:
             state = self.hass.states.get(eid)
             if eid not in exposed or state is None:
-                out.append({"entity_id": eid, "error": "unbekannte entity_id"})
+                out.append({"entity_id": eid, "error": t["error_entity_unknown"]})
                 continue
-            out.append(S.format_state(eid, exposed[eid][0], state.state,
-                                      dict(state.attributes)))
+            attrs = dict(state.attributes)
+            if state.state != STATE_UNAVAILABLE:
+                if state.domain == "weather":
+                    attrs["later_today"] = await self._hourly(eid)
+                    attrs["forecast"] = await self._forecast(eid)
+                elif state.domain == "todo":
+                    attrs["items"] = await self._todo_items(eid)
+            out.append(S.format_state(eid, exposed[eid][0], state.state, attrs,
+                                      self._lang))
         return S.dumps(out)
+
+    async def _forecast(self, eid: str) -> list[dict] | None:
+        """Daily forecast of a weather entity (twice daily: day parts only)."""
+        for kind in ("daily", "twice_daily"):
+            try:
+                resp = await self.hass.services.async_call(
+                    "weather", "get_forecasts", {"entity_id": eid, "type": kind},
+                    blocking=True, return_response=True)
+            except (HomeAssistantError, ValueError) as err:
+                _LOGGER.debug("No %s forecast for %s: %s", kind, eid, err)
+                continue
+            entries = ((resp or {}).get(eid) or {}).get("forecast") or []
+            if kind == "twice_daily":
+                entries = [f for f in entries if f.get("is_daytime", True)]
+            if entries:
+                return S.format_forecast(entries, dt_util.now().date(), self._lang) or None
+        return None
+
+    async def _hourly(self, eid: str) -> list[dict] | None:
+        """Rest of today from the hourly forecast."""
+        try:
+            resp = await self.hass.services.async_call(
+                "weather", "get_forecasts", {"entity_id": eid, "type": "hourly"},
+                blocking=True, return_response=True)
+        except (HomeAssistantError, ValueError) as err:
+            _LOGGER.debug("No hourly forecast for %s: %s", eid, err)
+            return None
+        entries = ((resp or {}).get(eid) or {}).get("forecast") or []
+        return S.format_hourly(entries, dt_util.now(), self._lang) or None
+
+    async def _todo_items(self, eid: str) -> list[str]:
+        """Open items of a to-do list."""
+        try:
+            resp = await self.hass.services.async_call(
+                "todo", "get_items", {"entity_id": eid, "status": ["needs_action"]},
+                blocking=True, return_response=True)
+        except (HomeAssistantError, ValueError) as err:
+            _LOGGER.debug("Could not read %s: %s", eid, err)
+            return []
+        items = ((resp or {}).get(eid) or {}).get("items") or []
+        return [i.get("summary", "") for i in items][:S.TODO_ITEMS]
 
     async def _control(self, args: dict, exposed: dict,
                        context) -> str:
@@ -275,9 +339,18 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
             data = {k: v for k, v in (act.get("data") or {}).items()
                     if k in S.SERVICES[service]}
             try:
-                await self.hass.services.async_call(
-                    domain, name, {"entity_id": ids, **data},
-                    blocking=True, context=context)
+                if service == "media_player.search_and_play":
+                    for eid in ids:
+                        await self._search_and_play(eid, data, context)
+                elif service == "todo.complete_item":
+                    await self.hass.services.async_call(
+                        "todo", "update_item",
+                        {"entity_id": ids, "item": data.get("item", ""),
+                         "status": "completed"}, blocking=True, context=context)
+                else:
+                    await self.hass.services.async_call(
+                        domain, name, {"entity_id": ids, **data},
+                        blocking=True, context=context)
             except (HomeAssistantError, ValueError, TypeError) as err:
                 errors.append(f"{service} failed for {', '.join(ids)}: {err}")
             else:
@@ -286,6 +359,131 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
         # model which entities the area stood for
         return S.control_result(errors, done if errors or by_area else None)
 
+    async def _search_and_play(self, eid: str, data: dict, context) -> None:
+        """Find music by name and play it: Music Assistant players through
+        music_assistant.play_media, other players through search_media."""
+        query = str(data.get("query") or "").strip()
+        if not query:
+            raise HomeAssistantError("query is missing")
+        media_type = data.get("media_type")
+        artist = str(data.get("artist") or "").strip()
+        entry = er.async_get(self.hass).async_get(eid)
+        if entry is not None and entry.platform == "music_assistant":
+            svc: dict[str, Any] = {"entity_id": eid, "media_id": query}
+            if media_type in S.MEDIA_TYPES:
+                svc["media_type"] = media_type
+            if artist and media_type != "artist":
+                svc["artist"] = artist
+            await self.hass.services.async_call(
+                "music_assistant", "play_media", svc, blocking=True, context=context)
+            return
+        search: dict[str, Any] = {"entity_id": eid,
+                                  "search_query": f"{query} {artist}".strip()}
+        if media_type in ("track", "album", "artist", "playlist", "podcast"):
+            search["media_filter_classes"] = [media_type]
+        try:
+            resp = await self.hass.services.async_call(
+                "media_player", "search_media", search, blocking=True,
+                return_response=True, context=context)
+        except HomeAssistantError as err:
+            raise HomeAssistantError(f"music search is not supported by {eid}") from err
+        found = (resp or {}).get(eid)
+        results = getattr(found, "result", None)
+        if results is None and isinstance(found, dict):
+            results = found.get("result")
+        if not results:
+            raise HomeAssistantError(f"No results found for {query}")
+        first = results[0]
+        get = first.get if isinstance(first, dict) else lambda k: getattr(first, k)
+        await self.hass.services.async_call(
+            "media_player", "play_media",
+            {"entity_id": eid, "media_content_id": get("media_content_id"),
+             "media_content_type": get("media_content_type")},
+            blocking=True, context=context)
+
+    async def _intent(self, intent_type: str, slots: dict[str, Any],
+                      user_input: conversation.ConversationInput) -> intent.IntentResponse:
+        return await intent.async_handle(
+            self.hass, DOMAIN, intent_type,
+            {k: {"value": v} for k, v in slots.items()},
+            text_input=user_input.text, context=user_input.context,
+            language=user_input.language, assistant=conversation.DOMAIN,
+            device_id=user_input.device_id, satellite_id=user_input.satellite_id,
+            conversation_agent_id=self.entity_id)
+
+    async def _timer_list(self, user_input) -> list[dict]:
+        try:
+            resp = await self._intent(intent.INTENT_TIMER_STATUS, {}, user_input)
+        except intent.IntentError:
+            return []
+        return [S.timer_status_entry(
+            t.get("name", ""), t.get("rounded_hours_left", 0),
+            t.get("rounded_minutes_left", 0), t.get("rounded_seconds_left", 0),
+            t.get("is_active", True), self._lang)
+            for t in resp.speech_slots.get("timers", [])]
+
+    async def _timer(self, args: dict, user_input) -> str:
+        """Timers of the voice device through the built-in timer intents."""
+        action = args.get("action")
+        intents = {"start": intent.INTENT_START_TIMER, "cancel": intent.INTENT_CANCEL_TIMER,
+                   "cancel_all": intent.INTENT_CANCEL_ALL_TIMERS,
+                   "pause": intent.INTENT_PAUSE_TIMER, "resume": intent.INTENT_UNPAUSE_TIMER,
+                   "add": intent.INTENT_INCREASE_TIMER, "subtract": intent.INTENT_DECREASE_TIMER,
+                   "status": intent.INTENT_TIMER_STATUS}
+        if action not in intents:
+            return S.timer_result(f"unknown action {action}")
+        slots: dict[str, Any] = {}
+        if action in ("start", "add", "subtract"):
+            for key in ("hours", "minutes", "seconds"):
+                try:
+                    val = int(args.get(key) or 0)
+                except (TypeError, ValueError):
+                    val = 0
+                if val > 0:
+                    slots[key] = val
+            if not slots:
+                return S.timer_result("duration is missing")
+        if args.get("name") and action != "cancel_all":
+            slots["name"] = str(args["name"])
+        if action == "start" and args.get("command"):
+            slots["conversation_command"] = str(args["command"])
+        try:
+            resp = await self._intent(intents[action], slots, user_input)
+        except intent.IntentError as err:
+            kind = type(err).__name__
+            if kind == "TimersNotSupportedError":
+                return S.timer_result("timers are not supported on this device")
+            if kind == "TimerNotFoundError":
+                return S.timer_result("no matching timer", await self._timer_list(user_input))
+            if kind == "MultipleTimersMatchedError":
+                return S.timer_result("several timers match, name one",
+                                      await self._timer_list(user_input))
+            return S.timer_result(str(err) or kind)
+        if action == "status":
+            timers = [S.timer_status_entry(
+                t.get("name", ""), t.get("rounded_hours_left", 0),
+                t.get("rounded_minutes_left", 0), t.get("rounded_seconds_left", 0),
+                t.get("is_active", True), self._lang)
+                for t in resp.speech_slots.get("timers", [])]
+            return S.timer_result(timers=timers)
+        if action == "cancel_all":
+            return S.timer_result(canceled=resp.speech_slots.get("canceled", 0))
+        return S.timer_result()
+
+    async def _broadcast(self, args: dict, user_input) -> str:
+        message = str(args.get("message") or "").strip()
+        if not message:
+            return S.dumps({"success": False, "error": "message is missing"})
+        try:
+            resp = await self._intent(intent.INTENT_BROADCAST, {"message": message},
+                                      user_input)
+        except (intent.IntentError, HomeAssistantError) as err:
+            return S.dumps({"success": False, "error": str(err) or type(err).__name__})
+        if not resp.success_results:
+            return S.dumps({"success": False,
+                            "error": "no other voice devices for a broadcast"})
+        return S.dumps({"success": True})
+
     # ------------------------------------------------------------------- llm
     async def _complete(self, messages: list[dict], max_tokens: int = 400,
                         timeout: float | None = None) -> dict:
@@ -293,7 +491,7 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
         body = {
             "model": "ha-llm",
             "messages": messages,
-            "tools": S.TOOLS,
+            "tools": S.build_tools(self._lang),
             "temperature": float(self._opt(CONF_TEMPERATURE, DEFAULT_TEMPERATURE)),
             "max_tokens": max_tokens,
             "cache_prompt": True,
@@ -331,7 +529,8 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
         location = (self._location(user_input)
                     if self._opt(CONF_USE_LOCATION, DEFAULT_USE_LOCATION) else None)
         system = S.build_system_prompt(
-            [(eid, name, area) for eid, (name, area) in exposed.items()], location)
+            [(eid, name, area) for eid, (name, area) in exposed.items()], location,
+            lang=self._lang, verbosity=self._verbosity)
         history = self._history.get(conv_id, [])
         turn: list[dict[str, Any]] = [{"role": "user", "content": user_input.text}]
         text = ""
@@ -357,22 +556,28 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
                                                      user_input.context)
                     elif fn.get("name") == "get_state":
                         result = await self._get_state(args, exposed)
+                    elif fn.get("name") == "timer":
+                        result = await self._timer(args, user_input)
+                    elif fn.get("name") == "get_time":
+                        result = S.time_result(dt_util.now(), self._lang)
+                    elif fn.get("name") == "broadcast":
+                        result = await self._broadcast(args, user_input)
                     else:
                         result = S.dumps({"error": f"unknown tool {fn.get('name')}"})
                     _LOGGER.debug("tool %s(%s) -> %s", fn.get("name"), args, result)
                     turn.append({"role": "tool", "tool_call_id": call.get("id", ""),
                                  "content": result})
             else:
-                text = "Das konnte ich leider nicht vollständig ausführen."
+                text = S.lang_texts(self._lang)["error_incomplete"]
         except (aiohttp.ClientError, asyncio.TimeoutError, HomeAssistantError,
                 KeyError, ValueError) as err:
             _LOGGER.error("LLM request failed: %s: %s", type(err).__name__, err)
             response = intent.IntentResponse(language=user_input.language)
             response.async_set_error(
                 intent.IntentResponseErrorCode.UNKNOWN,
-                "Der Sprachassistent hat nicht rechtzeitig geantwortet."
+                S.lang_texts(self._lang)["error_timeout"]
                 if isinstance(err, asyncio.TimeoutError)
-                else "Der Sprachassistent ist gerade nicht erreichbar.")
+                else S.lang_texts(self._lang)["error_unreachable"])
             return conversation.ConversationResult(
                 response=response, conversation_id=conv_id)
 

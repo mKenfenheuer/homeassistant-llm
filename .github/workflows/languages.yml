@@ -1,0 +1,29 @@
+# All languages must stay in step: the same prompt keys, the same cases and the
+# same tools and services per case (src/check_languages.py), and every
+# generated answer must agree with its tool results (src/check_dataset.py).
+name: Languages
+
+on:
+  push:
+    paths: ["src/**", "custom_components/ha_llm_agent/llm_schema.py", "templates/**"]
+  pull_request:
+    paths: ["src/**", "custom_components/ha_llm_agent/llm_schema.py", "templates/**"]
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Generators in step
+        run: python src/check_languages.py --per-case 80
+      - name: Answers match tool results
+        run: |
+          for d in src/gen/*/; do
+            lang=$(basename "$d")
+            python src/gen_dataset.py --lang "$lang" "/tmp/$lang.jsonl" per_case:30 7
+            python src/check_dataset.py --lang "$lang" "/tmp/$lang.jsonl" | tee "/tmp/$lang.txt"
+            grep -q "problems: none" "/tmp/$lang.txt"
+          done

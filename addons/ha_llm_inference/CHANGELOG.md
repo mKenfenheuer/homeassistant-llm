@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.13.0
+
+- Model v16 (prompt schema 6). New: music (Music Assistant or the media
+  search of the player), timers on voice devices (start, pause, resume,
+  add, subtract, cancel, status, delayed commands), time and date,
+  broadcasts to all speakers, shopping and to-do lists, humidifiers and
+  valve positions. Weather answers name the condition and the rest of the
+  day. Answer length set in the integration (short, medium, long,
+  detailed).
+- All languages share the Hugging Face repository
+  `mkenfenheuer/qwen2.5-3b-homeassistant-GGUF`; `models.json` links each
+  language to its model file. German is available today.
+- Update the integration to 0.10.0 together with this app: model v16 needs
+  its prompt and tools.
+
 ## 0.12.0
 
 - New option `gpu_memory`: a budget for the GPU memory in MiB. The app keeps
