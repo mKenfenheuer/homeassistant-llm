@@ -20,7 +20,7 @@ $PY src/check_dataset.py --lang "$L" "data/$L/train.jsonl"   # answers must matc
 
 # continue from the adapter of the last model (INIT= for a fresh adapter);
 # train_sft.py stops when the eval loss no longer drops
-INIT="${INIT-output/$L/lora-v16}"
+INIT="${INIT-output/$L/lora-v17}"
 PYTHONUNBUFFERED=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
     $PY src/train_sft.py --lang "$L" ${INIT:+--init-adapter "$INIT"} "$@"
 
