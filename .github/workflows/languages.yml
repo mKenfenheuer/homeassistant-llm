@@ -5,9 +5,9 @@ name: Languages
 
 on:
   push:
-    paths: ["src/**", "custom_components/ha_llm_agent/llm_schema.py", "templates/**"]
+    paths: ["src/**", "custom_components/ha_llm_agent/llm_schema.py", "templates/**", ".github/workflows/languages.yml"]
   pull_request:
-    paths: ["src/**", "custom_components/ha_llm_agent/llm_schema.py", "templates/**"]
+    paths: ["src/**", "custom_components/ha_llm_agent/llm_schema.py", "templates/**", ".github/workflows/languages.yml"]
 
 jobs:
   parity:
@@ -21,8 +21,9 @@ jobs:
         run: python src/check_languages.py --per-case 80
       - name: Answers match tool results
         run: |
-          for d in src/gen/*/; do
-            lang=$(basename "$d")
+          # only generator packages: the first step leaves src/gen/__pycache__
+          for init in src/gen/*/__init__.py; do
+            lang=$(basename "$(dirname "$init")")
             python src/gen_dataset.py --lang "$lang" "/tmp/$lang.jsonl" per_case:30 7
             python src/check_dataset.py --lang "$lang" "/tmp/$lang.jsonl" | tee "/tmp/$lang.txt"
             grep -q "problems: none" "/tmp/$lang.txt"
