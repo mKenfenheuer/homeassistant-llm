@@ -15,6 +15,7 @@ current time, broadcasts always succeed, music_library returns the names of
 "library": {media_type: [names]} (scenario or file level). "attrs": {eid: attributes} adds
 attributes (weather: later_today/forecast in model format), "verbosity",
 "location" and "player" (media player of the voice device) set the prompt.
+"lang" (file level, default "de") sets the language of prompt, tools and results.
 
 A turn is a sentence or {"text": ..., "calls": [[tool, spec], ...] (or
 "any_of": [calls, calls, ...] when several answers are right),
@@ -77,7 +78,7 @@ class House:
             for t in ts:
                 m, s = divmod(t["seconds"], 60)
                 h, m = divmod(m, 60)
-                out.append(S.timer_status_entry(t["name"], h, m, s, not t["paused"]))
+                out.append(S.timer_status_entry(t["name"], h, m, s, not t["paused"], LANG))
             return out
         if act == "start":
             if not secs:
@@ -133,7 +134,7 @@ class House:
                 out.append({"entity_id": eid, "error": "unbekannte entity_id"})
             else:
                 out.append(S.format_state(eid, self.names[eid], self.state[eid],
-                                          self.attrs.get(eid, {})))
+                                          self.attrs.get(eid, {}), LANG))
         return S.dumps(out)
 
     def music_library(self, args):
@@ -249,6 +250,7 @@ def score(house, exp, calls):
     return True, ""
 
 
+LANG = "de"     # "lang" in the scenario file: prompt, tools and results in that language
 TOOLS = S.TOOLS
 
 
@@ -266,7 +268,7 @@ def run(url, layout, sc, groups=(), results=None, attrs=None):
     house.timer_device = sc.get("timers", True)
     house.attrs = {**(attrs or {}), **sc.get("attrs", {})}
     house.library = sc.get("library", {})
-    system = S.build_system_prompt([tuple(e) for e in layout], sc.get("location"),
+    system = S.build_system_prompt([tuple(e) for e in layout], sc.get("location"), lang=LANG,
                                    verbosity=sc.get("verbosity", S.DEFAULT_VERBOSITY),
                                    player=sc.get("player"))
     history: list[dict] = []
@@ -299,7 +301,7 @@ def run(url, layout, sc, groups=(), results=None, attrs=None):
                 elif fn["name"] == "music_library":
                     res = house.music_library(args)
                 elif fn["name"] == "get_time":
-                    res = S.time_result(datetime.now())
+                    res = S.time_result(datetime.now(), LANG)
                 elif fn["name"] == "broadcast":
                     res = S.dumps({"success": True})
                     house.log.append(f"broadcast {args.get('message')!r}")
@@ -326,6 +328,9 @@ def run(url, layout, sc, groups=(), results=None, attrs=None):
 def main():
     url = sys.argv[1].rstrip("/")
     cfg = json.load(open(sys.argv[2], encoding="utf-8"))
+    global LANG, TOOLS
+    LANG = cfg.get("lang", "de")
+    TOOLS = S.build_tools(LANG)
     base = Path(sys.argv[2]).parent
     results: list = []
     for sc in cfg["scenarios"]:
