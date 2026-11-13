@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.14.1
+
+- Model v18 (prompt schema 7, trained on from v17). It finds the fitting
+  playlist in long media libraries: "Spiel meine Lieblingssongs", "Spiel eine
+  Playlist zum Einschlafen" with 76 playlists in the real test house (v17:
+  0 of 7 such requests, v18: 6 of 7). Results: 98.7 % correct tool calls on
+  300 held-out conversations (v17: 97.0 %), 100 % grounded answers (v17:
+  98.6 %), 57 of 60 turns in the test on a real house (v17: 53 of 60).
+- The training libraries are generated like real ones (built-in mixes,
+  artist radios, soundtracks, personal names with emojis, up to 100
+  entries) instead of drawn from a small fixed list.
+- Add-ons 0.14.0 update to v18 on their own (`auto_update`).
+
 ## 0.14.0
 
 - Model v17 (prompt schema 7), trained on from v16. Results: 97.7 % correct

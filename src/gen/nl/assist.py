@@ -15,6 +15,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from . import core as C
+from .. import playlists as PL
 from .core import R, S, action, base_msgs, cap, low, nl_num, tool_call, tool_msg, voice
 
 LANG = C.LANG
@@ -779,44 +780,63 @@ def s_music_error(h, loc):
 LIB_MOODS = {
     "relax": (["om te ontspannen", "om tot rust te komen", "om te chillen",
                "voor een rustige avond"],
-              ["Chillout Lounge", "Puur ontspannen", "Relax & Unwind", "Peaceful Piano",
-               "Chill Out Music", "Totally Stress Free", "Rustige avonden"]),
+              ["Puur ontspannen", "Relax & Unwind", "Peaceful Piano", "Rustige avonden",
+               "Chill Vibes", "Zondagochtend", "Calm Down", "Easy Listening", "Even niks",
+               "Chillen aan het meer", "Slow Evening"]),
     "sport": (["om te sporten", "voor de training", "voor de sportschool", "om mee te hardlopen"],
-              ["Gym Hits", "Workout Mix", "Running Beats", "Power Workout", "Training 2026",
-               "Beast Mode"]),
+              ["Workout Mix", "Running Beats", "Power Workout", "Training 2026", "Beast Mode",
+               "Hardlopen 10 km", "Fitness Motivatie", "Pump It Up", "Cardio Hits", "Gym Session"]),
     "sleep": (["om in slaap te vallen", "om bij te slapen", "voor de nacht"],
-              ["Deep Sleep", "Slaapmuziek", "Sleep Sounds", "Inslapen", "Welterusten"]),
+              ["Slaapmuziek", "Sleep Sounds", "Inslapen", "Welterusten", "Sleepy Time",
+               "Night Rain", "Droomreis", "Slaap lekker", "Zacht in slaap", "Sleep Well"]),
     "party": (["voor het feest", "om te feesten", "om op te dansen"],
-              ["Party Hits", "Feestknallers", "Dance Party", "Club Hits 2026", "Dansen!"]),
+              ["Feestknallers", "Club Hits 2025", "Dansen!", "Dance Floor Fillers", "Feestplaylist",
+               "Vrijdagmiddagborrel", "Disco Fever", "Let's Dance", "Feestmix"]),
     "xmas": (["met kerstliedjes", "voor de kerst", "met kerstmuziek"],
-             ["Kerstliedjes", "Christmas Classics", "Kerst 2025", "Xmas Hits"]),
+             ["Kerstliedjes", "Christmas Classics", "Kerst 2025", "Xmas Hits",
+              "Gezellige kerst", "Jingle Bells & Co", "Christmas Pop"]),
     "cook": (["om bij te koken", "bij het avondeten", "bij het eten"],
-             ["Koken met muziek", "Dinner Jazz", "Cooking Vibes", "Dinner for Two"]),
+             ["Koken met muziek", "Dinner Jazz", "Cooking Vibes", "Dinner for Two",
+              "Keukenradio", "Avondeten", "Kitchen Grooves"]),
     "focus": (["om bij te werken", "om me te concentreren", "om bij te studeren",
                "om bij te programmeren"],
-              ["Deep Focus", "Beats to think to", "Lofi Coders", "Concentratie",
-               "Programming Beats", "Studeermuziek"]),
+              ["Deep Focus", "Concentratie", "Programming Beats", "Studeermuziek", "Coding Mode",
+               "Focus Flow", "Thuiswerken", "Brain Food", "Code & Coffee", "Study Session"]),
     "rock": (["met rock", "met rockmuziek", "met metal"],
-             ["Rock Classics", "Rock Anthems", "Metal Love", "Hard Rock Hits"]),
+             ["Rock Classics", "Rock Anthems", "Hard Rock Hits", "Metal Mayhem", "Headbanger",
+              "Nederrock", "Heavy Metal Night"]),
     "kids": (["voor de kinderen", "met kinderliedjes"],
-             ["Kinderliedjes", "Kinderdisco", "Liedjes voor kinderen"]),
+             ["Kinderliedjes", "Kinderdisco", "Liedjes voor kinderen", "Kids Party",
+              "Kinderkamer-hits"]),
     "eighties": (["met hits uit de jaren tachtig", "met muziek uit de jaren tachtig"],
-                 ["Jaren 80 Hits", "Best of the 80s", "Jaren 80 Feest"]),
+                 ["Jaren 80 Hits", "Best of the 80s", "Jaren 80 Feest", "80s Forever",
+                  "Hollandse jaren 80"]),
     "car": (["voor in de auto", "voor onderweg"],
-            ["Roadtrip", "Autorit", "Driving Hits"]),
+            ["Roadtrip", "Autorit", "Driving Hits", "Snelweg", "On the Road", "Highway Songs"]),
 }
+# favorites playlists; {name}: a first name
 FAV_NAMES = ["Favoriete nummers", "Liked Songs", "Favorieten", "Mijn favorieten", "Leuke nummers",
-             "Favs", "Liked Songs Max", "Liked Songs Anna", "Mijn favoriete nummers",
-             "Lievelingsmuziek"]
+             "Liked Songs {name}", "Mijn favoriete nummers", "Lievelingsmuziek",
+             "Favorieten van {name}", "Lievelingsnummers {name}", "Liked Songs ❤️",
+             "My Favorites", "Favorites", "Mijn lievelingsnummers", "{name}'s favorieten"]
 FAV_USERS = ["Speel mijn favoriete nummers", "Speel mijn lievelingsnummers", "Speel mijn favorieten",
              "Speel mijn lievelingsmuziek", "Ik wil mijn favoriete nummers horen",
              "Speel de nummers die ik leuk vind", "Speel mijn favoriete playlist"]
-NEUTRAL_PLAYLISTS = ["Discover Weekly", "Release Radar", "Mijn playlist nr. 3",
-                     "Mijn playlist nr. 7", "Verjaardag Alex", "Vakantie 2024", "Zomer 2025",
-                     "Bruiloft", "Mix van de week", "Nieuw ontdekt", "Shazam-nummers",
-                     "Teen Wolf Soundtrack", "Electro Swing", "Deep House 2026",
-                     "Psytrance Supernova", "Goa Mix", "Recently added tracks",
-                     "Dobby + Maximilian", "Fietsen", "Boomerfeest", "Welcome Back 20s"]
+NEUTRAL_PLAYLISTS = ["Mijn playlist nr. 3", "Bruiloft", "Mix van de week", "Nieuw ontdekt",
+                     "Shazam-nummers", "Vakantie 2024", "Zomer 2025", "Gemengd", "Playlist 1",
+                     "Oude pareltjes", "Onderweg gevonden", "Voor later", "Verzameling 2023"]
+# personal playlist names for the generated part of a library (gen/playlists.py)
+PL_LOCAL = {
+    "personal": ["Verjaardag {name}", "{name} + {name2}", "Vakantie {place} {year}",
+                 "Bruiloft {name} & {name2}", "Playlist van {name}", "Mijn playlist nr. {n}",
+                 "{name}'s mix", "Zomer {year}", "Eindexamen {year}", "Oud en nieuw {year}",
+                 "Gedeeld door {name}", "Nieuw {year}", "Schoolreis {place}",
+                 "Studentenhuis {place}"],
+    "names": ["Anna", "Daan", "Sanne", "Bram", "Lotte", "Sem", "Emma", "Thijs", "Fleur",
+              "Lars", "Julia", "Ruben", "Noor", "Jesse", "Eva", "Luuk", "Iris", "Joep"],
+    "places": ["Mallorca", "Italië", "Kroatië", "Amsterdam", "Utrecht", "Lissabon",
+               "Texel", "Ameland", "Barcelona", "Gent"],
+}
 LIB_KINDS = {  # media_type -> (plural, user question words, pool)
     "playlist": ("playlists", ["Welke playlists heb ik", "Wat voor playlists heb ik",
                                "Welke playlists zijn er", "Welke playlists heb ik allemaal",
@@ -838,7 +858,8 @@ PODCASTS = ["Zware Jongens", "Echt Gebeurd", "Dit is de Dag", "NRC Vandaag",
 def lib_pool(kind, dash=False):
     """dash: albums and tracks as 'Artist - Title' (Music Assistant style)."""
     if kind == "playlist":
-        return NEUTRAL_PLAYLISTS + [n for _, ns in LIB_MOODS.values() for n in ns] + FAV_NAMES
+        return NEUTRAL_PLAYLISTS + [n for _, ns in LIB_MOODS.values() for n in ns] + \
+            list(dict.fromkeys(fav_name() for _ in FAV_NAMES))
     if kind == "album":
         return [f"{a} - {al}" if dash else al for al, a in ALBUMS]
     if kind == "track":
@@ -850,12 +871,32 @@ def lib_pool(kind, dash=False):
     return list(PODCASTS)
 
 
-def make_library(kind, must=(), avoid=(), dash=False):
-    """Names in the library of one kind, sorted like a browse result."""
-    pool = [n for n in lib_pool(kind, dash) if n not in avoid and n not in must]
-    n = R.choice([R.randint(1, 4), R.randint(4, 9), R.randint(8, 20), R.randint(15, 40),
-                  R.randint(40, 80)])
-    names = list(must) + R.sample(pool, min(n, len(pool)))
+def fav_name():
+    return R.choice(FAV_NAMES).format(name=R.choice(PL_LOCAL["names"]))
+
+
+def make_library(kind, must=(), avoid=(), dash=False, avoid_tags=(), size=None):
+    """Names in the library of one kind, sorted like a browse result.
+    Playlists: fixed names plus generated real-world ones (gen/playlists.py),
+    none of them fitting avoid_tags (moods)."""
+    n = size or (PL.library_size(R) if kind == "playlist" else
+                 R.choice([R.randint(1, 4), R.randint(4, 9), R.randint(8, 20),
+                           R.randint(15, 40), R.randint(40, 80)]))
+    pool = [n_ for n_ in lib_pool(kind, dash) if n_ not in avoid and n_ not in must]
+    if kind == "playlist":
+        fixed = [n_ for n_ in NEUTRAL_PLAYLISTS if n_ not in avoid]
+        moods = [x for m, (_, ns) in LIB_MOODS.items() if m not in avoid_tags for x in ns
+                 if x not in avoid and x not in must]
+        k_fixed = min(len(fixed), R.randint(0, max(1, n // 6)))
+        k_mood = min(len(moods), R.randint(0, max(1, n // 5)))
+        names = list(must) + R.sample(fixed, k_fixed) + R.sample(moods, k_mood)
+        if R.random() < 0.5 and "fav" not in avoid_tags:
+            names.append(fav_name())
+        names += PL.noise(R, max(0, n - len(names)), ARTISTS, TRACKS, PL_LOCAL,
+                          avoid_tags=avoid_tags, avoid=list(avoid) + names)
+        names = names[:max(n, len(must))]
+    else:
+        names = list(must) + R.sample(pool, min(n, len(pool)))
     return sorted(dict.fromkeys(names), key=str.casefold)
 
 
@@ -938,8 +979,9 @@ def s_library_list(h, loc):
     pick = R.choice(names[:S.LIBRARY_ITEMS])
     data = {"query": pick, "media_type": kind}
     acts = [action("media_player.search_and_play", [e], data)]
-    msgs += [user(R.choice([f"Speel {pick}", f"Speel dan {pick}", f"Speel {pick} maar",
-                            f"{pick} graag"]))]
+    said = PL.spoken(pick)
+    msgs += [user(R.choice([f"Speel {said}", f"Speel dan {said}", f"Speel {said} maar",
+                            f"{said} graag"]))]
     msgs += call_turn("control", {"actions": acts}, C.ok_result(acts),
                       R.choice([f"Ik speel {pick} af op {e.name}.", f"{pick} is nu te horen."]))
     return sample(msgs, "conversation", gold, gold_last=[["control", {"actions": acts}]],
@@ -987,7 +1029,7 @@ def s_library_play(h, loc, favorites=False):
     e, where = tgt
     if favorites:
         u = R.choice(FAV_USERS)
-        fit_pool, avoid = FAV_NAMES, FAV_NAMES
+        fit, tags = fav_name(), ("fav",)
         what = "je favoriete nummers"
     else:
         mood = R.choice(list(LIB_MOODS))
@@ -995,11 +1037,13 @@ def s_library_play(h, loc, favorites=False):
         w = R.choice(words)
         u = R.choice([f"Speel een playlist {w}", f"Speel iets {w}", f"Speel muziek {w}",
                       f"Zoek een playlist {w} voor me", f"Speel een van mijn playlists {w}"])
-        avoid = fit_pool
+        fit, tags = PL.decorate(R, R.choice(fit_pool))[0], PL.mood_tags(mood)
         what = f"muziek {w}"
-    fits = R.random() < 0.8
-    must = [R.choice(fit_pool)] if fits else []
-    names = make_library("playlist", must=must, avoid=[n for n in avoid if n not in must])
+    # mostly long libraries: the fitting playlist has to be found among many
+    fits = R.random() < 0.88
+    size = R.choice([R.randint(3, 15), R.randint(15, 40), R.randint(40, 80),
+                     R.randint(60, 100), R.randint(80, 100)])
+    names = make_library("playlist", must=[fit] if fits else [], avoid_tags=tags, size=size)
     if not names:
         return None
     args = {"entity_id": e.eid, "media_type": "playlist"}
@@ -1008,7 +1052,7 @@ def s_library_play(h, loc, favorites=False):
     msgs += [call, tool_msg(cid, S.library_result(names))]
     gold = [["music_library", args]]
     if fits:
-        pick = must[0]
+        pick = fit
         acts = [action("media_player.search_and_play", [e],
                        {"query": pick, "media_type": "playlist"})]
         msgs += call_turn("control", {"actions": acts}, C.ok_result(acts),
@@ -1896,6 +1940,9 @@ def cases():
         ("music:library_list", s_library_list, {}), ("music:library_search", s_library_search, {}),
         ("music:library_play", s_library_play, {}),
         ("music:library_favorites", lambda h, loc: s_library_play(h, loc, True), {}),
+        # finding one playlist among many is the hardest library task: twice the share
+        ("music:library_play_long", s_library_play, {}),
+        ("music:library_favorites_long", lambda h, loc: s_library_play(h, loc, True), {}),
         ("todo:question", s_todo_question, {}), ("todo:missing_item", s_todo_missing, {}),
         ("todo:no_list", s_todo_no_list, {}),
         ("weather:now", s_weather, {"wkind": "now"}), ("weather:rain", s_weather, {"wkind": "rain"}),

@@ -12,7 +12,7 @@ L="${HA_LANG:-de}"
 # samples per case: every case (intent, question kind, error, turn type) gets
 # the same share; v16 doubles the 118 per case of v15 (2 epochs instead of 2.5)
 PER_CASE="${PER_CASE:-236}"
-SEED="${SEED:-17}"
+SEED="${SEED:-18}"
 
 $PY src/gen_dataset.py --lang "$L" "data/$L/train.jsonl" "per_case:$PER_CASE" "$SEED"
 $PY src/gen_dataset.py --lang "$L" "data/$L/eval.jsonl" 300 "$((SEED + 1000))"   # held-out, other houses
@@ -20,7 +20,7 @@ $PY src/check_dataset.py --lang "$L" "data/$L/train.jsonl"   # answers must matc
 
 # continue from the adapter of the last model (INIT= for a fresh adapter);
 # train_sft.py stops when the eval loss no longer drops
-INIT="${INIT-output/$L/lora-v17}"
+INIT="${INIT-output/$L/lora-v18}"
 PYTHONUNBUFFERED=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
     $PY src/train_sft.py --lang "$L" ${INIT:+--init-adapter "$INIT"} "$@"
 

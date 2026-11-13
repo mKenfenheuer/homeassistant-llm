@@ -28,7 +28,7 @@ with AVX2 (about 16 tokens/s output on 4 cores) or on small GPUs (GTX 1060
 
 | Language | Folder | Version |
 |----------|--------|---------|
-| German | `de/` | v17 |
+| German | `de/` | v18 |
 
 Models for English, Spanish, French, Italian and Dutch are trained from the
 same generator (see the dataset) and are added to this repository as they
@@ -57,7 +57,7 @@ answer length (short, medium, long, detailed).
 ## Usage
 
 ```bash
-llama-server -m de/qwen2.5-3b-ha-v17-Q4_K_M.gguf --jinja -c 8192 --port 8080
+llama-server -m de/qwen2.5-3b-ha-v18-Q4_K_M.gguf --jinja -c 8192 --port 8080
 ```
 
 `--jinja` is required: it activates the embedded chat template, which renders
@@ -142,8 +142,8 @@ matched timers or an error such as `timers are not supported on this device`.
 {
   "languages": {
     "de": {
-      "version": "17",
-      "file": "de/qwen2.5-3b-ha-v17-Q4_K_M.gguf",
+      "version": "18",
+      "file": "de/qwen2.5-3b-ha-v18-Q4_K_M.gguf",
       "sha256": "...",
       "size": 1929902976,
       "schema": 7,
@@ -159,23 +159,28 @@ downloads a new file while the server keeps running, checks the SHA-256,
 switches over and deletes the old file. A model with a higher `schema` than
 the add-on supports is skipped until the add-on is updated.
 
-## Training (German v17)
+## Training (German v18)
 
 - Data: [__DATASET_REPO__](https://huggingface.co/datasets/__DATASET_REPO__)
-  (rows with `locale` = `de`): 27,140 synthetic conversations over randomly
-  generated houses, up to 236 per generator case for each of the 115 cases
+  (rows with `locale` = `de`): 27,612 synthetic conversations over randomly
+  generated houses, up to 236 per generator case for each of the 117 cases
   (rare cases get the same share). Besides device control and state
   questions: music and the media library, the speaker of the voice device,
   seeking and resuming, timers, lists, weather reports per answer length,
   time, broadcasts, unreachable devices, missing devices and multi-turn
   conversations. The answer length of each conversation is sampled (short
   20 %, medium 40 %, long 20 %, detailed 20 %).
-- Continued from the LoRA adapter of v16 (r=32, alpha=64, all linear layers,
-  Qwen2.5-3B-Instruct), lr 1e-4, loss on assistant tokens only, RTX 3090. The
-  eval loss on 99 held-out conversations was measured every 10 steps; the
-  run stopped at step 730 of 1,675 when it had not dropped by 2 % for 20
-  measurements, after about 5 hours. The released file is the step with the lowest
-  eval loss (540, 0.0246).
+- Media libraries are generated like real ones: built-in mixes, artist
+  radios, "This Is ..." lists, genre and festival playlists, soundtracks and
+  personal names with emojis, 2 to 100 entries, with exactly one playlist
+  that fits a request such as "Spiel meine Lieblingssongs".
+- Continued from the LoRA adapter of v17 (r=32, alpha=64, all linear layers,
+  Qwen2.5-3B-Instruct), lr 3e-5, loss on assistant tokens only, RTX 3090. A
+  first run with lr 1e-4 drove the eval loss up from the v17 level and was
+  stopped. The eval loss on 99 held-out conversations was measured every 10
+  steps; the run stopped at step 630 of 1,698 when it had not dropped by 2 %
+  for 30 measurements, after about 5 hours. The released file is the step
+  with the lowest eval loss (460, 0.0228).
 - Quantization: Q4_K_M with an importance matrix computed from 300 training
   conversations.
 
@@ -186,20 +191,21 @@ claiming success, including in later turns. Every training answer is checked
 against the preceding tool results; no answer claims a success the tool did
 not report.
 
-## Evaluation (German v17)
+## Evaluation (German v18)
 
-- 300 held-out conversations in houses not seen during training: 97.7 %
-  correct tool calls (v16 on the same set: 94.7 %), 97.2 % grounded answers.
-- Acceptance test on a real house (over 100 exposed entities, 55 scored
-  turns including the media library, covers and windows of the whole house
-  and two questions in one sentence): 53/55, v16 45/55.
-- End to end in Home Assistant 2026.12 (dev): media library, search, resume
-  and seeking on the speaker of a voice satellite.
+- 300 held-out conversations in houses not seen during training: 98.7 %
+  correct tool calls (v17 on the same set: 97.0 %), 100 % grounded answers
+  (v17: 98.6 %).
+- Acceptance test on a real house (over 100 exposed entities, 60 scored
+  turns including seven playlist requests on a library of 76 playlists whose
+  names are not in the training data): 57/60, v17 53/60. Playlist requests:
+  6/7, v17 0/7.
+- Same 300 conversations with Claude Opus 5.5 (effort low, same prompt and
+  tools): 90.7 % correct tool calls, 74.0 % grounded answers, median 1.46 s
+  per call; v17 on an RTX 3090: median 0.40 s.
 
-Known weaknesses: in a media library with many playlists (76 in the test
-house) "Spiel meine Lieblingssongs" or "Spiel eine Playlist zum Einschlafen"
-can miss the matching playlist and name a few others instead. Listing many
-open covers or lights can leave one out.
+Known weaknesses: very long entity ids (Homematic serials) are sometimes
+shortened. Listing many open covers or lights can leave one out.
 
 ## Limitations
 

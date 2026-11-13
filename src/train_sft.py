@@ -8,7 +8,7 @@ output/<lang>/).
 - Tool-call arguments are passed as dicts: the Qwen2.5 template renders them
   with `tojson`, a JSON string would end up double-encoded.
 - --init-adapter continues from the LoRA adapter of the last model instead
-  of a fresh adapter (lower default lr 1e-4, 1 epoch).
+  of a fresh adapter (lower default lr 3e-5, 1 epoch; 1e-4 drove the eval loss of v18 up from the v17 level).
 - The loss on every --eval-every-th sample of data/<lang>/eval.jsonl is
   measured every --eval-steps steps. An improvement overwrites the adapter in
   <out>/best (no other checkpoints are written); training stops when the
@@ -135,7 +135,7 @@ def main():
     ap.add_argument("--eval-steps", type=int, default=10)
     ap.add_argument("--eval-every", type=int, default=3,
                     help="use every n-th sample of the eval set (speed)")
-    ap.add_argument("--patience", type=int, default=20)
+    ap.add_argument("--patience", type=int, default=30)
     ap.add_argument("--min-delta", type=float, default=0.02,
                     help="relative eval-loss gain that counts as progress")
     ap.add_argument("--resume", action="store_true",
@@ -145,7 +145,7 @@ def main():
            for k, v in DEFAULTS.items()}
     if a.init_adapter:
         if a.lr is None:
-            cfg["lr"] = 1e-4
+            cfg["lr"] = 3e-5
         if a.epochs is None:
             cfg["epochs"] = 1
     for k in ("data", "eval_data", "out", "merged"):

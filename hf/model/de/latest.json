@@ -1,10 +1,10 @@
 {
-  "version": "17",
+  "version": "18",
   "date": "2026-11-13",
-  "file": "de/qwen2.5-3b-ha-v17-Q4_K_M.gguf",
-  "sha256": "5a77b5d676691a2e464b682f93ea9dc0ac4cb67e63a9cee8b7bc9ae844726595",
+  "file": "de/qwen2.5-3b-ha-v18-Q4_K_M.gguf",
+  "sha256": "ff8d0a7468ffa30a5cfb2c40d80fc8096b84390068fe42e8279538bfdc90b3cb",
   "size": 1929902976,
   "schema": 7,
   "min_addon_version": "0.14.0",
-  "notes": "Medienbibliothek, Lautsprecher des Sprachgeräts, Spulen und Fortsetzen, Rollläden und Fenster im ganzen Haus, zwei Fragen in einem Satz"
+  "notes": "Passende Playlist in langen Medienbibliotheken (Lieblingssongs, Stimmungen), genauere Antworten"
 }

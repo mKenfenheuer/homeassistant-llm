@@ -16,7 +16,7 @@ tags:
   - smart-home
   - synthetic
 size_categories:
-  - 10K<n<100K
+  - 100K<n<1M
 configs:
   - config_name: default
     data_files:
@@ -91,24 +91,24 @@ The tool schema (`TOOLS`) is not part of each row; it is defined in
 `llm_schema.py` of the [project repository](https://github.com/mKenfenheuer/homeassistant-llm) and passed to the chat template
 during training.
 
-## Categories (train, de, v17)
+## Categories (train, de, v18)
 
 | Category | Samples | Content |
 |----------|---------|---------|
-| command | 8,739 | single commands: lights (also by area), covers, awning, climate, humidifiers, locks, alarm, media (play, pause, next and previous track, volume, seeking forward and back), music search and play (artist, track, album, playlist, radio, plain "Spiel Musik"), playlists picked from the media library by mood or as favorite songs, the speaker of the voice device preferred, shuffle, repeat, mute, to-do lists (add, check off, remove), fans, vacuum, lawn mower, valves with position, buttons, scenes, group entities, appliance power switches, heating mode switches; short media commands without a named player read all players and act on the one that plays (or, for "Play", is paused) |
-| question | 6,888 | state questions answered via `get_state`, `music_library`, `get_time` or `timer`: weather now, for the rest of the day and the next days, to-do list items, time and date, timers still running, appliance status sensors, door contacts, open windows and covers of the whole house or a room, electric cars, outdoor temperature, lights of an area, two questions in one sentence, playlists, albums (also of one artist), artists, stations and podcasts of the media library |
-| conversation | 4,383 | 3 to 6 turns: undo, corrections, "Welches Licht hast du ausgeschaltet?", recaps, checks, topic changes, music follow-ups ("Lauter", "Zurück", "Vorspulen", pause and play again), playing a playlist named in a library answer, timer follow-ups ("Wie lange noch?"), list follow-ups ("Und Eier"), choosing a speaker after a question back |
-| timer | 2,433 | start (also named and with a delayed command such as "Mach in 10 Minuten das Licht aus"), cancel, cancel all, pause, resume, add, subtract, ambiguous names, no matching timer, devices without timer support |
-| unknown | 1,518 | devices, rooms or lists that do not exist, alarms at a clock time: no tool call, other rooms suggested, also when the user insists twice; houses without areas |
-| error | 1,101 | unreachable devices, partial success, rooms where only some lights are reachable, retries, music not found, players without a media library: the answer reports the failure |
-| compound | 474 | two commands in one sentence |
-| broadcast | 473 | announcements to all voice devices, also without other devices |
-| chat | 392 | greetings, thanks, capabilities, "Vergiss es" |
-| followup | 358 | two-turn conversations ("und wieder aus", "Nee, ist es nicht", accepting a suggested other room) |
+| command | 9,209 | single commands: lights (also by area), covers, awning, climate, humidifiers, locks, alarm, media (play, pause, next and previous track, volume, seeking forward and back), music search and play (artist, track, album, playlist, radio, plain "Spiel Musik"), playlists picked from the media library by mood or as favorite songs, the speaker of the voice device preferred, shuffle, repeat, mute, to-do lists (add, check off, remove), fans, vacuum, lawn mower, valves with position, buttons, scenes, group entities, appliance power switches, heating mode switches; short media commands without a named player read all players and act on the one that plays (or, for "Play", is paused) |
+| question | 6,861 | state questions answered via `get_state`, `music_library`, `get_time` or `timer`: weather now, for the rest of the day and the next days, to-do list items, time and date, timers still running, appliance status sensors, door contacts, open windows and covers of the whole house or a room, electric cars, outdoor temperature, lights of an area, two questions in one sentence, playlists, albums (also of one artist), artists, stations and podcasts of the media library |
+| conversation | 4,363 | 3 to 6 turns: undo, corrections, "Welches Licht hast du ausgeschaltet?", recaps, checks, topic changes, music follow-ups ("Lauter", "Zurück", "Vorspulen", pause and play again), playing a playlist named in a library answer, timer follow-ups ("Wie lange noch?"), list follow-ups ("Und Eier"), choosing a speaker after a question back |
+| timer | 2,457 | start (also named and with a delayed command such as "Mach in 10 Minuten das Licht aus"), cancel, cancel all, pause, resume, add, subtract, ambiguous names, no matching timer, devices without timer support |
+| unknown | 1,533 | devices, rooms or lists that do not exist, alarms at a clock time: no tool call, other rooms suggested, also when the user insists twice; houses without areas |
+| error | 1,105 | unreachable devices, partial success, rooms where only some lights are reachable, retries, music not found, players without a media library: the answer reports the failure |
+| compound | 473 | two commands in one sentence |
+| broadcast | 472 | announcements to all voice devices, also without other devices |
+| chat | 411 | greetings, thanks, capabilities, "Vergiss es" |
+| followup | 350 | two-turn conversations ("und wieder aus", "Nee, ist es nicht", accepting a suggested other room) |
 | relative | 237 | "Mach es im Bad wärmer": read state, then set |
-| clarify | 144 | several speakers and none named: the assistant reads the players first, plays on the only reachable one, says that none is reachable, or asks which one |
+| clarify | 141 | several speakers and none named: the assistant reads the players first, plays on the only reachable one, says that none is reachable, or asks which one |
 
-The generator draws from 115 cases with equal quotas (236 samples each, a few
+The generator draws from 117 cases with equal quotas (236 samples each, a few
 cases with few distinct sentences have fewer), so rare situations are as
 frequent as common ones.
 
@@ -123,6 +123,14 @@ room of the voice device; otherwise the assistant reads all players and asks.
 `media_player.search_and_play` then plays by name. `search_and_play` without
 a query continues the loaded title or plays the favorite songs, and
 `media_player.seek_relative` seeks by seconds (negative: back).
+
+The playlists of a media library are generated per sample like real ones
+(`gen/playlists.py`): built-in mixes, artist radios, "This Is ..." lists,
+genre and festival playlists, soundtracks and personal names with emojis,
+from 2 to 100 entries. For "Spiel meine Lieblingssongs" or "Spiel eine
+Playlist zum Einschlafen" the assistant reads the playlists and picks the one
+that fits among them; names of related moods are left out, so exactly one
+fits. In 12 % of these samples none fits and the assistant names a few others.
 
 ## Answer length
 
@@ -145,8 +153,8 @@ learns to act on the latest request only.
 
 Created with `gen_dataset.py` and one generator package per language,
 `gen/<lang>/` (template-based, no LLM involved):
-`python gen_all.py --seed 17 --per-case 236`, which runs
-`gen_dataset.py --lang <lang> data/<lang>/train.jsonl per_case:236 17` for
+`python gen_all.py --seed 18 --per-case 236`, which runs
+`gen_dataset.py --lang <lang> data/<lang>/train.jsonl per_case:236 18` for
 every language and merges the rows. All generators have the same cases, tools
 and services (`check_languages.py`); `llm_schema.py` holds the prompt texts
 of all languages.

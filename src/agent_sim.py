@@ -16,7 +16,8 @@ current time, broadcasts always succeed, music_library returns the names of
 attributes (weather: later_today/forecast in model format), "verbosity",
 "location" and "player" (media player of the voice device) set the prompt.
 
-A turn is a sentence or {"text": ..., "calls": [[tool, spec], ...],
+A turn is a sentence or {"text": ..., "calls": [[tool, spec], ...] (or
+"any_of": [calls, calls, ...] when several answers are right),
 "no_tool": true, "contains": [...]}: with expectations the turn is scored.
 control spec: {"service", "entity_id" (or "area"), "data" (subset, case-
 insensitive)}; get_state spec: {"entity_ids": [...]} (subset); other tools:
@@ -214,6 +215,10 @@ def control_pairs(house, args):
 
 def score(house, exp, calls):
     """calls: [(tool, args)] of the turn -> (ok, reason)."""
+    if exp.get("any_of"):
+        # several right answers ("Favs" or "Liked Songs Max"): one must pass
+        res = [score(house, {**exp, "any_of": None, "calls": c}, calls) for c in exp["any_of"]]
+        return next((r for r in res if r[0]), res[0])
     if exp.get("no_tool"):
         return (not calls, "tool called" if calls else "")
     for tool, spec in exp.get("calls", []):
@@ -308,7 +313,7 @@ def run(url, layout, sc, groups=(), results=None, attrs=None):
         for c in calls_seen:
             print(f"    tool: {c[:260]}")
         print(f"  BOT : {answer}")
-        if exp and ("calls" in exp or "no_tool" in exp or "contains" in exp):
+        if exp and ("calls" in exp or "any_of" in exp or "no_tool" in exp or "contains" in exp):
             ok, why = score(house, exp, raw_calls)
             if ok and exp.get("contains"):
                 miss = [c for c in exp["contains"] if c.lower() not in (answer or "").lower()]

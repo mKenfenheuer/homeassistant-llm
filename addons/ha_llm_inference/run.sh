@@ -38,8 +38,8 @@ LEGACY_URLS=()
 if [ "$LANGUAGE" = "de" ]; then
     MODEL_DIR=/share/ha_llm
     # model that belongs to this add-on version (fallback without network)
-    DEFAULT_URL="${HF_REPO}/de/qwen2.5-3b-ha-v17-Q4_K_M.gguf"
-    DEFAULT_SHA="5a77b5d676691a2e464b682f93ea9dc0ac4cb67e63a9cee8b7bc9ae844726595"
+    DEFAULT_URL="${HF_REPO}/de/qwen2.5-3b-ha-v18-Q4_K_M.gguf"
+    DEFAULT_SHA="ff8d0a7468ffa30a5cfb2c40d80fc8096b84390068fe42e8279538bfdc90b3cb"
     # default URLs of earlier versions: treated like "empty", old file removed
     LEGACY_URLS=(
         "${HF_REPO}/qwen2.5-3b-ha-Q4_K_M.gguf"
@@ -52,6 +52,7 @@ if [ "$LANGUAGE" = "de" ]; then
         "${HF_REPO}/qwen2.5-3b-ha-v15.1-Q4_K_M.gguf"
         "https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-v15.1-Q4_K_M.gguf"
         "${HF_REPO}/de/qwen2.5-3b-ha-v16-Q4_K_M.gguf"
+        "${HF_REPO}/de/qwen2.5-3b-ha-v17-Q4_K_M.gguf"
     )
 else
     MODEL_DIR="/share/ha_llm/${LANGUAGE}"
