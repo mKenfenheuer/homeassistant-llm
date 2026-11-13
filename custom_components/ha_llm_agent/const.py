@@ -17,6 +17,8 @@ CONF_USE_LOCATION = "use_location"
 CONF_LANGUAGE = "language"
 # answer length (llm_schema.VERBOSITY), written into the system prompt
 CONF_VERBOSITY = "verbosity"
+# music that the wake word stopped goes on after the answer
+CONF_RESUME_MUSIC = "resume_music"
 
 # hostname of the local add-on "ha_llm_inference" inside the HA network
 DEFAULT_URL = "http://local-ha-llm-inference:8080"
@@ -40,6 +42,7 @@ DEFAULT_MAX_ENTITIES = 200
 # The area line sits before the tool block in the prompt; a different area per
 # satellite invalidates ~600 cached tokens. Off by default for slow CPUs.
 DEFAULT_USE_LOCATION = False
+DEFAULT_RESUME_MUSIC = True
 
 MAX_TOOL_ROUNDS = 4
 MAX_CONVERSATIONS = 50

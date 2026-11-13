@@ -31,15 +31,15 @@ HF_REPO="${HA_LLM_REPO:-https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassis
 MANIFEST_URL="${HF_REPO}/models.json"
 # prompt schema of the integration released with this add-on version; a model
 # for a newer schema needs a newer integration and is not installed
-SUPPORTED_SCHEMA=6
+SUPPORTED_SCHEMA=7
 DEFAULT_URL=""
 DEFAULT_SHA=""
 LEGACY_URLS=()
 if [ "$LANGUAGE" = "de" ]; then
     MODEL_DIR=/share/ha_llm
     # model that belongs to this add-on version (fallback without network)
-    DEFAULT_URL="${HF_REPO}/de/qwen2.5-3b-ha-v16-Q4_K_M.gguf"
-    DEFAULT_SHA="68f5a613d55804002a55d75e4c993ef697fb5dcc4cd7924090fc0f22e55c3864"
+    DEFAULT_URL="${HF_REPO}/de/qwen2.5-3b-ha-v17-Q4_K_M.gguf"
+    DEFAULT_SHA="5a77b5d676691a2e464b682f93ea9dc0ac4cb67e63a9cee8b7bc9ae844726595"
     # default URLs of earlier versions: treated like "empty", old file removed
     LEGACY_URLS=(
         "${HF_REPO}/qwen2.5-3b-ha-Q4_K_M.gguf"
@@ -51,6 +51,7 @@ if [ "$LANGUAGE" = "de" ]; then
         "${HF_REPO}/qwen2.5-3b-ha-v15-soup-Q4_K_M.gguf"
         "${HF_REPO}/qwen2.5-3b-ha-v15.1-Q4_K_M.gguf"
         "https://huggingface.co/mkenfenheuer/qwen2.5-3b-homeassistant-de-GGUF/resolve/main/qwen2.5-3b-ha-v15.1-Q4_K_M.gguf"
+        "${HF_REPO}/de/qwen2.5-3b-ha-v16-Q4_K_M.gguf"
     )
 else
     MODEL_DIR="/share/ha_llm/${LANGUAGE}"

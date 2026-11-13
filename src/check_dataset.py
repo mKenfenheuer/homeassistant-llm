@@ -31,7 +31,12 @@ def check(row):
     last_tool = None
     for i, m in enumerate(msgs):
         if m["role"] == "tool":
-            last_tool = json.loads(m["content"])
+            res = json.loads(m["content"])
+            # several get_state calls in one turn (two questions in one
+            # sentence): the answer may use all of them
+            if isinstance(res, list) and isinstance(last_tool, list):
+                res = last_tool + res
+            last_tool = res
             continue
         if m["role"] == "user":
             last_tool = None
@@ -55,8 +60,9 @@ def check(row):
                     break
             mo = re.match(W["listing"], ans)
             if mo:
-                listed = re.split(W["list_split"], mo.group(1))
-                on = {x["name"] for x in last_tool if x.get("state") == "on"}
+                # only the listing sentence; a second answer can follow
+                listed = re.split(W["list_split"], mo.group(1).split(". ")[0].rstrip("."))
+                on = {x["name"] for x in last_tool if x.get("state") in ("on", "open")}
                 if set(listed) - on:
                     problems.append(("listed entity not on/open", ans))
             if any(x.get("state") == "unavailable" for x in last_tool) and \

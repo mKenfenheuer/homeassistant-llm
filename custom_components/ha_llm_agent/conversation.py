@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import random
 import re
 import time
 from collections import OrderedDict
@@ -19,8 +20,8 @@ from homeassistant.components.homeassistant.exposed_entities import (
     async_should_expose,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import MATCH_ALL, STATE_UNAVAILABLE
-from homeassistant.core import HomeAssistant
+from homeassistant.const import EVENT_STATE_CHANGED, MATCH_ALL, STATE_UNAVAILABLE
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import (
     area_registry as ar,
@@ -38,6 +39,8 @@ from homeassistant.util import dt as dt_util
 
 from . import llm_schema as S
 from .const import (
+    CONF_RESUME_MUSIC,
+    DEFAULT_RESUME_MUSIC,
     CONF_LANGUAGE,
     CONF_VERBOSITY,
     CONF_MAX_ENTITIES,
@@ -61,6 +64,79 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 _TOOL_CALL_RE = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.S)
+
+
+PLAY_WAIT = 15  # seconds to wait for play_media before answering
+
+
+INTERRUPT_WINDOW = 3   # s between the music stopping and the satellite listening
+RESUME_TIMEOUT = 60    # s to wait for the satellite to finish its answer
+RESUME_DELAY = 0.5     # s after the answer before the music goes on
+# services that decide about the playback themselves: no resume after them
+PLAYBACK_SERVICES = ["media_player.media_pause", "media_player.media_stop",
+                     "media_player.turn_off", "media_player.media_play",
+                     "media_player.search_and_play", "media_player.media_next_track",
+                     "media_player.media_previous_track"]
+
+
+def _turn_sets_playback(turn: list[dict[str, Any]], player: str) -> bool:
+    """The turn paused, stopped, started or switched the music of `player`."""
+    for m in turn:
+        for call in m.get("tool_calls") or []:
+            fn = call.get("function", {})
+            if fn.get("name") != "control":
+                continue
+            try:
+                acts = json.loads(fn.get("arguments") or "{}").get("actions") or []
+            except ValueError:
+                continue
+            for a in acts if isinstance(acts, list) else []:
+                ids = a.get("entity_id") or []
+                ids = [ids] if isinstance(ids, str) else ids
+                if a.get("service") in PLAYBACK_SERVICES and (player in ids or not ids):
+                    return True
+    return False
+
+
+def _quiet_turn(turn: list[dict[str, Any]]) -> bool:
+    """True when every control call of the turn used only QUIET_SERVICES and
+    succeeded, and the turn made at least one; reads (get_state,
+    music_library) may come before it."""
+    results = {m.get("tool_call_id"): m.get("content") for m in turn if m["role"] == "tool"}
+    controls = 0
+    for m in turn:
+        for call in m.get("tool_calls") or []:
+            fn = call.get("function", {})
+            if fn.get("name") in ("get_state", "music_library"):
+                continue
+            if fn.get("name") != "control":
+                return False
+            try:
+                acts = json.loads(fn.get("arguments") or "{}").get("actions") or []
+                ok = json.loads(results.get(call.get("id"), "{}")).get("success") is True
+            except (ValueError, AttributeError):
+                return False
+            if not ok or not acts or any(a.get("service") not in S.QUIET_SERVICES for a in acts):
+                return False
+            controls += 1
+    return controls > 0
+
+
+def _norm(text: Any) -> str:
+    return " ".join(re.sub(r"[^\w]+", " ", str(text or "").casefold()).split())
+
+
+def _matches(query: str, title: Any) -> bool:
+    """Search hit belongs to the query: one contains the other, or every
+    word of the query (3+ letters) is in the title."""
+    q, t = _norm(query), _norm(title)
+    if not q or not t:
+        return False
+    # whole words only: "Musik" is no hit for "Musikins"
+    if f" {q} " in f" {t} " or f" {t} " in f" {q} ":
+        return True
+    words = [w for w in q.split() if len(w) >= 3]
+    return bool(words) and all(w in t.split() for w in words)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
@@ -89,6 +165,12 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
         # hash of the system prompt that llama-server has in its cache
         self._cached_prompt: str | None = None
         self._warming = False
+        # player -> {title casefold: browse entry} of the last music_library call
+        self._library: dict[str, dict[str, dict]] = {}
+        # monotonic times: a media player stopped playing / a satellite
+        # started listening (wake word)
+        self._stopped: dict[str, float] = {}
+        self._listening: dict[str, float] = {}
 
     @property
     def supported_languages(self) -> list[str] | Literal["*"]:
@@ -101,6 +183,21 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
         self.async_on_remove(async_at_started(self.hass, self._async_start_warmup))
         self.async_on_remove(async_track_time_interval(
             self.hass, self._async_warmup_tick, timedelta(minutes=WARMUP_INTERVAL_MIN)))
+        # the wake word stops the music of a voice device; remember when, so
+        # it can go on after the answer
+        self.async_on_remove(self.hass.bus.async_listen(EVENT_STATE_CHANGED, self._on_state))
+
+    @callback
+    def _on_state(self, event: Event) -> None:
+        eid = event.data.get("entity_id", "")
+        old, new = event.data.get("old_state"), event.data.get("new_state")
+        if old is None or new is None:
+            return
+        if eid.startswith("media_player.") and old.state == "playing" and new.state != "playing":
+            self._stopped[eid] = time.monotonic()
+        elif eid.startswith("assist_satellite.") and new.state == "listening" \
+                and old.state != "listening":
+            self._listening[eid] = time.monotonic()
 
     async def _async_start_warmup(self, _hass) -> None:
         self.entry.async_create_background_task(
@@ -214,6 +311,67 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
         area = ar.async_get(self.hass).async_get_area(area_id) if area_id else None
         return area.name if area else None
 
+    def _satellite_player(self, user_input: conversation.ConversationInput,
+                          exposed: dict) -> str | None:
+        """Exposed media player of the voice device: one on the same device,
+        or one that wraps such a player (its unique_id is the entity_id of
+        the device's player, e.g. a Music Assistant player)."""
+        ent_reg = er.async_get(self.hass)
+        device_id = user_input.device_id
+        if not device_id and user_input.satellite_id and (
+                sat := ent_reg.async_get(user_input.satellite_id)):
+            device_id = sat.device_id
+        if not device_id:
+            return None
+        own = [e.entity_id for e in er.async_entries_for_device(ent_reg, device_id)
+               if e.domain == "media_player"]
+        for eid in own:
+            if eid in exposed:
+                return eid
+        for entry in ent_reg.entities.values():
+            if entry.domain == "media_player" and entry.unique_id in own \
+                    and entry.entity_id in exposed:
+                return entry.entity_id
+        return None
+
+    def _interrupted(self, user_input: conversation.ConversationInput,
+                     player: str | None) -> bool:
+        """The wake word of this request stopped the music of the voice
+        device's player (it stopped up to INTERRUPT_WINDOW s before the
+        satellite started listening, and is not playing now)."""
+        sat = user_input.satellite_id
+        if not player or not sat or sat not in self._listening or player not in self._stopped:
+            return False
+        st = self.hass.states.get(player)
+        if st is None or st.state == "playing":
+            return False
+        return self._stopped[player] >= self._listening[sat] - INTERRUPT_WINDOW
+
+    async def _resume_after_answer(self, sat: str, player: str) -> None:
+        """Wait until the satellite has spoken the answer, then let the
+        music go on."""
+        deadline = time.monotonic() + RESUME_TIMEOUT
+        spoke = False
+        while time.monotonic() < deadline:
+            st = self.hass.states.get(sat)
+            state = st.state if st else "idle"
+            if state in ("responding", "listening"):
+                spoke = True
+            if state == "idle" and (spoke or time.monotonic() > deadline - RESUME_TIMEOUT + 3):
+                break
+            await asyncio.sleep(0.3)
+        await asyncio.sleep(RESUME_DELAY)
+        st = self.hass.states.get(player)
+        sat_st = self.hass.states.get(sat)
+        if st is None or st.state == "playing" or (sat_st and sat_st.state == "listening"):
+            return
+        _LOGGER.debug("music on %s goes on after the answer", player)
+        try:
+            await self.hass.services.async_call(
+                "media_player", "media_play", {"entity_id": player}, blocking=False)
+        except HomeAssistantError as err:
+            _LOGGER.debug("resume on %s failed: %s", player, err)
+
     # ----------------------------------------------------------------- tools
     def _area_ids(self, domain: str, area: str, exposed: dict) -> list[str] | None:
         """Exposed entities of `domain` in `area` ("*" = whole house), as the
@@ -230,13 +388,16 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
         ids = args.get("entity_ids") or args.get("entity_id") or []
         if isinstance(ids, str):
             ids = [ids]
-        if not ids and args.get("area"):
+        if not ids and (args.get("area") or args.get("domain")):
+            # every domain can be read by area ("Welche Rollläden sind offen?"),
+            # optionally only one device_class ("Welche Fenster sind offen?")
             domain = args.get("domain") or "light"
-            if domain not in S.AREA_DOMAINS:
-                return S.dumps([{"error": t["error_area_domain"].format(domain=domain)}])
-            ids = self._area_ids(domain, args["area"], exposed)
+            ids = self._area_ids(domain, args.get("area") or S.ALL_AREAS, exposed)
             if ids is None:
                 return S.dumps([{"error": t["error_area_unknown"].format(area=args["area"])}])
+            if dc := args.get("device_class"):
+                ids = [e for e in ids if (st := self.hass.states.get(e))
+                       and st.attributes.get("device_class") == dc]
         out = []
         for eid in ids[:100]:
             state = self.hass.states.get(eid)
@@ -342,6 +503,9 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
                 if service == "media_player.search_and_play":
                     for eid in ids:
                         await self._search_and_play(eid, data, context)
+                elif service == "media_player.seek_relative":
+                    for eid in ids:
+                        await self._seek_relative(eid, data, context)
                 elif service == "todo.complete_item":
                     await self.hass.services.async_call(
                         "todo", "update_item",
@@ -359,24 +523,150 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
         # model which entities the area stood for
         return S.control_result(errors, done if errors or by_area else None)
 
+    async def _seek_relative(self, eid: str, data: dict, context) -> None:
+        """Seek by `seconds` from the current position (negative: back)."""
+        try:
+            secs = float(data.get("seconds") or 0)
+        except (TypeError, ValueError) as err:
+            raise HomeAssistantError("seconds must be a number") from err
+        st = self.hass.states.get(eid)
+        pos = st.attributes.get("media_position") if st else None
+        if pos is None:
+            raise HomeAssistantError(f"seeking is not supported by {eid}")
+        if st.state == "playing" and (at := st.attributes.get("media_position_updated_at")):
+            pos += (dt_util.utcnow() - at).total_seconds()
+        target = max(0.0, pos + secs)
+        if (dur := st.attributes.get("media_duration")) is not None:
+            target = min(target, max(0.0, float(dur) - 1))
+        await self.hass.services.async_call(
+            "media_player", "media_seek", {"entity_id": eid, "seek_position": round(target)},
+            blocking=True, context=context)
+
+    async def _browse(self, eid: str, content_id: str | None = None,
+                      content_type: str | None = None) -> dict[str, Any]:
+        """media_player.browse_media of one player as a dict."""
+        data: dict[str, Any] = {"entity_id": eid}
+        if content_id is not None:
+            data.update(media_content_id=content_id,
+                        media_content_type=content_type or "")
+        resp = await self.hass.services.async_call(
+            "media_player", "browse_media", data, blocking=True, return_response=True)
+        node = (resp or {}).get(eid)
+        if hasattr(node, "as_dict"):
+            node = node.as_dict()
+        return node if isinstance(node, dict) else {}
+
+    async def _library_items(self, eid: str, media_type: str) -> list[dict]:
+        """Playable entries of one kind in the media library of a player:
+        the folder whose children have the wanted media class (Playlists,
+        Artists, ...), else matching entries one level below the root."""
+        classes = S.LIBRARY_CLASSES.get(media_type, [media_type])
+        root = await self._browse(eid)
+        folders = root.get("children") or []
+        want = [c for c in folders if c.get("can_expand")
+                and c.get("children_media_class") == classes[0]]
+        if not want and media_type in ("radio", "podcast"):
+            words = {"radio": ("radio", "sender"), "podcast": ("podcast",)}[media_type]
+            want = [c for c in folders if c.get("can_expand") and any(
+                w in str(c.get("title", "")).casefold() for w in words)]
+        items: list[dict] = []
+        if want:
+            node = await self._browse(eid, want[0].get("media_content_id"),
+                                      want[0].get("media_content_type"))
+            items = [c for c in node.get("children") or [] if c.get("can_play")]
+        else:
+            items = [c for c in folders if c.get("can_play")
+                     and c.get("media_class") in classes]
+            for c in [c for c in folders if c.get("can_expand")][:8]:
+                if c.get("media_class") == "app":
+                    continue
+                node = await self._browse(eid, c.get("media_content_id"),
+                                          c.get("media_content_type"))
+                items += [x for x in node.get("children") or []
+                          if x.get("can_play") and x.get("media_class") in classes]
+        return [i for i in items if str(i.get("title") or "").strip()]
+
+    async def _music_library(self, args: dict, exposed: dict) -> str:
+        eid = str(args.get("entity_id") or "")
+        if isinstance(args.get("entity_id"), list):
+            eid = (args["entity_id"] or [""])[0]
+        if eid not in exposed or not eid.startswith("media_player."):
+            return S.library_result(error=f"Unknown entity {eid or '-'}")
+        st = self.hass.states.get(eid)
+        if st is None or st.state == STATE_UNAVAILABLE:
+            return S.library_result(error=f"Entity {eid} is unavailable")
+        media_type = args.get("media_type") or "playlist"
+        try:
+            items = await self._library_items(eid, media_type)
+        except (HomeAssistantError, ValueError, TypeError) as err:
+            _LOGGER.debug("browse %s failed: %s", eid, err)
+            return S.library_result(error=f"media library is not supported by {eid}")
+        self._library[eid] = {str(i["title"]).casefold(): i for i in items}
+        search = str(args.get("search") or "").strip().casefold()
+        names = [str(i["title"]) for i in items
+                 if not search or search in str(i["title"]).casefold()]
+        return S.library_result(names)
+
     async def _search_and_play(self, eid: str, data: dict, context) -> None:
-        """Find music by name and play it: Music Assistant players through
-        music_assistant.play_media, other players through search_media."""
+        """Play music by name: a title of the last music_library result, an
+        entry of the media library with that name, or the first hit of
+        media_player.search_media. Without query a random playlist."""
         query = str(data.get("query") or "").strip()
-        if not query:
-            raise HomeAssistantError("query is missing")
+        if _norm(query) in S.GENERIC_QUERIES:
+            query = ""
         media_type = data.get("media_type")
         artist = str(data.get("artist") or "").strip()
-        entry = er.async_get(self.hass).async_get(eid)
-        if entry is not None and entry.platform == "music_assistant":
-            svc: dict[str, Any] = {"entity_id": eid, "media_id": query}
-            if media_type in S.MEDIA_TYPES:
-                svc["media_type"] = media_type
-            if artist and media_type != "artist":
-                svc["artist"] = artist
-            await self.hass.services.async_call(
-                "music_assistant", "play_media", svc, blocking=True, context=context)
+
+        async def play(item: dict) -> None:
+            # a streaming service can take a minute to resolve a playlist
+            # (rate limits); errors that come within PLAY_WAIT are reported,
+            # after that the playback goes on in the background
+            task = self.hass.async_create_task(self.hass.services.async_call(
+                "media_player", "play_media",
+                {"entity_id": eid, "media_content_id": item.get("media_content_id"),
+                 "media_content_type": item.get("media_content_type")},
+                blocking=True, context=context))
+            try:
+                await asyncio.wait_for(asyncio.shield(task), PLAY_WAIT)
+            except asyncio.TimeoutError:
+                _LOGGER.debug("play_media on %s still running after %ss", eid, PLAY_WAIT)
+
+        if not query:
+            # "Spiel Musik": go on with what the player has loaded; else the
+            # favorites playlist, else a random playlist. "Spiel meine
+            # Lieblingssongs" names the playlist (query) and always switches.
+            st = self.hass.states.get(eid)
+            if st is not None and st.state == "playing":
+                return
+            if st is not None and st.state in ("paused", "idle", "on") and (
+                    st.attributes.get("media_content_id") or st.attributes.get("media_title")):
+                await self.hass.services.async_call(
+                    "media_player", "media_play", {"entity_id": eid},
+                    blocking=True, context=context)
+                return
+            try:
+                items = await self._library_items(eid, "playlist")
+            except (HomeAssistantError, ValueError, TypeError) as err:
+                raise HomeAssistantError(f"media library is not supported by {eid}") from err
+            if not items:
+                raise HomeAssistantError("No playlists found in the media library")
+            fav = S.favorites_playlist([str(i["title"]) for i in items])
+            await play(next((i for i in items if i["title"] == fav), None)
+                       or random.choice(items))
             return
+        key = query.casefold()
+        if (hit := self._library.get(eid, {}).get(key)) is not None:
+            await play(hit)
+            return
+        if media_type in S.LIBRARY_TYPES and not artist:
+            try:
+                items = await self._library_items(eid, media_type)
+            except (HomeAssistantError, ValueError, TypeError):
+                items = []
+            if hit := next((i for i in items
+                            if str(i["title"]).casefold() == key), None):
+                await play(hit)
+                return
         search: dict[str, Any] = {"entity_id": eid,
                                   "search_query": f"{query} {artist}".strip()}
         if media_type in ("track", "album", "artist", "playlist", "podcast"):
@@ -391,15 +681,16 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
         results = getattr(found, "result", None)
         if results is None and isinstance(found, dict):
             results = found.get("result")
-        if not results:
+        hits = [r.as_dict() if hasattr(r, "as_dict") else r for r in results or []]
+        # searches are fuzzy ("Gibtsnichtxyz" finds "Gib's mir"): only a
+        # result whose title contains the query (or the other way round) counts
+        best = next((r for r in hits if isinstance(r, dict)
+                     and _norm(r.get("title")) == _norm(query)), None) or \
+            next((r for r in hits if isinstance(r, dict) and _matches(query, r.get("title"))),
+                 None)
+        if best is None:
             raise HomeAssistantError(f"No results found for {query}")
-        first = results[0]
-        get = first.get if isinstance(first, dict) else lambda k: getattr(first, k)
-        await self.hass.services.async_call(
-            "media_player", "play_media",
-            {"entity_id": eid, "media_content_id": get("media_content_id"),
-             "media_content_type": get("media_content_type")},
-            blocking=True, context=context)
+        await play(best)
 
     async def _intent(self, intent_type: str, slots: dict[str, Any],
                       user_input: conversation.ConversationInput) -> intent.IntentResponse:
@@ -526,11 +817,15 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
     ) -> conversation.ConversationResult:
         conv_id = chat_log.conversation_id
         exposed = self._exposed()
-        location = (self._location(user_input)
-                    if self._opt(CONF_USE_LOCATION, DEFAULT_USE_LOCATION) else None)
+        use_location = self._opt(CONF_USE_LOCATION, DEFAULT_USE_LOCATION)
+        location = self._location(user_input) if use_location else None
+        player = self._satellite_player(user_input, exposed) if use_location else None
+        speaker = player or self._satellite_player(user_input, exposed)
+        interrupted = self._opt(CONF_RESUME_MUSIC, DEFAULT_RESUME_MUSIC) and \
+            self._interrupted(user_input, speaker)
         system = S.build_system_prompt(
             [(eid, name, area) for eid, (name, area) in exposed.items()], location,
-            lang=self._lang, verbosity=self._verbosity)
+            lang=self._lang, verbosity=self._verbosity, player=player)
         history = self._history.get(conv_id, [])
         turn: list[dict[str, Any]] = [{"role": "user", "content": user_input.text}]
         text = ""
@@ -556,6 +851,8 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
                                                      user_input.context)
                     elif fn.get("name") == "get_state":
                         result = await self._get_state(args, exposed)
+                    elif fn.get("name") == "music_library":
+                        result = await self._music_library(args, exposed)
                     elif fn.get("name") == "timer":
                         result = await self._timer(args, user_input)
                     elif fn.get("name") == "get_time":
@@ -569,6 +866,7 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
                                  "content": result})
             else:
                 text = S.lang_texts(self._lang)["error_incomplete"]
+            quiet = _quiet_turn(turn)
         except (aiohttp.ClientError, asyncio.TimeoutError, HomeAssistantError,
                 KeyError, ValueError) as err:
             _LOGGER.error("LLM request failed: %s: %s", type(err).__name__, err)
@@ -581,7 +879,7 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
             return conversation.ConversationResult(
                 response=response, conversation_id=conv_id)
 
-        if location is None:
+        if location is None and player is None:
             self._cached_prompt = hashlib.sha1(system.encode()).hexdigest()
 
         # keep the last N user turns for follow-up questions
@@ -597,7 +895,13 @@ class HaLlmAgentEntity(conversation.ConversationEntity,
         while len(self._history) > MAX_CONVERSATIONS:
             self._history.popitem(last=False)
 
+        if interrupted and not _turn_sets_playback(turn, speaker):
+            self.entry.async_create_background_task(
+                self.hass, self._resume_after_answer(user_input.satellite_id, speaker),
+                "ha_llm_agent resume music")
+        # short media commands ("Lauter", "Pause") are carried out silently;
+        # the answer stays in the history for follow-up questions
         chat_log.async_add_assistant_content_without_tools(
             conversation.AssistantContent(agent_id=self.entity_id,
-                                          content=text))
+                                          content="" if quiet else text))
         return conversation.async_get_result_from_chat_log(user_input, chat_log)

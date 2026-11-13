@@ -54,7 +54,8 @@
           "max_history": "Previous turns kept per conversation",
           "timeout": "Request timeout",
           "max_entities": "Maximum number of entities sent to the model",
-          "use_location": "Use the area of the voice device (slower on CPU)",
+          "use_location": "Use the area and the speaker of the voice device (slower on CPU)",
+          "resume_music": "Continue music that the wake word stopped after the answer",
           "language": "Language of the model",
           "verbosity": "Answer length"
         }

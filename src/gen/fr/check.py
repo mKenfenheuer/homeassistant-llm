@@ -8,7 +8,7 @@ WORDS = {
     # after a success
     "unreachable": "joignable",
     # answer that lists the devices that are on or open, and its separators
-    "listing": r"(?:Oui\. |Non\. )?(?:Les (?:lumières allumées|fenêtres ouvertes) sont"
+    "listing": r"(?:Oui\. |Non\. )?(?:Les (?:lumières allumées|fenêtres ouvertes|volets ouverts|stores ouverts) sont"
                r"|La seule fenêtre ouverte est) : (.+)\.$",
     "list_split": r", | et ",
 }

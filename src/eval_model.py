@@ -4,12 +4,15 @@ For each sample the conversation is cut before the assistant turn under test
 and sent with the shared tool schema. Checks:
   - control: same (service, entity_id, data) triples as the gold call; an
     area target counts as the entity_ids it resolves to in the device list
-  - get_state: all gold entity_ids requested (area resolved the same way)
+  - get_state: every entity of the gold tool result requested; domain/area
+    (any domain, "*" = whole house) resolved like the integration, a
+    device_class must match the gold one
   - unknown/chat: no tool call
   - question: after feeding the gold tool result, the answer contains the
     expected values
 
-  - timer: same action, duration and name; get_time; broadcast with a message
+  - timer: same action, duration and name; get_time; broadcast with a message;
+    music_library: same player, media_type and search
 
 Usage: python src/eval_model.py http://127.0.0.1:8080 [data/de/eval.jsonl] [N] [--lang de]
 """
@@ -106,7 +109,7 @@ def first_call(msg):
     return fn["name"], args
 
 
-def check_call(gold, name, args, ents=(), groups=()):
+def check_call(gold, name, args, ents=(), groups=(), gold_ids=None):
     if gold is None:
         return name is None
     gname, gargs = gold
@@ -121,11 +124,36 @@ def check_call(gold, name, args, ents=(), groups=()):
         return True
     if gname == "broadcast":
         return bool(str(args.get("message") or "").strip())
-    got = resolve(args.get("entity_ids"), args.get("area"),
-                  args.get("domain") or "light", ents, groups)
-    want = resolve(gargs.get("entity_ids"), gargs.get("area"),
-                   gargs.get("domain") or "light", ents, groups)
+    if gname == "music_library":
+        return all(norm_value(args.get(k) or "") == norm_value(gargs.get(k) or "")
+                   for k in ("entity_id", "media_type", "search"))
+    if args.get("device_class") and args.get("device_class") != gargs.get("device_class"):
+        return False
+    got = state_ids(args, ents, groups)
+    want = gold_ids if gold_ids is not None else state_ids(gargs, ents, groups)
     return set(want) <= set(got)
+
+
+def state_ids(args, ents, groups):
+    """entity_ids a get_state call reads (device_class not applied: the
+    device list has no device classes)."""
+    ids = args.get("entity_ids")
+    if ids:
+        return [ids] if isinstance(ids, str) else ids
+    if args.get("area") or args.get("domain"):
+        return S.area_targets(args.get("domain") or "light", args.get("area") or S.ALL_AREAS,
+                              ents, groups) or []
+    return []
+
+
+def result_ids(msg):
+    """entity_ids in a gold get_state tool result."""
+    if not msg or msg.get("role") != "tool":
+        return None
+    try:
+        return [x["entity_id"] for x in json.loads(msg["content"]) if "entity_id" in x]
+    except (ValueError, TypeError, KeyError):
+        return None
 
 
 def main():
@@ -146,14 +174,16 @@ def main():
             gold = meta["gold"][0] if meta["gold"] else None
         msg = chat(prompt)
         name, args = first_call(msg)
-        ok = check_call(gold, name, args, devices(prompt), meta.get("groups", []))
+        gold_ids = result_ids(msgs[last_user + 2]) if gold and gold[0] == "get_state" \
+            and len(msgs) > last_user + 2 else None
+        ok = check_call(gold, name, args, devices(prompt), meta.get("groups", []), gold_ids)
         stats[cat][0] += ok
         stats[cat][1] += 1
         if not ok:
             fails.append((cat, prompt[-1]["content"], gold, name, args,
                           (msg.get("content") or "")[:120]))
         # grounded answer check for questions
-        if cat == "question" and ok:
+        if cat == "question" and ok and meta.get("answer_contains"):
             answer = chat(msgs[:last_user + 3])["content"] or ""
             hit = all(s.lower() in answer.lower() for s in meta["answer_contains"])
             answer_stats[0] += hit

@@ -7,6 +7,13 @@ output/<lang>/).
 - Loss only on assistant tokens (answers and <tool_call> blocks).
 - Tool-call arguments are passed as dicts: the Qwen2.5 template renders them
   with `tojson`, a JSON string would end up double-encoded.
+- --init-adapter continues from the LoRA adapter of the last model instead
+  of a fresh adapter (lower default lr 1e-4, 1 epoch).
+- The loss on every --eval-every-th sample of data/<lang>/eval.jsonl is
+  measured every --eval-steps steps. An improvement overwrites the adapter in
+  <out>/best (no other checkpoints are written); training stops when the
+  loss has not improved by --min-delta (relative) for --patience
+  evaluations, and the best adapter is the result.
 - After training, the adapter is merged and saved as bf16 to --merged.
 """
 
@@ -20,9 +27,10 @@ from pathlib import Path
 
 import torch
 from datasets import Dataset
-from peft import LoraConfig, get_peft_model
+from peft import (LoraConfig, PeftModel, get_peft_model, load_peft_weights,
+                  set_peft_model_state_dict)
 from transformers import (AutoModelForCausalLM, AutoTokenizer, Trainer,
-                          TrainingArguments)
+                          TrainerCallback, TrainingArguments)
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "custom_components" / "ha_llm_agent"))
@@ -32,6 +40,7 @@ DEFAULTS = dict(
     model="Qwen/Qwen2.5-3B-Instruct",
     lang="de",
     data="data/{lang}/train.jsonl",
+    eval_data="data/{lang}/eval.jsonl",
     out="output/{lang}/lora",
     merged="output/{lang}/merged",
     epochs=2, batch=1, accum=16, lr=2e-4, max_len=4096,
@@ -86,31 +95,78 @@ def collate_fn(pad_id):
     return collate
 
 
+class EvalLossStop(TrainerCallback):
+    """Keep the best adapter and stop when the eval loss has not dropped by
+    `min_delta` (relative to the best value so far) for `patience`
+    evaluations in a row. Every new lowest loss overwrites <out>/best."""
+
+    def __init__(self, patience: int, min_delta: float, best_dir: str):
+        self.patience, self.min_delta, self.best_dir = patience, min_delta, best_dir
+        self.best, self.bad, self.lowest, self.best_step = None, 0, None, None
+
+    def on_evaluate(self, args, state, control, metrics=None, model=None, **kw):
+        loss = (metrics or {}).get("eval_loss")
+        if loss is None:
+            return
+        if self.best is None or loss < self.best * (1 - self.min_delta):
+            self.best, self.bad = loss, 0
+        else:
+            self.bad += 1
+        saved = ""
+        if model is not None and (self.lowest is None or loss < self.lowest):
+            self.lowest, self.best_step = loss, state.global_step
+            model.save_pretrained(self.best_dir)
+            saved = ", saved as best"
+        print(f"EVAL step {state.global_step}: eval_loss {loss:.5f}, best {self.best:.5f}, "
+              f"no gain {self.bad}/{self.patience}{saved}", flush=True)
+        if self.bad >= self.patience:
+            print("EVAL: loss no longer drops, stopping", flush=True)
+            control.should_training_stop = True
+
+
 def main():
     ap = argparse.ArgumentParser()
     types = {"epochs": float, "batch": int, "accum": int, "max_len": int, "lr": float}
     for k in DEFAULTS:
         ap.add_argument("--" + k, default=None, type=types.get(k, str))
     ap.add_argument("--max-steps", type=int, default=-1)
+    ap.add_argument("--init-adapter", default=None,
+                    help="LoRA adapter of the last model to continue from")
+    ap.add_argument("--eval-steps", type=int, default=10)
+    ap.add_argument("--eval-every", type=int, default=3,
+                    help="use every n-th sample of the eval set (speed)")
+    ap.add_argument("--patience", type=int, default=20)
+    ap.add_argument("--min-delta", type=float, default=0.02,
+                    help="relative eval-loss gain that counts as progress")
     ap.add_argument("--resume", action="store_true",
                     help="continue from the newest checkpoint in --out")
     a = ap.parse_args()
     cfg = {k: getattr(a, k) if getattr(a, k) is not None else v
            for k, v in DEFAULTS.items()}
-    for k in ("data", "out", "merged"):
+    if a.init_adapter:
+        if a.lr is None:
+            cfg["lr"] = 1e-4
+        if a.epochs is None:
+            cfg["epochs"] = 1
+    for k in ("data", "eval_data", "out", "merged"):
         cfg[k] = cfg[k].format(lang=cfg["lang"])
     tools = llm_schema.build_tools(cfg["lang"])
 
     tok = AutoTokenizer.from_pretrained(cfg["model"])
     pad_id = tok.pad_token_id if tok.pad_token_id is not None else tok.eos_token_id
-    rows = [json.loads(l) for l in open(cfg["data"], encoding="utf-8")]
-    enc, dropped = [], 0
-    for r in rows:
-        ids, labels = encode(tok, r["messages"], tools)
-        if len(ids) > cfg["max_len"]:
-            dropped += 1
-            continue
-        enc.append({"input_ids": ids, "labels": labels})
+    def load(path):
+        out, dropped = [], 0
+        for l in open(path, encoding="utf-8"):
+            ids, labels = encode(tok, json.loads(l)["messages"], tools)
+            if len(ids) > cfg["max_len"]:
+                dropped += 1
+                continue
+            out.append({"input_ids": ids, "labels": labels})
+        return out, dropped
+
+    enc, dropped = load(cfg["data"])
+    eval_enc, _ = load(cfg["eval_data"])
+    eval_enc = eval_enc[::a.eval_every]
     lens = sorted(len(e["input_ids"]) for e in enc)
     print(f"samples: {len(enc)} (dropped {dropped} > {cfg['max_len']} tokens), "
           f"tokens median {lens[len(lens)//2]}, p95 {lens[int(len(lens)*.95)]}, "
@@ -119,14 +175,19 @@ def main():
     s = enc[0]
     print("TRAIN TARGET 0:", repr(tok.decode([t for t in s["labels"] if t != -100])))
     ds = Dataset.from_list(enc)
+    eval_ds = Dataset.from_list(eval_enc)
 
     model = AutoModelForCausalLM.from_pretrained(
         cfg["model"], dtype=torch.bfloat16, attn_implementation="sdpa",
         device_map={"": 0})
-    model = get_peft_model(model, LoraConfig(
-        r=32, lora_alpha=64, lora_dropout=0.05, task_type="CAUSAL_LM",
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
-                        "gate_proj", "up_proj", "down_proj"]))
+    if a.init_adapter:
+        print("continuing from adapter", a.init_adapter)
+        model = PeftModel.from_pretrained(model, a.init_adapter, is_trainable=True)
+    else:
+        model = get_peft_model(model, LoraConfig(
+            r=32, lora_alpha=64, lora_dropout=0.05, task_type="CAUSAL_LM",
+            target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
+                            "gate_proj", "up_proj", "down_proj"]))
     model.print_trainable_parameters()
     model.gradient_checkpointing_enable(
         gradient_checkpointing_kwargs={"use_reentrant": False})
@@ -147,17 +208,26 @@ def main():
         weight_decay=0.0,
         bf16=True,
         logging_steps=10,
-        save_strategy="steps",
-        save_steps=max(50, total // 4),
-        save_total_limit=4,             # keep all four for checkpoint selection
+        eval_strategy="steps",
+        eval_steps=a.eval_steps,
+        per_device_eval_batch_size=1,
+        save_strategy="no",             # EvalLossStop keeps the best adapter
         dataloader_num_workers=2,
         report_to=[],
         seed=42,
     )
-    trainer = Trainer(model=model, args=targs, train_dataset=ds,
-                      data_collator=collate_fn(pad_id))
+    print(f"steps: {total}, eval every {a.eval_steps} on {len(eval_ds)} samples, "
+          f"lr {cfg['lr']}, epochs {cfg['epochs']}")
+    trainer = Trainer(model=model, args=targs, train_dataset=ds, eval_dataset=eval_ds,
+                      data_collator=collate_fn(pad_id),
+                      callbacks=[stopper := EvalLossStop(a.patience, a.min_delta,
+                                                         f"{cfg['out']}/best")])
     trainer.train(resume_from_checkpoint=True if a.resume else None)
 
+    if stopper.best_step is not None:
+        set_peft_model_state_dict(model, load_peft_weights(f"{cfg['out']}/best"))
+        print(f"best checkpoint: step {stopper.best_step}, eval_loss {stopper.lowest:.5f}",
+              flush=True)
     print("saving adapter ->", cfg["out"])
     model.save_pretrained(cfg["out"])
     merged = model.merge_and_unload()

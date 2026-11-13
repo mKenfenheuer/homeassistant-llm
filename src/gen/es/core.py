@@ -389,6 +389,7 @@ class Ent:
     state: str = "off"
     attrs: dict = field(default_factory=dict)
     hidden: str = ""         # type label that the name no longer shows
+    voice: bool = False      # media player of a voice satellite
 
     @property
     def plural(self) -> bool:
@@ -400,6 +401,8 @@ class House:
         self.ents: list[Ent] = []
         self.used_ids: set[str] = set()
         self.used_names: set[str] = set()
+        self.sat_player = None                # speaker of the voice device
+        self.sat_loc = None                   # ... and the area of the device
         self.cryptic = R.random() < 0.3       # some houses use vendor ids
         # some houses: all devices of a domain share a long vendor prefix and
         # differ only in the last hex digits (Homematic, Zigbee, Shelly)
@@ -477,10 +480,12 @@ class House:
         name = voice_media_name()
         if name in self.used_names:
             return None
-        return self.add("media_player", room, "Altavoz", "m",
-                        [name.lower().replace(" ", "_"), "voice_media_player"], name=name,
-                        state=R.choice(["idle", "idle", "off"]),
-                        attrs={"volume_level": R.choice([0.3, 0.5, 0.7])})
+        e = self.add("media_player", room, "Altavoz", "m",
+                     [name.lower().replace(" ", "_"), "voice_media_player"], name=name,
+                     state=R.choice(["idle", "idle", "off"]),
+                     attrs={"volume_level": R.choice([0.3, 0.5, 0.7])})
+        e.voice = True
+        return e
 
     def _populate(self, size: int):
         for room in self.rooms:
@@ -549,8 +554,8 @@ class House:
                              attrs={"current_position": pos})
             if room in ("Terraza", "Balcón", "Exterior") and R.random() < 0.5:
                 self.add("cover", room, "Toldo", "m", ["toldo", "awning"],
-                         state=R.choice(["open", "closed"]),
-                         attrs={"current_position": R.choice([0, 100])})
+                         state=(st := R.choice(["open", "closed"])),
+                         attrs={"current_position": 100 if st == "open" else 0})
             if not outdoor and room not in UTILITY and R.random() < 0.5:
                 ct = R.choice(TYPES["climate"][:3] if room != "Baño" else TYPES["climate"])
                 target = R.choice([18, 19, 20, 20.5, 21, 21.5, 22, 23])
@@ -699,8 +704,8 @@ class House:
         if "Garaje" in self.rooms and R.random() < 0.6:
             self.add("cover", "Garaje", "Puerta del garaje", "f",
                      ["puerta_garaje", "garage_door"], name="Puerta del garaje",
-                     state=R.choice(["open", "closed", "closed"]),
-                     attrs={"current_position": 0})
+                     state=(st := R.choice(["open", "closed", "closed"])),
+                     attrs={"current_position": 100 if st == "open" else 0})
         if R.random() < 0.35:
             for app, g, slug in R.sample(APPLIANCES, R.choice([1, 1, 2])):
                 if any(n.startswith(app) for n in sorted(self.used_names)):
@@ -871,8 +876,30 @@ class House:
                      and e.label == "__group__"), None)
 
     def system_prompt(self, location=None):
+        # the speaker of the voice device is listed with the location only
+        sat = self.sat_player if location and self.sat_player is not None \
+            and self.sat_loc == location and self.sat_player in self.ents else None
         return S.build_system_prompt(
-            [(e.eid, e.name, e.area) for e in self.ents], location, LANG, VERBOSITY)
+            [(e.eid, e.name, e.area) for e in self.ents], location, LANG, VERBOSITY,
+            player=sat.eid if sat else None)
+
+    def pick_sat_player(self, loc):
+        """Half of the voice devices with a location have a speaker of
+        their own; it may have to be added to the room."""
+        self.sat_player, self.sat_loc = None, None
+        if not loc or loc in OUTDOOR or R.random() < 0.5:
+            return
+        own = [e for e in self.of("media_player", loc) if e.voice]
+        e = R.choice(own) if own else self.add_voice_media(loc)
+        if e is not None and e.state != "unavailable":
+            self.set_sat_player(e, loc)
+
+    def set_sat_player(self, e, loc):
+        """A player that wraps the satellite's own (Music Assistant) often
+        has no area: then only the prompt line ties it to the device."""
+        self.sat_player, self.sat_loc = e, loc
+        if R.random() < 0.3:
+            e.area = None
 
     def state_of(self, ents):
         # unreachable entities report no attribute values in Home Assistant
@@ -1000,7 +1027,10 @@ def wire(name, args):
                              if not (k == "entity_id" and "area" in a)}
                             for a in args["actions"]]}
     if name == "get_state" and args.get("area"):
-        return {"domain": args.get("domain", "light"), "area": args["area"]}
+        out = {"domain": args.get("domain", "light"), "area": args["area"]}
+        if args.get("device_class"):
+            out["device_class"] = args["device_class"]
+        return out
     return args
 
 
@@ -1837,6 +1867,8 @@ def s_question(h, loc):
         kinds += ["which_lights"] * 2
     if [e for e in h.of("binary_sensor") if e.attrs.get("device_class") == "window"]:
         kinds += ["windows"] * 2
+    if len(h.of("cover")) >= 2:
+        kinds += ["which_covers"] * 2
     if [e for e in h.of("binary_sensor") if e.attrs.get("device_class") == "door"]:
         kinds += ["door"] * 3
     if [e for e in h.of("sensor") if e.attrs.get("device_class") == "distance"]:
@@ -1854,7 +1886,10 @@ def s_question(h, loc):
     if [e for e in h.of("sensor") if e.attrs.get("device_class") in ("moisture", "battery")]:
         kinds += ["generic"] * 2
     kind = R.choice(kinds)
-    q_area = None
+    # list questions read a whole domain by area (q_area, "*" = whole house)
+    # instead of listing entity_ids: in a house with many covers the model
+    # otherwise picks only some of them (v16: 2 of 8 covers)
+    q_area, q_dom, q_dc = None, "light", None
     if FORCE.get("qkind"):
         if FORCE["qkind"] not in kinds:
             return None
@@ -2011,6 +2046,46 @@ def s_question(h, loc):
             ans = f"Están encendidas: {join_es(names)}."
             must = names
         ids = ents
+    elif kind == "which_covers":
+        room = None
+        rooms = [r for r in h.rooms if len(h.of("cover", r)) >= 2]
+        if rooms and R.random() < 0.35:
+            room = R.choice(rooms)
+            en = en_room(room)
+            user = R.choice([f"¿Qué persianas están abiertas {en}?",
+                             f"¿Queda alguna persiana abierta {en}?",
+                             f"¿Qué persianas están subidas {en}?"])
+        else:
+            user = R.choice(["¿Qué persianas están abiertas?", "¿Queda alguna persiana abierta?",
+                             "¿Qué persianas están subidas?", "¿Hay persianas abiertas todavía?",
+                             "¿Qué persianas están cerradas?", "¿Qué persianas están bajadas?"])
+        ents = h.of("cover", room or "*")
+        q_area, q_dom = room or S.ALL_AREAS, "cover"
+        if any(e.state == "unavailable" for e in ents):
+            return None
+        want_open = not any(w in user for w in ("cerradas", "bajadas"))
+        hits = [e for e in ents if (e.state == "open") == want_open]
+        word = "abiertas" if want_open else "cerradas"
+        of_room = f" {de_room(room)}" if room else ""
+        if not hits:
+            other = "cerradas" if want_open else "abiertas"
+            ans = R.choice([f"Todas las persianas{of_room} están {other}.",
+                            f"Ninguna persiana{of_room} está {word[:-1]}; todas están {other}."])
+            must = [other]
+        elif len(hits) == len(ents):
+            ans = f"Todas las persianas{of_room} están {word}."
+            must = [word]
+        elif len(hits) == 1:
+            e = hits[0]
+            adj = agr("abierto" if want_open else "cerrado", e.gender)
+            ans = f"Solo {esta(e.gender)} {adj} {e.name}."
+            must = [e.name]
+        else:
+            names = [e.name for e in hits]
+            g = "fp" if all(e.gender in ("f", "fp") for e in hits) else "mp"
+            ans = f"Están {agr('abierto' if want_open else 'cerrado', g)}: {join_es(names)}."
+            must = names
+        ids = ents
     elif kind == "windows":
         # only window sensors - presence and motion sensors are binary_sensors too
         ents = [e for e in h.of("binary_sensor")
@@ -2035,6 +2110,7 @@ def s_question(h, loc):
                 ans = ("Sí. " if yes_if_open else "No. ") + ans
             must = names
         ids = ents
+        q_area, q_dom, q_dc = S.ALL_AREAS, "binary_sensor", "window"
     elif kind == "door":
         # "¿Está abierta la puerta del balcón del salón?" -> that contact,
         # not the front door
@@ -2109,12 +2185,70 @@ def s_question(h, loc):
     msgs = base_msgs(h, loc) + [{"role": "user", "content": voice(user)}]
     args = {"entity_ids": [e.eid for e in ids]}
     if q_area:
-        args = {"domain": "light", "area": q_area, **args}
+        args = {"domain": q_dom, "area": q_area}
+        if q_dc:
+            args["device_class"] = q_dc
+        # the integration returns them in device-list order
+        ids = sorted(ids, key=lambda e: S.sort_key((e.eid, e.name, e.area)))
     call, cid = tool_call("get_state", args)
     msgs += [call, tool_msg(cid, h.state_of(ids)),
              {"role": "assistant", "content": ans}]
     return msgs, {"cat": "question", "gold": [["get_state", args]],
                   "answer_contains": must}
+
+
+COMPOUND_QKINDS = ["temp", "outdoor", "climate", "onoff", "which_lights", "which_covers",
+                   "windows", "door", "lock", "alarm", "humidity", "car"]
+
+
+def s_compound_question(h, loc):
+    """Two questions in one sentence ("¿Qué persianas están abiertas y qué
+    temperatura hace fuera?"): both are read and answered (v16 dropped the
+    second part). Two entity_id lists go into one get_state call, a domain
+    query and another question into two calls."""
+    saved = FORCE.get("qkind")
+    parts = []
+    try:
+        for k in R.sample(COMPOUND_QKINDS, len(COMPOUND_QKINDS)):
+            if len(parts) == 2:
+                break
+            FORCE["qkind"] = k
+            out = s_question(h, loc)
+            if out:
+                parts.append(out)
+    finally:
+        if saved is None:
+            FORCE.pop("qkind", None)
+        else:
+            FORCE["qkind"] = saved
+    if len(parts) < 2:
+        return None
+    (m1, meta1), (m2, meta2) = parts
+    u1, c1, t1, a1 = m1[-4:]
+    u2, c2, t2, a2 = m2[-4:]
+    q1 = u1["content"].rstrip("?.! ")
+    q2 = u2["content"].strip()
+    for pre in ("Oye, por favor, ", "Oye, ", "Vale, ", "Por favor, "):
+        q2 = q2.removeprefix(pre)
+    q2 = q2.removeprefix("¿")
+    q2 = q2[0].lower() + q2[1:]
+    # one pair of question marks around the whole sentence, or none
+    q2 = q2.rstrip("?.! ") + ("?" if "¿" in q1 else "")
+    msgs = m1[:-4] + [{"role": "user", "content": f"{q1} {y_word(q2)} {q2}"}]
+    g1, g2 = meta1["gold"][0][1], meta2["gold"][0][1]
+    if list(g1) == ["entity_ids"] and list(g2) == ["entity_ids"]:
+        ids = list(dict.fromkeys(g1["entity_ids"] + g2["entity_ids"]))
+        rows = {r["entity_id"]: r for r in json.loads(t1["content"]) + json.loads(t2["content"])}
+        args = {"entity_ids": ids}
+        call, cid = tool_call("get_state", args)
+        msgs += [call, tool_msg(cid, S.dumps([rows[i] for i in ids]))]
+        gold = [["get_state", args]]
+    else:
+        msgs += [c1, t1, c2, t2]
+        gold = [["get_state", g1], ["get_state", g2]]
+    msgs += [{"role": "assistant", "content": f"{a1['content']} {a2['content']}"}]
+    return msgs, {"cat": "compound", "gold": gold,
+                  "answer_contains": meta1["answer_contains"] + meta2["answer_contains"]}
 
 
 def s_appliance_question(h, loc):
@@ -3074,8 +3208,8 @@ def turn_which(c):
         user = R.choice(["¿Qué acabas de hacer?", "¿Qué has hecho exactamente?"])
     c.user(user)
     # the lamps an area stood for are known from "done" in the tool result
-    parts = [describe(c.h, x, by_name=True) for x in c.last]
-    c.say(R.choice(["He ", "Hace un momento he "]) + " y ".join(parts) + ".")
+    parts = [describe(c.h, x, by_name=True) for x in merge_actions(c.last)]
+    c.say(R.choice(["He ", "Hace un momento he "]) + join_es(parts) + ".")
     return True
 
 
@@ -3092,12 +3226,12 @@ def turn_summary(c):
     if multi and R.random() < 0.6:
         d = R.choice(multi)
         c.user(R.choice(SUMMARY_ASK[d]))
-        parts = [describe(c.h, x) for x in by_dom[d]]
+        parts = [describe(c.h, x) for x in merge_actions(by_dom[d])]
     else:
         c.user(R.choice(["¿Qué has hecho hasta ahora?", "¿Qué has cambiado hasta ahora?",
                          "Resúmeme lo que has hecho"]))
-        parts = [describe(c.h, x) for x in c.done]
-    c.say("He " + ", ".join(parts[:-1]) + " y " + parts[-1] + ".")
+        parts = [describe(c.h, x) for x in merge_actions(c.done)]
+    c.say("He " + join_es(parts) + ".")
     return True
 
 
@@ -3329,7 +3463,8 @@ def history_prefix(h, loc):
     return out[0][1:] if out else []
 
 
-QKINDS = ["temp", "outdoor", "forecast", "climate", "onoff", "which_lights", "windows", "door", "car", "lock",
+QKINDS = ["temp", "outdoor", "forecast", "climate", "onoff", "which_lights", "which_covers", "windows",
+          "door", "car", "lock",
           "alarm", "media", "humidity", "power", "generic"]
 
 
@@ -3339,7 +3474,8 @@ def build_cases():
     variant and per conversation turn type."""
     cases = [(f"command:{fn.__name__}", s_command, {"intent": fn}) for fn, _ in COMMANDS]
     cases += [(f"question:{k}", s_question, {"qkind": k}) for k in QKINDS]
-    cases += [("compound", s_compound, {}), ("relative_climate", s_relative_climate, {}),
+    cases += [("compound", s_compound, {}), ("compound:question", s_compound_question, {}),
+              ("relative_climate", s_relative_climate, {}),
               ("unknown:device", s_unknown, {"unknown": "device"}),
               ("unknown:room", s_unknown, {"unknown": "room"}),
               ("chat", s_chat, {}),
@@ -3379,7 +3515,8 @@ DESCRIBED = {"turn_on", "turn_off", "open_cover", "close_cover", "stop_cover", "
              "return_to_base", "start_mowing", "dock", "open_valve", "close_valve", "press",
              "set_temperature", "set_cover_position", "set_percentage", "volume_set",
              # assist services, worded by DESCRIBE_HOOKS
-             "add_item", "complete_item", "remove_item", "search_and_play", "shuffle_set",
+             "add_item", "complete_item", "remove_item", "search_and_play", "seek_relative",
+             "shuffle_set",
              "repeat_set", "volume_mute", "set_humidity", "set_valve_position"}
 
 
@@ -3424,6 +3561,7 @@ def make_sample(case):
                          R.randint(35, 60), R.randint(60, 110)])
         h = House(size)
         loc = R.choice(h.rooms) if R.random() < 0.25 else None
+        h.pick_sat_player(loc)
         FORCE.clear()
         FORCE.update(force)
         try:
@@ -3473,7 +3611,10 @@ def main(argv):
         key = None
         if s:
             last_user = [m["content"] for m in s["messages"] if m["role"] == "user"][-1]
-            key = last_user + str(s["meta"].get("gold")) + str(s["meta"].get("gold_last"))
+            # the answer is part of the key: an area query has the same
+            # question and call in every house, but a different answer
+            answer = s["messages"][-1].get("content") or ""
+            key = last_user + str(s["meta"].get("gold")) + str(s["meta"].get("gold_last")) + answer
         if not s or key in seen:
             fails[case[0]] += 1
             if fails[case[0]] >= 300:      # no new distinct samples left

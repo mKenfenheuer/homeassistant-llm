@@ -1,10 +1,10 @@
 {
-  "version": "16",
-  "date": "2026-11-12",
-  "file": "de/qwen2.5-3b-ha-v16-Q4_K_M.gguf",
-  "sha256": "68f5a613d55804002a55d75e4c993ef697fb5dcc4cd7924090fc0f22e55c3864",
+  "version": "17",
+  "date": "2026-11-13",
+  "file": "de/qwen2.5-3b-ha-v17-Q4_K_M.gguf",
+  "sha256": "5a77b5d676691a2e464b682f93ea9dc0ac4cb67e63a9cee8b7bc9ae844726595",
   "size": 1929902976,
-  "schema": 6,
-  "min_addon_version": "0.13.0",
-  "notes": "Musik, Timer, Uhrzeit, Durchsagen, Einkaufslisten, ausführliches Wetter, Antwortlänge"
+  "schema": 7,
+  "min_addon_version": "0.14.0",
+  "notes": "Medienbibliothek, Lautsprecher des Sprachgeräts, Spulen und Fortsetzen, Rollläden und Fenster im ganzen Haus, zwei Fragen in einem Satz"
 }

@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.14.0
+
+- Model v17 (prompt schema 7), trained on from v16. Results: 97.7 % correct
+  tool calls on 300 held-out conversations (v16: 94.7 %), 53 of 55 turns in
+  the test on a real house (v16: 45 of 55).
+- Media library: "Welche Playlists habe ich?", "Welche Alben von Queen habe
+  ich?", "Spiel eine Playlist zum Einschlafen". The integration reads the
+  library of the player with `media_player.browse_media` (new tool
+  `music_library`), without Music Assistant.
+- "Spiel Musik" goes on with the loaded title, otherwise it plays the
+  favorite songs. "Spiel meine Lieblingssongs" switches to the favorites
+  playlist.
+- The speaker of the voice device comes first: "Spiel Musik" and "Pause"
+  without a player play there. Without one the assistant reads all players,
+  plays on the only reachable one or asks.
+- New: play, seeking forward and back ("Vorspulen", "Spul 30 Sekunden
+  zurück"), "Weiter" and "Zurück" as next and previous track.
+- Short media commands and started music are not confirmed, at any answer
+  length; only a failure is spoken.
+- Music that the wake word stopped goes on after the answer (option "Continue
+  music after the answer", on by default).
+- "Welche Rollläden sind offen?" and "Sind alle Fenster zu?" read all covers
+  or windows of the house or a room; two questions in one sentence get both
+  answers.
+- Speech-to-text sends a short command vocabulary to whisper, so "Nächster
+  Titel" is no longer "Nexter Tuttle".
+- Update the integration to 0.11.0 together with this app: model v17 needs
+  its prompt and tools. Turn on "Use the area and the speaker of the voice
+  device" in the integration options so that music plays on the voice
+  device.
+
 ## 0.13.0
 
 - Model v16 (prompt schema 6). New: music (Music Assistant or the media

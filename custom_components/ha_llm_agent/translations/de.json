@@ -54,7 +54,8 @@
           "max_history": "Gespeicherte Vorgänger-Anfragen pro Unterhaltung",
           "timeout": "Zeitlimit pro Anfrage",
           "max_entities": "Maximale Anzahl Entitäten im Prompt",
-          "use_location": "Bereich des Sprachgeräts verwenden (auf der CPU langsamer)",
+          "use_location": "Bereich und Lautsprecher des Sprachgeräts verwenden (auf der CPU langsamer)",
+          "resume_music": "Musik nach der Antwort fortsetzen, wenn das Aktivierungswort sie gestoppt hat",
           "language": "Sprache des Modells",
           "verbosity": "Ausführlichkeit der Antworten"
         }

@@ -17,6 +17,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from . import llm_schema as S
 from .const import CONF_URL, DOMAIN, STT_TIMEOUT
 
 _LOGGER = logging.getLogger(__name__)
@@ -102,7 +103,12 @@ class HaWhisperSttEntity(stt.SpeechToTextEntity):
         form.add_field("file", wav.getvalue(), filename="speech.wav",
                        content_type="audio/wav")
         # "de-DE" -> "de"
-        form.add_field("language", metadata.language.split("-")[0].lower())
+        lang = metadata.language.split("-")[0].lower()
+        form.add_field("language", lang)
+        # the command vocabulary keeps "Musik pausieren" from becoming
+        # "Musik passieren"
+        if lang in S.LANGUAGES:
+            form.add_field("prompt", S.LANGUAGES[lang]["stt_prompt"])
         form.add_field("response_format", "json")
         form.add_field("temperature", "0.0")
 

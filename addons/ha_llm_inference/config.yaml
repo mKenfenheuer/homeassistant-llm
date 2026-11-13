@@ -1,5 +1,5 @@
 name: HA LLM Inference
-version: "0.13.0"
+version: "0.14.0"
 slug: ha_llm_inference
 description: llama.cpp server with the Home Assistant language model, on the GPU (NVIDIA, AMD, Intel) or the CPU
 arch:

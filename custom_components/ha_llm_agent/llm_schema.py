@@ -19,7 +19,7 @@ import json
 from datetime import date, datetime
 from typing import Any, Iterable
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 DEFAULT_LANGUAGE = "de"
 # languages with a released model; the integration offers only these. The
 # other entries of LANGUAGES are ready for training (src/gen/<lang>/).
@@ -28,7 +28,13 @@ MODEL_LANGUAGES = ["de"]
 # --- services the model may call, with the data keys it may pass ------------
 # Services marked "virtual" are not Home Assistant services; the integration
 # maps them (see conversation.py):
-#   media_player.search_and_play: Music Assistant play_media or search_media
+#   media_player.search_and_play: a title from music_library, otherwise
+#                                 media_player.search_media; without query the
+#                                 loaded title goes on, else the favorites
+#                                 playlist of the library (FAVORITE_WORDS), else
+#                                 a random playlist
+#   media_player.seek_relative:   media_seek to the current position + seconds
+#                                 (negative: back)
 #   todo.complete_item:           todo.update_item with status completed
 SERVICES: dict[str, list[str]] = {
     "light.turn_on": ["brightness_pct", "brightness_step_pct", "color_name",
@@ -71,6 +77,7 @@ SERVICES: dict[str, list[str]] = {
     "media_player.shuffle_set": ["shuffle"],
     "media_player.repeat_set": ["repeat"],
     "media_player.search_and_play": ["query", "media_type", "artist"],   # virtual
+    "media_player.seek_relative": ["seconds"],                           # virtual
     "todo.add_item": ["item"],
     "todo.complete_item": ["item"],                                      # virtual
     "todo.remove_item": ["item"],
@@ -90,6 +97,47 @@ SERVICES: dict[str, list[str]] = {
 # media_type values of media_player.search_and_play (Music Assistant names)
 MEDIA_TYPES = ["track", "album", "artist", "playlist", "radio", "podcast", "audiobook"]
 REPEAT_MODES = ["off", "one", "all"]
+# media commands whose success is heard: the answer is not spoken, whatever
+# the answer length ("Lauter", "Nächster Titel", "Pause", "Play", "Vorspulen",
+# "Spiel Queen"); a failure is always spoken
+QUIET_SERVICES = ["media_player.search_and_play",
+                  "media_player.volume_up", "media_player.volume_down",
+                  "media_player.media_next_track", "media_player.media_previous_track",
+                  "media_player.media_play", "media_player.media_pause",
+                  "media_player.media_stop", "media_player.seek_relative"]
+LIBRARY_ITEMS = 100        # entries of a music_library result passed to the model
+# names of a favorites playlist in a media library ("Liked Songs Max")
+FAVORITE_WORDS = ["liked songs", "lieblingssongs", "lieblingslieder", "lieblingsmusik",
+                  "meine favoriten", "my favorites", "favorite songs", "favoritos",
+                  "canciones que me gustan", "titres likés", "favoris", "preferiti",
+                  "brani che ti piacciono", "favorieten", "leuke nummers", "favoriten",
+                  "favorites", "favourites", "favs", "all favorited tracks"]
+# a query that names no title ("Spiel Musik" as query "Musik") plays the
+# favorites like an empty query
+GENERIC_QUERIES = ["musik", "irgendwas", "irgendeine musik", "etwas musik", "was",
+                   "music", "something", "some music", "anything",
+                   "música", "algo", "algo de música", "musique", "de la musique",
+                   "quelque chose", "musica", "qualcosa", "un po' di musica",
+                   "muziek", "iets", "wat muziek"]
+# a favorites word inside these is no favorites playlist ("Radio-Favoriten")
+FAVORITE_SKIP = ["radio", "mix"]
+
+
+def favorites_playlist(names: Iterable[str]) -> str | None:
+    """The favorites playlist among playlist names, by FAVORITE_WORDS order."""
+    names = [n for n in names if n and not any(w in n.casefold() for w in FAVORITE_SKIP)]
+    for word in FAVORITE_WORDS:
+        for n in names:
+            if word in n.casefold():
+                return n
+    return None
+
+
+# media_type of music_library -> media_class of media_player.browse_media
+LIBRARY_TYPES = ["playlist", "artist", "album", "track", "radio", "podcast"]
+LIBRARY_CLASSES = {"playlist": ["playlist"], "artist": ["artist"], "album": ["album"],
+                   "track": ["track", "music"], "radio": ["channel", "music"],
+                   "podcast": ["podcast"]}
 
 # domains that appear in the device list (controllable + read-only)
 CONTROL_DOMAINS = sorted({s.split(".", 1)[0] for s in SERVICES})
@@ -134,6 +182,9 @@ LANGUAGES: dict[str, dict[str, Any]] = {
             "Geräte (entity_id | Name | Bereich):\n{devices}"
         ),
         "location": "\n\nDas Sprachgerät steht im Bereich: {area}",
+        "satellite_player": "\nDer Lautsprecher des Sprachgeräts: {entity_id}",
+        # vocabulary hint for speech-to-text (whisper prompt)
+        "stt_prompt": "Sprachbefehle für das Smart Home: Musik pausieren, Pause, Play, weiter, zurück, lauter, leiser, nächster Titel, vorspulen, zurückspulen, Licht an, Licht aus, Rollläden hoch, Timer, Wetter.",
         "verbosity": {
             "short": "Antworte so knapp wie möglich, mit wenigen Worten.",
             "medium": "Antworte kurz, meist in einem Satz.",
@@ -145,13 +196,7 @@ LANGUAGES: dict[str, dict[str, Any]] = {
         "default_system": ("Du bist der Sprachassistent eines Smart Homes mit "
                            "Home Assistant. Antworte immer auf Deutsch, kurz und freundlich."),
         "tool_control": (
-            "Steuert ein oder mehrere Geräte. Jede Aktion ruft einen "
-            "Home-Assistant-Dienst für eine oder mehrere entity_ids auf, "
-            "bei Lichtern auch für alle Lichter eines Bereichs (area). "
-            "Musik sucht und spielt media_player.search_and_play (query, "
-            "media_type, artist), Listen ändert todo.add_item, "
-            "todo.complete_item und todo.remove_item (item). "
-            "Erlaubte Dienste: {services}."
+            "Steuert ein oder mehrere Geräte. Jede Aktion ruft einen Home-Assistant-Dienst für eine oder mehrere entity_ids auf, bei Lichtern auch für alle Lichter eines Bereichs (area). Musik sucht und spielt media_player.search_and_play (query, media_type, artist; ohne query weiter mit dem geladenen Titel, sonst die Lieblingssongs), Spulen media_player.seek_relative (seconds, negativ zurück), Listen ändert todo.add_item, todo.complete_item und todo.remove_item (item). Erlaubte Dienste: {services}."
         ),
         "tool_control_service": "Dienst im Format domain.dienst",
         "tool_control_area": ("Statt entity_id: alle Lichter dieses Bereichs, "
@@ -160,12 +205,13 @@ LANGUAGES: dict[str, dict[str, Any]] = {
             "Optionale Parameter, z. B. brightness_pct, brightness_step_pct, "
             "color_name, color_temp_kelvin, position, temperature, humidity, "
             "percentage, volume_level, is_volume_muted, shuffle, repeat "
-            "(off, one, all), code, query, media_type ({media_types}), artist, item"
+            "(off, one, all), code, query, media_type ({media_types}), artist, seconds, item"
         ),
         "tool_get_state": (
             "Liefert den aktuellen Zustand und wichtige Attribute von Geräten "
-            "und Sensoren, entweder für entity_ids oder für alle Lichter eines "
-            "Bereichs (domain light und area). Wetter-Entitäten liefern den "
+            "und Sensoren, entweder für entity_ids oder für alle Geräte einer "
+            "domain in einem Bereich (domain und area, \"*\" für das ganze Haus, "
+            "optional device_class, z. B. window). Wetter-Entitäten liefern den "
             "Verlauf des restlichen Tages (later_today) und die Vorhersage der "
             "nächsten Tage (forecast), Listen (todo) ihre offenen Einträge."
         ),
@@ -179,6 +225,9 @@ LANGUAGES: dict[str, dict[str, Any]] = {
         ),
         "tool_get_time": "Liefert die aktuelle Uhrzeit, den Wochentag und das Datum.",
         "tool_broadcast": "Spricht eine Durchsage auf allen Sprachgeräten im Haus.",
+        "tool_music_library": (
+            'Liest die Medienbibliothek eines Players (entity_id): Playlists, Künstler, Alben, Titel, Sender oder Podcasts (media_type), optional gefiltert nach search. Liefert die Namen, die media_player.search_and_play als query abspielt.'
+        ),
         "weekdays": ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag",
                      "Samstag", "Sonntag"],
         "months": ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
@@ -222,6 +271,9 @@ LANGUAGES: dict[str, dict[str, Any]] = {
             "Devices (entity_id | name | area):\n{devices}"
         ),
         "location": "\n\nThe voice device is in the area: {area}",
+        "satellite_player": "\nThe speaker of the voice device: {entity_id}",
+        # vocabulary hint for speech-to-text (whisper prompt)
+        "stt_prompt": "Smart home voice commands: pause the music, pause, play, next track, previous track, louder, quieter, fast forward, rewind, lights on, lights off, open the blinds, timer, weather.",
         "verbosity": {
             "short": "Answer as briefly as possible, in a few words.",
             "medium": "Answer briefly, usually in one sentence.",
@@ -233,11 +285,7 @@ LANGUAGES: dict[str, dict[str, Any]] = {
         "default_system": ("You are the voice assistant of a smart home with Home "
                            "Assistant. Always answer in English, briefly and in a friendly way."),
         "tool_control": (
-            "Controls one or more devices. Every action calls a Home Assistant "
-            "service for one or more entity_ids, for lights also for all lights of "
-            "an area (area). media_player.search_and_play (query, media_type, "
-            "artist) searches and plays music, todo.add_item, todo.complete_item "
-            "and todo.remove_item (item) change lists. Allowed services: {services}."
+            "Controls one or more devices. Every action calls a Home Assistant service for one or more entity_ids, for lights also for all lights of an area (area). media_player.search_and_play (query, media_type, artist; without query the loaded title goes on, otherwise the favorite songs), seeking media_player.seek_relative (seconds, negative back) searches and plays music, todo.add_item, todo.complete_item and todo.remove_item (item) change lists. Allowed services: {services}."
         ),
         "tool_control_service": "Service in the format domain.service",
         "tool_control_area": "Instead of entity_id: all lights of this area, \"*\" for the whole house",
@@ -245,12 +293,13 @@ LANGUAGES: dict[str, dict[str, Any]] = {
             "Optional parameters, e.g. brightness_pct, brightness_step_pct, "
             "color_name, color_temp_kelvin, position, temperature, humidity, "
             "percentage, volume_level, is_volume_muted, shuffle, repeat "
-            "(off, one, all), code, query, media_type ({media_types}), artist, item"
+            "(off, one, all), code, query, media_type ({media_types}), artist, seconds, item"
         ),
         "tool_get_state": (
             "Returns the current state and important attributes of devices and "
-            "sensors, either for entity_ids or for all lights of an area (domain "
-            "light and area). Weather entities return the course of the rest of "
+            "sensors, either for entity_ids or for all devices of a domain in an "
+            "area (domain and area, \"*\" for the whole house, optionally "
+            "device_class, e.g. window). Weather entities return the course of the rest of "
             "the day (later_today) and the forecast of the next days (forecast), "
             "lists (todo) their open items."
         ),
@@ -263,6 +312,9 @@ LANGUAGES: dict[str, dict[str, Any]] = {
         ),
         "tool_get_time": "Returns the current time, the weekday and the date.",
         "tool_broadcast": "Speaks an announcement on all voice devices in the house.",
+        "tool_music_library": (
+            'Reads the music library of a player (entity_id): playlists, artists, albums, tracks, stations or podcasts (media_type), optionally filtered by search. Returns the names that media_player.search_and_play plays as query.'
+        ),
         "weekdays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
                      "Saturday", "Sunday"],
         "months": ["January", "February", "March", "April", "May", "June", "July",
@@ -305,6 +357,9 @@ LANGUAGES: dict[str, dict[str, Any]] = {
             "Dispositivos (entity_id | nombre | zona):\n{devices}"
         ),
         "location": "\n\nEl dispositivo de voz está en la zona: {area}",
+        "satellite_player": "\nEl altavoz del dispositivo de voz: {entity_id}",
+        # vocabulary hint for speech-to-text (whisper prompt)
+        "stt_prompt": "Órdenes de voz para la casa: pausa la música, pausa, play, siguiente canción, anterior, más alto, más bajo, adelanta, retrocede, enciende la luz, apaga la luz, sube las persianas, temporizador, tiempo.",
         "verbosity": {
             "short": "Responde lo más breve posible, con pocas palabras.",
             "medium": "Responde de forma breve, normalmente en una frase.",
@@ -316,12 +371,7 @@ LANGUAGES: dict[str, dict[str, Any]] = {
         "default_system": ("Eres el asistente de voz de un hogar inteligente con Home "
                            "Assistant. Responde siempre en español, de forma breve y amable."),
         "tool_control": (
-            "Controla uno o varios dispositivos. Cada acción llama a un servicio de "
-            "Home Assistant para uno o varios entity_ids, para luces también para "
-            "todas las luces de una zona (area). media_player.search_and_play "
-            "(query, media_type, artist) busca y reproduce música, todo.add_item, "
-            "todo.complete_item y todo.remove_item (item) cambian listas. "
-            "Servicios permitidos: {services}."
+            "Controla uno o varios dispositivos. Cada acción llama a un servicio de Home Assistant para uno o varios entity_ids, para luces también para todas las luces de una zona (area). media_player.search_and_play (query, media_type, artist; sin query sigue el título cargado, si no las canciones favoritas), avanzar o retroceder media_player.seek_relative (seconds, negativo atrás) busca y reproduce música, todo.add_item, todo.complete_item y todo.remove_item (item) cambian listas. Servicios permitidos: {services}."
         ),
         "tool_control_service": "Servicio en el formato dominio.servicio",
         "tool_control_area": "En lugar de entity_id: todas las luces de esta zona, \"*\" para toda la casa",
@@ -329,12 +379,13 @@ LANGUAGES: dict[str, dict[str, Any]] = {
             "Parámetros opcionales, p. ej. brightness_pct, brightness_step_pct, "
             "color_name, color_temp_kelvin, position, temperature, humidity, "
             "percentage, volume_level, is_volume_muted, shuffle, repeat "
-            "(off, one, all), code, query, media_type ({media_types}), artist, item"
+            "(off, one, all), code, query, media_type ({media_types}), artist, seconds, item"
         ),
         "tool_get_state": (
             "Devuelve el estado actual y los atributos importantes de dispositivos y "
-            "sensores, para entity_ids o para todas las luces de una zona (domain "
-            "light y area). Las entidades del tiempo devuelven la evolución del resto "
+            "sensores, para entity_ids o para todos los dispositivos de un domain en "
+            "una zona (domain y area, \"*\" para toda la casa, opcionalmente "
+            "device_class, p. ej. window). Las entidades del tiempo devuelven la evolución del resto "
             "del día (later_today) y la previsión de los próximos días (forecast), "
             "las listas (todo) sus elementos pendientes."
         ),
@@ -347,6 +398,9 @@ LANGUAGES: dict[str, dict[str, Any]] = {
         ),
         "tool_get_time": "Devuelve la hora actual, el día de la semana y la fecha.",
         "tool_broadcast": "Dice un aviso en todos los dispositivos de voz de la casa.",
+        "tool_music_library": (
+            'Lee la biblioteca de música de un reproductor (entity_id): listas, artistas, álbumes, canciones, emisoras o podcasts (media_type), opcionalmente filtrada por search. Devuelve los nombres que media_player.search_and_play reproduce como query.'
+        ),
         "weekdays": ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado",
                      "domingo"],
         "months": ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
@@ -389,6 +443,9 @@ LANGUAGES: dict[str, dict[str, Any]] = {
             "Appareils (entity_id | nom | pièce) :\n{devices}"
         ),
         "location": "\n\nL'appareil vocal se trouve dans la pièce : {area}",
+        "satellite_player": "\nLe haut-parleur de l'appareil vocal : {entity_id}",
+        # vocabulary hint for speech-to-text (whisper prompt)
+        "stt_prompt": "Commandes vocales de la maison : mets la musique en pause, pause, play, titre suivant, titre précédent, plus fort, moins fort, avance, recule, allume la lumière, éteins la lumière, ouvre les volets, minuteur, météo.",
         "verbosity": {
             "short": "Réponds le plus brièvement possible, en quelques mots.",
             "medium": "Réponds brièvement, le plus souvent en une phrase.",
@@ -400,12 +457,7 @@ LANGUAGES: dict[str, dict[str, Any]] = {
         "default_system": ("Tu es l'assistant vocal d'une maison connectée avec Home "
                            "Assistant. Réponds toujours en français, brièvement et aimablement."),
         "tool_control": (
-            "Commande un ou plusieurs appareils. Chaque action appelle un service de "
-            "Home Assistant pour un ou plusieurs entity_ids, pour les lumières aussi "
-            "pour toutes les lumières d'une pièce (area). media_player.search_and_play "
-            "(query, media_type, artist) cherche et joue de la musique, todo.add_item, "
-            "todo.complete_item et todo.remove_item (item) modifient les listes. "
-            "Services autorisés : {services}."
+            "Commande un ou plusieurs appareils. Chaque action appelle un service de Home Assistant pour un ou plusieurs entity_ids, pour les lumières aussi pour toutes les lumières d'une pièce (area). media_player.search_and_play (query, media_type, artist ; sans query le titre chargé reprend, sinon les titres favoris), avancer ou reculer media_player.seek_relative (seconds, négatif en arrière) cherche et joue de la musique, todo.add_item, todo.complete_item et todo.remove_item (item) modifient les listes. Services autorisés : {services}."
         ),
         "tool_control_service": "Service au format domaine.service",
         "tool_control_area": "Au lieu de entity_id : toutes les lumières de cette pièce, \"*\" pour toute la maison",
@@ -413,12 +465,13 @@ LANGUAGES: dict[str, dict[str, Any]] = {
             "Paramètres facultatifs, p. ex. brightness_pct, brightness_step_pct, "
             "color_name, color_temp_kelvin, position, temperature, humidity, "
             "percentage, volume_level, is_volume_muted, shuffle, repeat "
-            "(off, one, all), code, query, media_type ({media_types}), artist, item"
+            "(off, one, all), code, query, media_type ({media_types}), artist, seconds, item"
         ),
         "tool_get_state": (
             "Renvoie l'état actuel et les attributs importants des appareils et "
-            "capteurs, soit pour des entity_ids, soit pour toutes les lumières d'une "
-            "pièce (domain light et area). Les entités météo renvoient l'évolution du "
+            "capteurs, soit pour des entity_ids, soit pour tous les appareils d'un "
+            "domain dans une pièce (domain et area, \"*\" pour toute la maison, "
+            "éventuellement device_class, p. ex. window). Les entités météo renvoient l'évolution du "
             "reste de la journée (later_today) et les prévisions des prochains jours "
             "(forecast), les listes (todo) leurs éléments ouverts."
         ),
@@ -431,6 +484,9 @@ LANGUAGES: dict[str, dict[str, Any]] = {
         ),
         "tool_get_time": "Renvoie l'heure actuelle, le jour de la semaine et la date.",
         "tool_broadcast": "Diffuse une annonce sur tous les appareils vocaux de la maison.",
+        "tool_music_library": (
+            "Lit la bibliothèque musicale d'un lecteur (entity_id) : playlists, artistes, albums, titres, stations ou podcasts (media_type), filtrée en option par search. Renvoie les noms que media_player.search_and_play joue comme query."
+        ),
         "weekdays": ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi",
                      "dimanche"],
         "months": ["janvier", "février", "mars", "avril", "mai", "juin", "juillet",
@@ -473,6 +529,9 @@ LANGUAGES: dict[str, dict[str, Any]] = {
             "Dispositivi (entity_id | nome | zona):\n{devices}"
         ),
         "location": "\n\nIl dispositivo vocale si trova nella zona: {area}",
+        "satellite_player": "\nL'altoparlante del dispositivo vocale: {entity_id}",
+        # vocabulary hint for speech-to-text (whisper prompt)
+        "stt_prompt": "Comandi vocali per la casa: metti in pausa la musica, pausa, play, brano successivo, brano precedente, più forte, più piano, vai avanti, torna indietro, accendi la luce, spegni la luce, alza le tapparelle, timer, meteo.",
         "verbosity": {
             "short": "Rispondi nel modo più breve possibile, con poche parole.",
             "medium": "Rispondi in breve, di solito con una frase.",
@@ -484,11 +543,7 @@ LANGUAGES: dict[str, dict[str, Any]] = {
         "default_system": ("Sei l'assistente vocale di una casa intelligente con Home "
                            "Assistant. Rispondi sempre in italiano, in breve e in modo cortese."),
         "tool_control": (
-            "Controlla uno o più dispositivi. Ogni azione chiama un servizio di Home "
-            "Assistant per uno o più entity_id, per le luci anche per tutte le luci "
-            "di una zona (area). media_player.search_and_play (query, media_type, "
-            "artist) cerca e riproduce musica, todo.add_item, todo.complete_item e "
-            "todo.remove_item (item) modificano le liste. Servizi consentiti: {services}."
+            "Controlla uno o più dispositivi. Ogni azione chiama un servizio di Home Assistant per uno o più entity_id, per le luci anche per tutte le luci di una zona (area). media_player.search_and_play (query, media_type, artist; senza query riprende il brano caricato, altrimenti i brani preferiti), avanti o indietro media_player.seek_relative (seconds, negativo indietro) cerca e riproduce musica, todo.add_item, todo.complete_item e todo.remove_item (item) modificano le liste. Servizi consentiti: {services}."
         ),
         "tool_control_service": "Servizio nel formato dominio.servizio",
         "tool_control_area": "Al posto di entity_id: tutte le luci di questa zona, \"*\" per tutta la casa",
@@ -496,12 +551,13 @@ LANGUAGES: dict[str, dict[str, Any]] = {
             "Parametri facoltativi, ad es. brightness_pct, brightness_step_pct, "
             "color_name, color_temp_kelvin, position, temperature, humidity, "
             "percentage, volume_level, is_volume_muted, shuffle, repeat "
-            "(off, one, all), code, query, media_type ({media_types}), artist, item"
+            "(off, one, all), code, query, media_type ({media_types}), artist, seconds, item"
         ),
         "tool_get_state": (
             "Restituisce lo stato attuale e gli attributi importanti di dispositivi e "
-            "sensori, per entity_id o per tutte le luci di una zona (domain light e "
-            "area). Le entità meteo restituiscono l'andamento del resto della "
+            "sensori, per entity_id o per tutti i dispositivi di un domain in una "
+            "zona (domain e area, \"*\" per tutta la casa, facoltativamente "
+            "device_class, ad es. window). Le entità meteo restituiscono l'andamento del resto della "
             "giornata (later_today) e le previsioni dei prossimi giorni (forecast), "
             "le liste (todo) le voci aperte."
         ),
@@ -514,6 +570,9 @@ LANGUAGES: dict[str, dict[str, Any]] = {
         ),
         "tool_get_time": "Restituisce l'ora attuale, il giorno della settimana e la data.",
         "tool_broadcast": "Pronuncia un annuncio su tutti i dispositivi vocali della casa.",
+        "tool_music_library": (
+            'Legge la libreria musicale di un lettore (entity_id): playlist, artisti, album, brani, stazioni o podcast (media_type), filtrata facoltativamente con search. Restituisce i nomi che media_player.search_and_play riproduce come query.'
+        ),
         "weekdays": ["lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato",
                      "domenica"],
         "months": ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio",
@@ -556,6 +615,9 @@ LANGUAGES: dict[str, dict[str, Any]] = {
             "Apparaten (entity_id | naam | ruimte):\n{devices}"
         ),
         "location": "\n\nHet spraakapparaat staat in de ruimte: {area}",
+        "satellite_player": "\nDe luidspreker van het spraakapparaat: {entity_id}",
+        # vocabulary hint for speech-to-text (whisper prompt)
+        "stt_prompt": "Spraakopdrachten voor het slimme huis: pauzeer de muziek, pauze, play, volgende nummer, vorige nummer, harder, zachter, vooruitspoelen, terugspoelen, licht aan, licht uit, rolluiken omhoog, timer, weer.",
         "verbosity": {
             "short": "Antwoord zo kort mogelijk, met een paar woorden.",
             "medium": "Antwoord kort, meestal in één zin.",
@@ -567,11 +629,7 @@ LANGUAGES: dict[str, dict[str, Any]] = {
         "default_system": ("Je bent de spraakassistent van een slim huis met Home "
                            "Assistant. Antwoord altijd in het Nederlands, kort en vriendelijk."),
         "tool_control": (
-            "Bedient een of meer apparaten. Elke actie roept een Home Assistant-dienst "
-            "aan voor een of meer entity_ids, bij lampen ook voor alle lampen van een "
-            "ruimte (area). media_player.search_and_play (query, media_type, artist) "
-            "zoekt en speelt muziek, todo.add_item, todo.complete_item en "
-            "todo.remove_item (item) wijzigen lijsten. Toegestane diensten: {services}."
+            "Bedient een of meer apparaten. Elke actie roept een Home Assistant-dienst aan voor een of meer entity_ids, bij lampen ook voor alle lampen van een ruimte (area). media_player.search_and_play (query, media_type, artist; zonder query gaat het geladen nummer verder, anders de favoriete nummers), spoelen media_player.seek_relative (seconds, negatief terug) zoekt en speelt muziek, todo.add_item, todo.complete_item en todo.remove_item (item) wijzigen lijsten. Toegestane diensten: {services}."
         ),
         "tool_control_service": "Dienst in het formaat domein.dienst",
         "tool_control_area": "In plaats van entity_id: alle lampen van deze ruimte, \"*\" voor het hele huis",
@@ -579,12 +637,13 @@ LANGUAGES: dict[str, dict[str, Any]] = {
             "Optionele parameters, bijv. brightness_pct, brightness_step_pct, "
             "color_name, color_temp_kelvin, position, temperature, humidity, "
             "percentage, volume_level, is_volume_muted, shuffle, repeat "
-            "(off, one, all), code, query, media_type ({media_types}), artist, item"
+            "(off, one, all), code, query, media_type ({media_types}), artist, seconds, item"
         ),
         "tool_get_state": (
             "Geeft de huidige toestand en belangrijke attributen van apparaten en "
-            "sensoren, voor entity_ids of voor alle lampen van een ruimte (domain "
-            "light en area). Weer-entiteiten geven het verloop van de rest van de dag "
+            "sensoren, voor entity_ids of voor alle apparaten van een domain in een "
+            "ruimte (domain en area, \"*\" voor het hele huis, optioneel "
+            "device_class, bijv. window). Weer-entiteiten geven het verloop van de rest van de dag "
             "(later_today) en de verwachting voor de komende dagen (forecast), lijsten "
             "(todo) hun open items."
         ),
@@ -597,6 +656,9 @@ LANGUAGES: dict[str, dict[str, Any]] = {
         ),
         "tool_get_time": "Geeft de huidige tijd, de weekdag en de datum.",
         "tool_broadcast": "Spreekt een omroepbericht uit op alle spraakapparaten in huis.",
+        "tool_music_library": (
+            'Leest de muziekbibliotheek van een speler (entity_id): afspeellijsten, artiesten, albums, nummers, zenders of podcasts (media_type), optioneel gefilterd op search. Geeft de namen die media_player.search_and_play als query afspeelt.'
+        ),
         "weekdays": ["maandag", "dinsdag", "woensdag", "donderdag", "vrijdag",
                      "zaterdag", "zondag"],
         "months": ["januari", "februari", "maart", "april", "mei", "juni", "juli",
@@ -682,7 +744,24 @@ def build_tools(lang: str = DEFAULT_LANGUAGE) -> list[dict[str, Any]]:
                         "entity_ids": {"type": "array", "items": {"type": "string"}},
                         "domain": {"type": "string"},
                         "area": {"type": "string"},
+                        "device_class": {"type": "string"},
                     },
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "music_library",
+                "description": t["tool_music_library"],
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "entity_id": {"type": "string"},
+                        "media_type": {"type": "string", "enum": LIBRARY_TYPES},
+                        "search": {"type": "string"},
+                    },
+                    "required": ["entity_id", "media_type"],
                 },
             },
         },
@@ -753,14 +832,18 @@ def sort_key(entity: tuple[str, str, str | None]) -> tuple[str, str]:
 def build_system_prompt(entities: Iterable[tuple[str, str, str | None]],
                         location: str | None = None,
                         lang: str = DEFAULT_LANGUAGE,
-                        verbosity: str = DEFAULT_VERBOSITY) -> str:
-    """entities: (entity_id, name, area_name) tuples."""
+                        verbosity: str = DEFAULT_VERBOSITY,
+                        player: str | None = None) -> str:
+    """entities: (entity_id, name, area_name) tuples. player: the media
+    player of the voice device ("Spiel Musik" plays there first)."""
     t = lang_texts(lang)
     lines = "\n".join(device_line(*e) for e in sorted(entities, key=sort_key))
     style = t["verbosity"].get(verbosity) or t["verbosity"][DEFAULT_VERBOSITY]
     prompt = t["system"].format(devices=lines, verbosity=style)
     if location:
         prompt += t["location"].format(area=location)
+    if player:
+        prompt += ("\n" if not location else "") + t["satellite_player"].format(entity_id=player)
     return prompt
 
 
@@ -899,6 +982,15 @@ def timer_result(error: str | None = None, timers: list[dict] | None = None,
         out["timers"] = timers
     out.update(extra)
     return dumps(out)
+
+
+def library_result(names: list[str] | None = None, error: str | None = None) -> str:
+    """Result of music_library: {"items": [names], "total": n}. At most
+    LIBRARY_ITEMS names; "total" counts all matches."""
+    if error:
+        return dumps({"success": False, "error": error})
+    names = [n for n in (names or []) if n]
+    return dumps({"items": names[:LIBRARY_ITEMS], "total": len(names)})
 
 
 def dumps(obj: Any) -> str:

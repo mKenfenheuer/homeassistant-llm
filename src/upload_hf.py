@@ -57,6 +57,13 @@ def upload_model(api, tmp, gguf, lang, model_repo, dataset_repo, private):
     # holds version, schema and notes; file, hash and size come from the GGUF.
     # The entries of the other languages are kept.
     manifest = json.loads((hf / lang / "latest.json").read_text())
+    try:   # the entry of the released model before this one
+        manifest_prev = json.loads(Path(hf_hub_download(model_repo, "models.json")).read_text()
+                                   )["languages"].get(lang, {})
+    except (EntryNotFoundError, RepositoryNotFoundError, KeyError, ValueError):
+        manifest_prev = {}
+    if manifest_prev.get("file") == f"{lang}/{gguf.name}":
+        manifest_prev = {}
     manifest.update(file=f"{lang}/{gguf.name}", sha256=digest, size=gguf.stat().st_size)
     index = {"languages": {}}
     try:
@@ -76,11 +83,17 @@ def upload_model(api, tmp, gguf, lang, model_repo, dataset_repo, private):
     shutil.copy(hf_hub_download("Qwen/Qwen2.5-3B-Instruct", "LICENSE"), out / "LICENSE")
     (out / lang / gguf.name).symlink_to(gguf)
     api.create_repo(model_repo, repo_type="model", private=private, exist_ok=True)
-    # only the current GGUF of this language stays; older ones are deleted in
-    # the same commit, other languages are not touched
+    # the current GGUF of this language and the previous one stay (the
+    # previous add-on version still downloads it as its default model);
+    # older ones are deleted in the same commit, other languages untouched
+    keep = {f"{lang}/{gguf.name}"}
+    if prev := manifest_prev.get("file"):
+        keep.add(prev)
+    old = [f for f in api.list_repo_files(model_repo)
+           if f.startswith(f"{lang}/") and f.endswith(".gguf") and f not in keep]
     api.upload_folder(repo_id=model_repo, repo_type="model", folder_path=out,
                       commit_message=f"Modell {lang} {manifest.get('version', gguf.stem)}",
-                      delete_patterns=[f"{lang}/*.gguf"])
+                      delete_patterns=old or None)
     print(f"model:     https://huggingface.co/{model_repo}")
     print(f"model_url: https://huggingface.co/{model_repo}/resolve/main/{lang}/{gguf.name}")
     print(f"sha256:    {digest}")

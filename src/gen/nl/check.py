@@ -8,6 +8,6 @@ WORDS = {
     "unreachable": "bereikbaar",
     # answer that lists the devices that are on or open, and its separators
     "listing": r"(?:Ja\. |Nee\. )?(?:Deze lampen zijn aan|Dit raam staat open|"
-               r"Deze ramen staan open): (.+)\.$",
+               r"Deze ramen staan open|Deze zijn open): (.+)\.$",
     "list_split": r", | en ",
 }

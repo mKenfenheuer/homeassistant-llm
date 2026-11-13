@@ -1,6 +1,7 @@
 """Italian samples for the Home Assistant Assist built-ins.
 
-Port of src/gen/de/assist.py: music (search and play, shuffle, repeat, mute),
+Port of src/gen/de/assist.py: music (search and play, the media library of a
+player, shuffle, repeat, mute),
 timers on the voice device, to-do lists, weather with forecast, time and date,
 broadcasts, humidifiers and valve positions. Registers itself in core through
 POPULATE_HOOKS, COMMANDS, NEXT and CASE_HOOKS.
@@ -391,7 +392,14 @@ C.POPULATE_HOOKS.append(populate)
 def music_request():
     """-> (sentence without target, data, description for the answer)."""
     k = R.choice(["artist", "artist", "track", "track", "album", "playlist", "radio",
-                  "radio", "genre", "plain"])
+                  "radio", "genre", "plain", "library"])
+    if k == "library":
+        # no title: the integration plays the favorites of the library
+        return R.choice(["Metti della musica", "Metti qualcosa", "Fai partire un po' di musica",
+                         "Metti un po' di musica", "Metti qualcosa dalla mia libreria",
+                         "Voglio ascoltare musica", "Accendi la musica",
+                         "Metti qualcosa di bello"]), {}, \
+            "un po' di musica"
     if k == "artist":
         a = R.choice(ARTISTS)
         u = R.choice([f"Metti la musica di {a}", f"Metti qualcosa di {a}",
@@ -437,13 +445,17 @@ def music_target(h, loc):
     ps = music_players(h)
     if not ps:
         return None
+    sat = h.sat_player if h.sat_player in ps and loc and h.sat_loc == loc else None
+    if sat is not None and (F("sat") or R.random() < 0.6):
+        # no player named: the speaker of the voice device comes first
+        return sat, ""
     opts = ["name"]
     single_rooms = [r for r in sorted({e.area for e in ps if e.area})
                     if len([e for e in ps if e.area == r]) == 1]
     if single_rooms:
         opts.append("room")
     in_loc = [e for e in ps if loc and e.area == loc]
-    if len(in_loc) == 1:
+    if sat is None and len(in_loc) == 1:
         opts += ["loc", "loc"]
     if len(ps) == 1:
         opts += ["only", "only"]
@@ -510,8 +522,30 @@ def i_media_extra(h, loc):
           "Metti il brano precedente{w}", "Indietro di una canzone{w}"],
          ["Ho rimesso il brano precedente.", "Brano precedente."]),
         ("media_player.media_stop", None,
-         ["Ferma la musica{w}", "Interrompi la riproduzione{w}", "Stop alla musica{w}"],
+         ["Ferma la musica{w}", "Interrompi la riproduzione{w}", "Stop alla musica{w}", "Stop{w}"],
          ["Ho fermato la riproduzione.", "Fatto."]),
+        ("media_player.media_play", None,
+         ["Play{w}", "Riprendi la musica{w}", "Fai ripartire la musica{w}", "Continua{w}"],
+         ["La riproduzione riprende.", "Si riparte."]),
+        ("media_player.media_next_track", None,
+         ["Prossima{w}", "Canzone successiva{w}", "Prossimo brano{w}"], ["Brano successivo."]),
+        ("media_player.media_previous_track", None,
+         ["Indietro{w}", "Brano precedente{w}"], ["Brano precedente."]),
+        ("media_player.volume_up", None, ["Più forte{w}", "Alza il volume{w}"], ["Volume alzato."]),
+        ("media_player.volume_down", None, ["Più piano{w}", "Abbassa il volume{w}"],
+         ["Volume abbassato."]),
+    ]
+    sk = R.choice([10, 15, 30, 30, 60])
+    sk_word = "un minuto" if sk == 60 else f"{sk} secondi"
+    opts += [
+        ("media_player.seek_relative", {"seconds": sk},
+         [f"Vai avanti di {sk_word}{{w}}", "Avanti veloce{w}" if sk == 30 else
+          f"Salta avanti di {sk_word}{{w}}", f"Manda avanti di {sk_word}{{w}}"],
+         [f"Sono andato avanti di {sk_word}.", "Ok, avanti."]),
+        ("media_player.seek_relative", {"seconds": -sk},
+         [f"Torna indietro di {sk_word}{{w}}", "Riavvolgi{w}" if sk == 30 else
+          f"Salta indietro di {sk_word}{{w}}", f"Riavvolgi di {sk_word}{{w}}"],
+         [f"Sono tornato indietro di {sk_word}.", "Ok, indietro."]),
     ]
     svc, data, users, confs = R.choice(opts)
     return (R.choice(users).format(w=where), [action(svc, [e], data)], R.choice(confs))
@@ -519,27 +553,77 @@ def i_media_extra(h, loc):
 
 def s_music_ask(h, loc):
     """Several speakers, none named and none in the room of the voice device:
-    ask which one; optionally the user answers (or gives up)."""
+    read all players first (some may be unreachable), play on the only
+    reachable speaker, otherwise ask which one; optionally the user answers
+    (or gives up). v16 picked an unreachable voice satellite."""
     while len(music_players(h)) < 2:
         if not add_speaker(h):
             return None
-    ps = music_players(h)
-    if loc and len([e for e in ps if e.area == loc]) == 1:
+    if loc and (any(e.area == loc for e in music_players(h)) or h.sat_loc == loc):
         loc = None
+    # make some speakers unreachable: none, all but one, or a few
+    ps = music_players(h)
+    mode = R.choice(["all", "all", "one", "few", "none"])
+    if mode == "none":
+        for e in ps:
+            e.state = "unavailable"
+            e.attrs.pop("media_title", None)
+            e.attrs.pop("media_artist", None)
+    elif mode == "one":
+        keep = R.choice(ps)
+        for e in ps:
+            if e is not keep:
+                e.state = "unavailable"
+                e.attrs.pop("media_title", None)
+                e.attrs.pop("media_artist", None)
+    elif mode == "few" and len(ps) > 2:
+        for e in R.sample(ps, R.randint(1, len(ps) - 2)):
+            e.state = "unavailable"
+            e.attrs.pop("media_title", None)
+            e.attrs.pop("media_artist", None)
+    ps = music_players(h)              # reachable ones
     u, data, desc = music_request()
+    args = {"domain": "media_player", "area": S.ALL_AREAS}
+    ents = sorted(h.of("media_player"), key=lambda e: S.sort_key((e.eid, e.name, e.area)))
+    call, cid = tool_call("get_state", args)
+    msgs = base_msgs(h, loc) + [user(u), call, tool_msg(cid, h.state_of(ents))]
+    gold = [["get_state", args]]
+    gone = [e.name for e in ents if e.state == "unavailable"]
+    if not ps:
+        msgs += [say(R.choice(["Al momento purtroppo nessun altoparlante è raggiungibile.",
+                               "In questo momento nessuno dei tuoi altoparlanti è raggiungibile, "
+                               "quindi non posso riprodurre musica.",
+                               f"{join_it(gone[:4])} al momento "
+                               f"{'non è raggiungibile' if len(gone) == 1 else 'non sono raggiungibili'}"
+                               ", purtroppo non posso riprodurre niente."]))]
+        return sample(msgs, "command", gold, no_history=True)
+    if len(ps) == 1:
+        e = ps[0]
+        acts = [action("media_player.search_and_play", [e], data)]
+        msgs += call_turn("control", {"actions": acts}, C.ok_result(acts),
+                          R.choice([f"Riproduco {desc} su {e.name}: al momento è l'unico "
+                                    f"altoparlante disponibile.",
+                                    play_answer(desc, e)]))
+        return sample(msgs, "command", gold, no_history=True)
     opts = ps[:4]
-    ask = R.choice([f"Su quale altoparlante devo riprodurre {desc}: "
+    # numbers in the request (RTL 102.5, Rai Radio 2) are not in the tool result
+    what = "la musica" if any(ch.isdigit() for ch in desc) else desc
+    ask = R.choice([f"Su quale altoparlante devo riprodurre {what}: "
                     f"{join_it([e.name for e in opts], 'o')}?",
-                    f"Dove vuoi che riproduca {desc}? Puoi scegliere tra "
+                    f"Dove vuoi che riproduca {what}? Puoi scegliere tra "
                     f"{join_it([e.name for e in opts], 'e')}."])
-    msgs = base_msgs(h, loc) + [user(u), say(ask)]
+    gone = [e.name for e in ents if e.state == "unavailable"]
+    if gone:
+        ask = (f"{join_it(gone)} al momento "
+               f"{'non è raggiungibile' if len(gone) == 1 else 'non sono raggiungibili'}. ") + ask
+    msgs += [say(ask)]
     if not F("answer"):
-        return sample(msgs, "clarify", [], no_history=True)
+        return sample(msgs, "clarify", gold, no_history=True)
     if R.random() < 0.12:
         msgs += [user(R.choice(["Lascia perdere", "No, niente", "Fa niente"])),
                  say("Ok, allora niente.")]
-        return sample(msgs, "conversation", [], gold_last=[])
-    e = R.choice(ps)
+        return sample(msgs, "conversation", gold, gold_last=[])
+    e = R.choice(opts)
     same_room = [x for x in ps if x.area == e.area]
     replies = [e.name, f"Su {e.name}", f"Su {e.name}, grazie"]
     if e.area and len(same_room) == 1:
@@ -547,18 +631,130 @@ def s_music_ask(h, loc):
     acts = [action("media_player.search_and_play", [e], data)]
     msgs += [user(R.choice(replies))]
     msgs += call_turn("control", {"actions": acts}, C.ok_result(acts), play_answer(desc, e))
-    return sample(msgs, "conversation", [], gold_last=[["control", {"actions": acts}]])
+    return sample(msgs, "conversation", gold, gold_last=[["control", {"actions": acts}]])
+
+
+def s_music_sat(h, loc):
+    """'Metti della musica' on a voice device with its own speaker: play
+    there, even when the room or the house has other speakers."""
+    rooms = [r for r in h.rooms if r not in C.OUTDOOR]
+    if not rooms:
+        return None
+    loc = R.choice(rooms)
+    own = [e for e in h.of("media_player", loc) if e.voice and e.state != "unavailable"]
+    sat = R.choice(own) if own else h.add_voice_media(loc)
+    if sat is None:
+        return None
+    if sat.state == "unavailable":
+        sat.state = "idle"
+    h.set_sat_player(sat, loc)
+    if R.random() < 0.5:
+        add_speaker(h, loc)
+    if R.random() < 0.5:
+        add_speaker(h)
+    u, data, desc = music_request()
+    acts = [action("media_player.search_and_play", [sat], data)]
+    msgs = base_msgs(h, loc) + [user(u)]
+    msgs += call_turn("control", {"actions": acts}, C.ok_result(acts), play_answer(desc, sat))
+    return sample(msgs, "command", [["control", {"actions": acts}]])
+
+
+UNCLEAR_MEDIA = [
+    ("media_player.media_next_track", None, ["Canzone successiva", "Prossimo brano",
+                                             "Passa alla prossima canzone", "Salta questa canzone",
+                                             "Prossima"],
+     "Su {n} parte il brano successivo."),
+    ("media_player.media_previous_track", None, ["Canzone precedente", "Torna al brano di prima",
+                                                 "Brano precedente", "Indietro"],
+     "Su {n} ho rimesso il brano precedente."),
+    ("media_player.media_pause", None, ["Pausa", "Metti in pausa la musica", "Ferma un attimo la musica"],
+     "Ho messo in pausa la musica su {n}."),
+    ("media_player.media_stop", None, ["Ferma la musica", "Spegni la musica", "Interrompi la riproduzione",
+                                       "Stop"],
+     "Ho fermato la riproduzione su {n}."),
+    ("media_player.volume_up", None, ["Alza il volume", "Più forte, per favore", "Alza un po' la musica",
+                                      "Più forte"],
+     "Ho alzato il volume su {n}."),
+    ("media_player.volume_down", None, ["Abbassa il volume", "Più piano, per favore",
+                                        "Abbassa un po' la musica", "Più piano"],
+     "Ho abbassato il volume su {n}."),
+    ("media_player.seek_relative", {"seconds": 30}, ["Vai avanti", "Avanti veloce",
+                                                     "Vai avanti di 30 secondi"],
+     "Su {n} sono andato avanti di 30 secondi."),
+    ("media_player.seek_relative", {"seconds": -30}, ["Torna indietro", "Riavvolgi",
+                                                      "Torna indietro di 30 secondi"],
+     "Su {n} sono tornato indietro di 30 secondi."),
+    # play goes on with the paused title of the player
+    ("media_player.media_play", None, ["Play", "Riprendi", "Continua", "Fai ripartire",
+                                       "Continua la musica"],
+     "Su {n} la riproduzione riprende."),
+]
+
+
+def s_media_unclear(h, loc):
+    """'Canzone successiva' with several speakers, none named and none in the
+    room of the voice device: read all players, act on the one that is
+    playing ('Play': the one that is paused), ask when none or several are
+    (v16 picked an unreachable player)."""
+    while len(music_players(h)) < 2:
+        if not add_speaker(h):
+            return None
+    ps = music_players(h)
+    if loc and (any(e.area == loc for e in ps) or h.sat_loc == loc):
+        loc = None
+    mode = R.choice(["one", "one", "one", "none", "several"])
+    active = {"one": R.sample(ps, 1), "none": [], "several": R.sample(ps, 2)}[mode]
+    svc, data, users, conf = R.choice(UNCLEAR_MEDIA)
+    resume = svc == "media_player.media_play"
+    for e in h.of("media_player"):
+        if e in active:
+            title, artist = R.choice(TRACKS)
+            e.state = "paused" if resume else "playing"
+            e.attrs.update(media_title=title, media_artist=artist)
+        elif e.state in ("playing", "paused"):
+            e.state = R.choice(["idle", "off"]) if resume else R.choice(["idle", "paused", "off"])
+            e.attrs.pop("media_title", None)
+            e.attrs.pop("media_artist", None)
+    args = {"domain": "media_player", "area": S.ALL_AREAS}
+    ents = sorted(h.of("media_player"), key=lambda e: S.sort_key((e.eid, e.name, e.area)))
+    call, cid = tool_call("get_state", args)
+    msgs = base_msgs(h, loc) + [user(R.choice(users)), call, tool_msg(cid, h.state_of(ents))]
+    gold = [["get_state", args]]
+    if mode == "one":
+        e = active[0]
+        acts = [action(svc, [e], data)]
+        msgs += call_turn("control", {"actions": acts}, C.ok_result(acts), conf.format(n=e.name))
+        return sample(msgs, "command", gold)
+    names = [e.name for e in (active or ps[:4])]
+    if mode == "none" and resume:
+        ask = R.choice([f"Al momento non c'è niente in pausa. Cosa devo riprodurre e su quale "
+                        f"altoparlante: {join_it(names, 'o')}?",
+                        "Nessun altoparlante ha qualcosa in pausa. Cosa vuoi ascoltare?"])
+    elif mode == "none":
+        ask = R.choice([f"Al momento non c'è musica in riproduzione da nessuna parte. "
+                        f"Quale altoparlante intendi: {join_it(names, 'o')}?",
+                        "In questo momento nessun altoparlante sta suonando. Su quale devo farlo?"])
+    elif resume:
+        ask = f"La musica è in pausa su {join_it(names)}. Dove devo farla ripartire?"
+    else:
+        ask = f"La musica è in riproduzione su {join_it(names)}. Quale intendi?"
+    msgs += [say(ask)]
+    return sample(msgs, "command", gold)
 
 
 def s_music_error(h, loc):
     """Search found nothing, or the player cannot search."""
-    out = i_music_play(h, loc)
-    if not out:
-        if not add_speaker(h):
-            return None
+    out = None
+    for _ in range(6):
         out = i_music_play(h, loc)
-        if not out:
+        if not out and not add_speaker(h):
             return None
+        if out and (out[1][0].get("data") or {}).get("query"):
+            break
+    else:
+        return None
+    if not out:
+        return None
     u, acts, _ = out
     e = next(x for x in h.ents if x.eid == acts[0]["entity_id"][0])
     q = acts[0]["data"]["query"]
@@ -575,6 +771,256 @@ def s_music_error(h, loc):
     msgs = base_msgs(h, loc) + [user(u)]
     msgs += call_turn("control", {"actions": acts}, S.control_result([err]), ans)
     return sample(msgs, "command", [["control", {"actions": acts}]])
+
+
+# --------------------------------------------------------------------------
+# media library of a player (music_library, media_player.browse_media)
+# --------------------------------------------------------------------------
+# mood -> (request words, playlist names that fit)
+LIB_MOODS = {
+    "relax": (["per rilassarmi", "per staccare un po'", "per un po' di relax",
+               "per una serata tranquilla"],
+              ["Chillout Lounge", "Relax totale", "Relax & Unwind", "Peaceful Piano",
+               "Chill Out Music", "Totally Stress Free", "Serate tranquille"]),
+    "sport": (["per fare sport", "per l'allenamento", "per la palestra", "per correre"],
+              ["Gym Hits", "Workout Mix", "Running Beats", "Power Workout", "Allenamento 2026",
+               "Beast Mode"]),
+    "sleep": (["per dormire", "per addormentarmi", "per la notte"],
+              ["Deep Sleep", "Musica per dormire", "Sleep Sounds", "Ninna nanna", "Buonanotte"]),
+    "party": (["per la festa", "per fare festa", "per ballare"],
+              ["Party Hits", "Hit da festa", "Dance Party", "Club Hits 2026", "Si balla!"]),
+    "xmas": (["di Natale", "per Natale", "per le feste di Natale"],
+             ["Canzoni di Natale", "Christmas Classics", "Natale 2025", "Xmas Hits"]),
+    "cook": (["per cucinare", "per la cena", "da ascoltare a cena"],
+             ["Cucinare con la musica", "Dinner Jazz", "Cooking Vibes", "Dinner for Two"]),
+    "focus": (["per lavorare", "per concentrarmi", "per studiare", "per programmare"],
+              ["Deep Focus", "Beats to think to", "Lofi Coders", "Concentrazione",
+               "Programming Beats", "Musica per studiare"]),
+    "rock": (["rock", "metal", "hard rock"],
+             ["Rock Classics", "Inni rock", "Metal Love", "Hard Rock Hits"]),
+    "kids": (["per i bambini", "per i bimbi"],
+             ["Canzoni per bambini", "Baby Dance", "Zecchino d'Oro"]),
+    "eighties": (["anni Ottanta", "degli anni Ottanta"],
+                 ["Hit anni 80", "Best of the 80s", "Festa anni 80"]),
+    "car": (["per il viaggio in macchina", "per il viaggio"],
+            ["Roadtrip", "In viaggio", "Driving Hits"]),
+}
+FAV_NAMES = ["Preferiti", "Liked Songs", "Brani che ti piacciono", "I miei preferiti",
+             "Canzoni preferite", "Favs", "Liked Songs Max", "Liked Songs Anna",
+             "Le mie canzoni preferite", "Musica preferita"]
+FAV_USERS = ["Metti le mie canzoni preferite", "Metti i miei preferiti",
+             "Metti la mia musica preferita", "Voglio ascoltare le mie canzoni preferite",
+             "Metti le canzoni che mi piacciono", "Metti la mia playlist preferita",
+             "Fammi sentire i miei brani preferiti"]
+NEUTRAL_PLAYLISTS = ["Discover Weekly", "Release Radar", "La mia playlist n. 3",
+                     "La mia playlist n. 7", "Compleanno di Alex", "Vacanze 2024", "Estate 2025",
+                     "Matrimonio", "Mix della settimana", "Nuove scoperte", "Brani di Shazam",
+                     "Teen Wolf Soundtrack", "Electro Swing", "Deep House 2026",
+                     "Psytrance Supernova", "Goa Mix", "Recently added tracks",
+                     "Dobby + Maximilian", "In bici", "Festa dei boomer", "Welcome Back 20s"]
+LIB_KINDS = {  # media_type -> (plural, user question words, pool)
+    "playlist": ("playlist", ["Quali playlist ho", "Che playlist ho", "Quali playlist ci sono",
+                              "Che playlist ho salvato", "Quali sono le mie playlist"], None),
+    "album": ("album", ["Quali album ho", "Che album ho",
+                        "Quali album ci sono nella mia libreria"], None),
+    "artist": ("artisti", ["Quali artisti ho", "Che cantanti ho",
+                           "Quali artisti ci sono nella mia libreria"], None),
+    "radio": ("stazioni radio", ["Quali stazioni radio ho", "Che stazioni ho salvato",
+                                 "Quali radio ci sono"], None),
+    "podcast": ("podcast", ["Quali podcast ho", "A quali podcast sono iscritto"], None),
+}
+PODCASTS = ["Muschio Selvaggio", "Tintoria", "Morning", "Il Mondo", "Stories", "Indagini",
+            "Elisa True Crime", "Daily Cogito", "Globo", "Non hanno un amico"]
+
+
+def lib_pool(kind, dash=False):
+    """dash: albums and tracks as 'Artist - Title' (Music Assistant style)."""
+    if kind == "playlist":
+        return NEUTRAL_PLAYLISTS + [n for _, ns in LIB_MOODS.values() for n in ns] + FAV_NAMES
+    if kind == "album":
+        return [f"{a} - {al}" if dash else al for al, a in ALBUMS]
+    if kind == "track":
+        return [f"{a} - {t}" if dash else t for t, a in TRACKS]
+    if kind == "artist":
+        return list(ARTISTS)
+    if kind == "radio":
+        return list(STATIONS)
+    return list(PODCASTS)
+
+
+def make_library(kind, must=(), avoid=(), dash=False):
+    """Names in the library of one kind, sorted like a browse result."""
+    pool = [n for n in lib_pool(kind, dash) if n not in avoid and n not in must]
+    n = R.choice([R.randint(1, 4), R.randint(4, 9), R.randint(8, 20), R.randint(15, 40),
+                  R.randint(40, 80)])
+    names = list(must) + R.sample(pool, min(n, len(pool)))
+    return sorted(dict.fromkeys(names), key=str.casefold)
+
+
+def lib_answer(kind, names, total, who):
+    plural = LIB_KINDS[kind][0]
+    if not names:
+        return R.choice([f"Su {who} non ho trovato {plural}.",
+                         f"Nella libreria di {who} non ci sono {plural}."])
+    k = {"short": 3, "medium": 5, "long": 6, "detailed": 8}[C.VERBOSITY]
+    if total <= k:
+        if total == 1:
+            return f"C'è un solo elemento: {names[0]}."
+        return f"Hai {total} {plural}: {join_it(names)}."
+    shown = R.sample(names, k) if R.random() < 0.3 else names[:k]
+    return f"Hai {total} {plural}, per esempio {join_it(shown)}."
+
+
+def lib_target(h, loc):
+    tgt = music_target(h, loc)
+    if not tgt:
+        if not add_speaker(h):
+            return None
+        tgt = music_target(h, loc)
+    return tgt
+
+
+def lib_where(sentence, where):
+    """'Quali playlist ho' + ' su Sonos Cucina' + '?'."""
+    return sentence + (where.replace(" da ", " su ") if where else "") + "?"
+
+
+def s_library_list(h, loc):
+    """'Quali playlist ho?' -> music_library -> names; optionally
+    'Metti <name>' afterwards plays one of them."""
+    tgt = lib_target(h, loc)
+    if not tgt:
+        return None
+    e, where = tgt
+    kind = R.choice(["playlist", "playlist", "playlist", "album", "album", "artist", "radio",
+                     "podcast"])
+    plural, questions, _ = LIB_KINDS[kind]
+    u = lib_where(R.choice(questions), where)
+    args = {"entity_id": e.eid, "media_type": kind}
+    if kind == "album" and R.random() < 0.5:
+        # 'Quali album dei Queen ho?': albums are listed as 'Queen - Innuendo'
+        a = R.choice(sorted({a for _, a in ALBUMS}))
+        mine = [f"{a} - {al}" for al, aa in ALBUMS if aa == a]
+        names = make_library("album", must=mine if R.random() < 0.85 else [], dash=True,
+                             avoid=[] if R.random() < 0.85 else mine)
+        hits = [n for n in names if a.casefold() in n.casefold()]
+        args["search"] = a
+        u = lib_where(R.choice([f"Quali album di {a} ho",
+                                f"Che album di {a} ci sono",
+                                f"Quali album ho di {a}"]), where)
+        if hits:
+            titles = [n.split(" - ", 1)[1] for n in hits]
+            ans = (f"Di {a} hai l'album {titles[0]}." if len(titles) == 1 else
+                   f"Di {a} hai {len(titles)} album: {join_it(titles)}.")
+        else:
+            ans = f"Nella tua libreria non ho trovato album di {a}."
+        msgs = base_msgs(h, loc) + [user(u)]
+        msgs += call_turn("music_library", args, S.library_result(hits), ans)
+        return sample(msgs, "question", [["music_library", args]], no_history=True)
+    msgs = base_msgs(h, loc) + [user(u)]
+    gold = [["music_library", args]]
+    if R.random() < 0.08:
+        res = S.library_result(error=f"media library is not supported by {e.eid}")
+        msgs += call_turn("music_library", args, res,
+                          R.choice([f"Purtroppo {e.name} non permette di sfogliare la libreria.",
+                                    f"Purtroppo non riesco a leggere la libreria di {e.name}."]))
+        return sample(msgs, "question", gold, no_history=True)
+    names = make_library(kind, dash=R.random() < 0.5) if R.random() > 0.06 else []
+    res = S.library_result(names)
+    total = len(names)
+    msgs += call_turn("music_library", args, res, lib_answer(kind, names, total, e.name))
+    if not names or R.random() < 0.6:
+        return sample(msgs, "question", gold, no_history=True)
+    # play one of them in the next turn
+    pick = R.choice(names[:S.LIBRARY_ITEMS])
+    data = {"query": pick, "media_type": kind}
+    acts = [action("media_player.search_and_play", [e], data)]
+    msgs += [user(R.choice([f"Metti {pick}", f"Allora metti {pick}", f"Metti {pick}, per favore",
+                            f"{pick}, grazie"]))]
+    msgs += call_turn("control", {"actions": acts}, C.ok_result(acts),
+                      R.choice([f"Riproduco {pick} su {e.name}.", f"Ecco {pick}."]))
+    return sample(msgs, "conversation", gold, gold_last=[["control", {"actions": acts}]],
+                  no_history=True)
+
+
+def s_library_search(h, loc):
+    """'Ho una playlist che si chiama Festa?' -> music_library with search."""
+    tgt = lib_target(h, loc)
+    if not tgt:
+        return None
+    e, where = tgt
+    kind = R.choice(["playlist", "playlist", "album", "artist", "radio"])
+    pool = lib_pool(kind)
+    word = R.choice(pool)
+    found = R.random() < 0.65
+    names = make_library(kind, must=[word] if found else [], avoid=[] if found else [word])
+    hits = [n for n in names if word.casefold() in n.casefold()]
+    q = {"playlist": [f"Ho una playlist che si chiama {word}", f"C'è una playlist {word}",
+                      f"La playlist {word} è nella mia libreria"],
+         "album": [f"Ho l'album {word}", f"L'album {word} è nella mia libreria"],
+         "artist": [f"Ho della musica di {word}", f"{word} è nella mia libreria"],
+         "radio": [f"Ho salvato la stazione {word}", f"C'è la stazione {word}"]}[kind]
+    args = {"entity_id": e.eid, "media_type": kind, "search": word}
+    res = S.library_result(hits)
+    if hits:
+        ans = R.choice([f"Sì, {hits[0]} è nella tua libreria." if len(hits) == 1 else
+                        f"Sì, ho trovato {len(hits)} risultati: {join_it(hits[:5])}.",
+                        f"Sì, {join_it(hits[:5])}."])
+    else:
+        ans = R.choice([f"No, nella tua libreria non ho trovato {word}.",
+                        f"No, {word} non è nella libreria di {e.name}."])
+    msgs = base_msgs(h, loc) + [user(lib_where(R.choice(q), where))]
+    msgs += call_turn("music_library", args, res, ans)
+    return sample(msgs, "question", [["music_library", args]], no_history=True)
+
+
+def s_library_play(h, loc, favorites=False):
+    """'Metti una playlist per rilassarmi' / 'Metti le mie canzoni preferite':
+    read the playlists, play the one that fits; none fits -> say so and
+    name a few."""
+    tgt = lib_target(h, loc)
+    if not tgt:
+        return None
+    e, where = tgt
+    if favorites:
+        u = R.choice(FAV_USERS)
+        fit_pool, avoid = FAV_NAMES, FAV_NAMES
+        what = "le tue canzoni preferite"
+    else:
+        mood = R.choice(list(LIB_MOODS))
+        words, fit_pool = LIB_MOODS[mood]
+        w = R.choice(words)
+        u = R.choice([f"Metti una playlist {w}", f"Metti qualcosa {w}", f"Metti musica {w}",
+                      f"Cercami una playlist {w}", f"Metti una delle mie playlist {w}"])
+        avoid = fit_pool
+        what = f"musica {w}"
+    fits = R.random() < 0.8
+    must = [R.choice(fit_pool)] if fits else []
+    names = make_library("playlist", must=must, avoid=[n for n in avoid if n not in must])
+    if not names:
+        return None
+    args = {"entity_id": e.eid, "media_type": "playlist"}
+    msgs = base_msgs(h, loc) + [user(u + where)]
+    call, cid = tool_call("music_library", args)
+    msgs += [call, tool_msg(cid, S.library_result(names))]
+    gold = [["music_library", args]]
+    if fits:
+        pick = must[0]
+        acts = [action("media_player.search_and_play", [e],
+                       {"query": pick, "media_type": "playlist"})]
+        msgs += call_turn("control", {"actions": acts}, C.ok_result(acts),
+                          R.choice([f"Riproduco la playlist {pick} su {e.name}.",
+                                    f"Ok, su {e.name} parte {pick}.",
+                                    f"Ho avviato {pick}."]))
+        return sample(msgs, "command", gold, no_history=True)
+    some = R.sample(names, min(3, len(names)))
+    ans = R.choice([f"Non ho trovato una playlist con {what}. Hai per esempio "
+                    f"{join_it(some)}.",
+                    f"Nessuna delle tue playlist è adatta. Vuoi che ne metta una di queste: "
+                    f"{join_it(some, 'o')}?" if len(some) > 1 else
+                    f"Nessuna delle tue playlist è adatta. Vuoi che metta {some[0]}?"])
+    msgs += [say(ans)]
+    return sample(msgs, "command", gold, no_history=True)
 
 
 # --------------------------------------------------------------------------
@@ -1329,6 +1775,11 @@ def describe_assist(h, a, who):
         return f"tolto {join_it(C.the_item(i) for i in items)} {who.p('da')}"
     if svc == "search_and_play":
         return f"messo {data.get('query', 'la musica')} {who.p('su')}"
+    if svc == "seek_relative":
+        n = int(data.get("seconds") or 0)
+        word = "un minuto" if abs(n) == 60 else f"{abs(n)} secondi"
+        return f"{'mandato avanti' if n >= 0 else 'riportato indietro'} di {word} " \
+               f"la riproduzione {who.p('su')}"
     if svc == "shuffle_set":
         return f"{'attivato' if data.get('shuffle') else 'disattivato'} la riproduzione " \
                f"casuale {who.p('su')}"
@@ -1384,10 +1835,21 @@ def turn_music_follow(c):
         ("media_player.turn_off", ["Spegni la musica", "Spegni"], "La musica è spenta."),
         ("media_player.shuffle_set", ["E in ordine casuale, per favore"],
          "La riproduzione casuale è attiva."),
+        ("media_player.media_previous_track", ["Indietro", "Brano precedente",
+                                               "Rimetti quella di prima"], "Brano precedente."),
+        ("media_player.seek_relative", ["Vai avanti", "Manda avanti un pochino"], "Ok, avanti."),
+        ("media_player.seek_relative-", ["Torna indietro", "Riavvolgi un pochino"], "Ok, indietro."),
+        ("media_player.media_stop", ["Stop", "Ferma la musica"], "Riproduzione fermata."),
     ])
     data = {"shuffle": True} if svc.endswith("shuffle_set") else None
+    if svc.startswith("media_player.seek_relative"):
+        data = {"seconds": -30 if svc.endswith("-") else 30}
+        svc = "media_player.seek_relative"
     c.user(R.choice(users))
     c.control([action(svc, [e], data)], ans)
+    if svc == "media_player.media_pause" and R.random() < 0.6:
+        c.user(R.choice(["Play", "Riprendi", "Continua"]))
+        c.control([action("media_player.media_play", [e])], "La riproduzione riprende.")
     return True
 
 
@@ -1451,6 +1913,11 @@ def cases():
     return [
         ("music:ask", s_music_ask, {}), ("music:ask_answer", s_music_ask, {"answer": True}),
         ("music:error", s_music_error, {}),
+        ("music:unclear_player", s_media_unclear, {}),
+        ("music:satellite", s_music_sat, {}),
+        ("music:library_list", s_library_list, {}), ("music:library_search", s_library_search, {}),
+        ("music:library_play", s_library_play, {}),
+        ("music:library_favorites", lambda h, loc: s_library_play(h, loc, True), {}),
         ("todo:question", s_todo_question, {}), ("todo:missing_item", s_todo_missing, {}),
         ("todo:no_list", s_todo_no_list, {}),
         ("weather:now", s_weather, {"wkind": "now"}), ("weather:rain", s_weather, {"wkind": "rain"}),

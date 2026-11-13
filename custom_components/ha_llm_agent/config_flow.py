@@ -45,12 +45,14 @@ from .const import (
     CONF_TIMEOUT,
     CONF_URL,
     CONF_USE_LOCATION,
+    CONF_RESUME_MUSIC,
     DEFAULT_MAX_ENTITIES,
     DEFAULT_MAX_HISTORY,
     DEFAULT_TEMPERATURE,
     DEFAULT_TIMEOUT,
     DEFAULT_URL,
     DEFAULT_USE_LOCATION,
+    DEFAULT_RESUME_MUSIC,
     DEFAULT_TTS_URL,
     DEFAULT_WHISPER_URL,
     DOMAIN,
@@ -222,6 +224,9 @@ class HaLlmAgentOptionsFlow(OptionsFlow):
                     min=10, max=1000, step=1, mode=NumberSelectorMode.BOX)),
             vol.Optional(CONF_USE_LOCATION,
                          default=opts.get(CONF_USE_LOCATION, DEFAULT_USE_LOCATION)):
+                BooleanSelector(),
+            vol.Optional(CONF_RESUME_MUSIC,
+                         default=opts.get(CONF_RESUME_MUSIC, DEFAULT_RESUME_MUSIC)):
                 BooleanSelector(),
             vol.Optional(CONF_LANGUAGE,
                          default=opts.get(CONF_LANGUAGE) or S.pick_language(

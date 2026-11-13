@@ -11,9 +11,10 @@ scenarios.json: {"house": "layout.json" ([[entity_id, name, area], ...]),
                                 "states": {eid: state}, "timers": false (no
                                 voice device), "turns": [...]}]}
 Timers are simulated (start/cancel/status by name), get_time returns the
-current time, broadcasts always succeed. "attrs": {eid: attributes} adds
-attributes (weather: later_today/forecast in model format), "verbosity" and
-"location" set the prompt.
+current time, broadcasts always succeed, music_library returns the names of
+"library": {media_type: [names]} (scenario or file level). "attrs": {eid: attributes} adds
+attributes (weather: later_today/forecast in model format), "verbosity",
+"location" and "player" (media player of the voice device) set the prompt.
 
 A turn is a sentence or {"text": ..., "calls": [[tool, spec], ...],
 "no_tool": true, "contains": [...]}: with expectations the turn is scored.
@@ -106,23 +107,43 @@ class House:
 
     attrs: dict = {}
 
-    def get_state(self, args):
+    def state_ids(self, args):
+        """entity_ids of a get_state call, as the integration resolves them:
+        entity_ids, or every entity of `domain` in `area` ("*" = whole house),
+        optionally only one device_class. None if the area is unknown."""
         ids = args.get("entity_ids") or []
-        if not ids and args.get("area"):
-            domain = args.get("domain") or "light"
-            if domain not in S.AREA_DOMAINS:
-                return S.dumps([{"error": f"area wird für {domain} nicht unterstützt"}])
-            ids = S.area_targets(domain, args["area"], self.layout, self.groups)
-            if ids is None:
-                return S.dumps([{"error": f"unbekannter Bereich {args['area']}"}])
+        if isinstance(ids, str):
+            ids = [ids]
+        if not ids and (args.get("area") or args.get("domain")):
+            ids = S.area_targets(args.get("domain") or "light", args.get("area") or S.ALL_AREAS,
+                                 self.layout, self.groups)
+            if ids is not None and args.get("device_class"):
+                ids = [e for e in ids
+                       if self.attrs.get(e, {}).get("device_class") == args["device_class"]]
+        return ids
+
+    def get_state(self, args):
+        ids = self.state_ids(args)
+        if ids is None:
+            return S.dumps([{"error": f"unbekannter Bereich {args.get('area')}"}])
         out = []
-        for eid in ids if isinstance(ids, list) else [ids]:
+        for eid in ids:
             if eid not in self.names:
                 out.append({"entity_id": eid, "error": "unbekannte entity_id"})
             else:
                 out.append(S.format_state(eid, self.names[eid], self.state[eid],
                                           self.attrs.get(eid, {})))
         return S.dumps(out)
+
+    def music_library(self, args):
+        eid = args.get("entity_id") or ""
+        if eid not in self.names or not eid.startswith("media_player."):
+            return S.library_result(error=f"Unknown entity {eid or '-'}")
+        if self.state.get(eid) == "unavailable":
+            return S.library_result(error=f"Entity {eid} is unavailable")
+        names = self.library.get(args.get("media_type") or "playlist", [])
+        q = str(args.get("search") or "").casefold()
+        return S.library_result([n for n in names if q in n.casefold()])
 
     def control(self, args):
         errors, done = [], []
@@ -206,11 +227,7 @@ def score(house, exp, calls):
             got = set()
             for t, a in calls:
                 if t == "get_state":
-                    ids = a.get("entity_ids") or []
-                    if not ids and a.get("area"):
-                        ids = S.area_targets(a.get("domain") or "light", a["area"],
-                                             house.layout, house.groups) or []
-                    got |= set(ids)
+                    got |= set(house.state_ids(a) or [])
             if not set(spec.get("entity_ids", [])) <= got:
                 return False, f"get_state missing {set(spec['entity_ids']) - got}"
         elif not any(t == tool and subset(spec, a) for t, a in calls):
@@ -243,8 +260,10 @@ def run(url, layout, sc, groups=(), results=None, attrs=None):
     house = House(layout, sc.get("unavailable", []), sc.get("states"), groups)
     house.timer_device = sc.get("timers", True)
     house.attrs = {**(attrs or {}), **sc.get("attrs", {})}
+    house.library = sc.get("library", {})
     system = S.build_system_prompt([tuple(e) for e in layout], sc.get("location"),
-                                   verbosity=sc.get("verbosity", S.DEFAULT_VERBOSITY))
+                                   verbosity=sc.get("verbosity", S.DEFAULT_VERBOSITY),
+                                   player=sc.get("player"))
     history: list[dict] = []
     print(f"\n### {sc['name']}")
     for item in sc["turns"]:
@@ -272,6 +291,8 @@ def run(url, layout, sc, groups=(), results=None, attrs=None):
                     res = house.get_state(args)
                 elif fn["name"] == "timer":
                     res = house.timer(args)
+                elif fn["name"] == "music_library":
+                    res = house.music_library(args)
                 elif fn["name"] == "get_time":
                     res = S.time_result(datetime.now())
                 elif fn["name"] == "broadcast":
@@ -307,7 +328,8 @@ def main():
         states = cfg.get("states", {})
         if isinstance(states, str):
             states = json.load(open(base / states, encoding="utf-8"))
-        sc = {**sc, "states": {**states, **sc.get("states", {})}}
+        sc = {**sc, "states": {**states, **sc.get("states", {})},
+              "library": sc.get("library", cfg.get("library", {}))}
         if "verbosity" not in sc and "verbosity" in cfg:
             sc["verbosity"] = cfg["verbosity"]
         run(url, layout, sc, sc.get("groups", cfg.get("groups", [])), results,

@@ -8,6 +8,6 @@ WORDS = {
     # unavailable, forbidden after a success
     "unreachable": "raggiungibil",
     # answer that lists the devices that are on or open, and its separators
-    "listing": r"(?:Sì\. |No\. )?(?:Sono accese|Sono aperte|È aperta|È accesa): (.+)\.$",
+    "listing": r"(?:Sì\. |No\. )?(?:Sono accese|Sono aperte|Sono aperti|È aperta|È accesa): (.+)\.$",
     "list_split": r", | e ",
 }

@@ -19,15 +19,16 @@ datasets:
 
 **Built with Qwen.** LoRA fine-tunes of
 [Qwen/Qwen2.5-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct)
-that control a Home Assistant installation via tool calls: devices, music,
-timers, shopping lists, weather, time and broadcasts. One model per language,
+that control a Home Assistant installation via tool calls: devices, music
+and the media library of a player, timers, shopping lists, weather, time and
+broadcasts. One model per language,
 each quantized to Q4_K_M (1.9 GB) with an importance matrix. Runs on a CPU
 with AVX2 (about 16 tokens/s output on 4 cores) or on small GPUs (GTX 1060
 6 GB: 540 tokens/s prompt, 45 tokens/s output).
 
 | Language | Folder | Version |
 |----------|--------|---------|
-| German | `de/` | v16 |
+| German | `de/` | v17 |
 
 Models for English, Spanish, French, Italian and Dutch are trained from the
 same generator (see the dataset) and are added to this repository as they
@@ -56,27 +57,29 @@ answer length (short, medium, long, detailed).
 ## Usage
 
 ```bash
-llama-server -m de/qwen2.5-3b-ha-v16-Q4_K_M.gguf --jinja -c 8192 --port 8080
+llama-server -m de/qwen2.5-3b-ha-v17-Q4_K_M.gguf --jinja -c 8192 --port 8080
 ```
 
 `--jinja` is required: it activates the embedded chat template, which renders
 the tools and parses `<tool_call>` blocks into OpenAI `tool_calls`.
 Recommended sampling: temperature 0.
 
-The model expects the system prompt and the five tools from
+The model expects the system prompt and the six tools from
 [`llm_schema.py`](https://huggingface.co/datasets/__DATASET_REPO__/blob/main/llm_schema.py)
-(prompt schema 6):
+(prompt schema 7):
 
 | Tool | Purpose |
 |------|---------|
-| `control` | calls Home Assistant services for entity_ids, for lights also by `area` (`"*"` = whole house); also `media_player.search_and_play` (query, media_type, artist) and `todo.add_item` / `todo.complete_item` |
-| `get_state` | states and attributes; weather with the hours left today (`later_today`) and the next days (`forecast`), to-do lists with their `items` |
+| `control` | calls Home Assistant services for entity_ids, for lights also by `area` (`"*"` = whole house); also `media_player.search_and_play` (query, media_type, artist; without query the loaded title goes on, else the favorite songs), `media_player.seek_relative` (seconds) and `todo.add_item` / `todo.complete_item` |
+| `get_state` | states and attributes of entity_ids or of all devices of a domain in an area (`"*"` = whole house, optional `device_class` such as `window`); weather with the hours left today (`later_today`) and the next days (`forecast`), to-do lists with their `items` |
+| `music_library` | names in the media library of a player: playlists, artists, albums, tracks, stations, podcasts, optionally filtered by `search` |
 | `timer` | start, cancel, pause, resume, add, subtract, status of timers on the voice device; optional delayed command |
 | `get_time` | current time and date |
 | `broadcast` | announcement on all speakers |
 
 The integration builds the prompt and executes the tools with the built-in
-intents of Home Assistant (timers, broadcast) and Music Assistant (music).
+intents of Home Assistant (timers, broadcast) and the media player services
+(`browse_media`, `search_media`, `play_media`, `media_seek`).
 
 ### Example system prompt (German, answer length medium)
 
@@ -95,10 +98,12 @@ todo.einkaufsliste | Einkaufsliste | -
 weather.zuhause | Zuhause | -
 
 Das Sprachgerät steht im Bereich: Küche
+Der Lautsprecher des Sprachgeräts: media_player.kueche
 ```
 
 The sentence on answer length comes from `LANGUAGES[lang]["verbosity"]`, the
-last line from the area of the voice device. If the client sends no system
+last two lines from the area of the voice device and its own media player
+(music without a named player plays there). If the client sends no system
 message, the embedded template uses a short default prompt; without the device
 list the model cannot control anything, so always send the full prompt.
 
@@ -137,12 +142,12 @@ matched timers or an error such as `timers are not supported on this device`.
 {
   "languages": {
     "de": {
-      "version": "16",
-      "file": "de/qwen2.5-3b-ha-v16-Q4_K_M.gguf",
+      "version": "17",
+      "file": "de/qwen2.5-3b-ha-v17-Q4_K_M.gguf",
       "sha256": "...",
       "size": 1929902976,
-      "schema": 6,
-      "min_addon_version": "0.13.0"
+      "schema": 7,
+      "min_addon_version": "0.14.0"
     }
   }
 }
@@ -154,20 +159,23 @@ downloads a new file while the server keeps running, checks the SHA-256,
 switches over and deletes the old file. A model with a higher `schema` than
 the add-on supports is skipped until the add-on is updated.
 
-## Training (German v16)
+## Training (German v17)
 
 - Data: [__DATASET_REPO__](https://huggingface.co/datasets/__DATASET_REPO__)
-  (rows with `locale` = `de`): 25,252 synthetic conversations over randomly
-  generated houses, 236 per generator case for each of the 107 cases (rare
-  cases get the same share). Besides device control and state questions:
-  music, timers, lists, weather reports per answer length, time, broadcasts,
-  unreachable devices, missing devices and multi-turn conversations. The
-  answer length of each conversation is sampled (short 20 %, medium 40 %,
-  long 20 %, detailed 20 %).
-- LoRA r=32, alpha=64, all linear layers, 2 epochs from
-  Qwen2.5-3B-Instruct, lr 2e-4, loss on assistant tokens only, RTX 3090,
-  about 18 hours. The released file is the final checkpoint; the
-  checkpoints after 0.5, 1 and 1.5 epochs scored lower.
+  (rows with `locale` = `de`): 27,140 synthetic conversations over randomly
+  generated houses, up to 236 per generator case for each of the 115 cases
+  (rare cases get the same share). Besides device control and state
+  questions: music and the media library, the speaker of the voice device,
+  seeking and resuming, timers, lists, weather reports per answer length,
+  time, broadcasts, unreachable devices, missing devices and multi-turn
+  conversations. The answer length of each conversation is sampled (short
+  20 %, medium 40 %, long 20 %, detailed 20 %).
+- Continued from the LoRA adapter of v16 (r=32, alpha=64, all linear layers,
+  Qwen2.5-3B-Instruct), lr 1e-4, loss on assistant tokens only, RTX 3090. The
+  eval loss on 99 held-out conversations was measured every 10 steps; the
+  run stopped at step 730 of 1,675 when it had not dropped by 2 % for 20
+  measurements, after about 5 hours. The released file is the step with the lowest
+  eval loss (540, 0.0246).
 - Quantization: Q4_K_M with an importance matrix computed from 300 training
   conversations.
 
@@ -178,20 +186,20 @@ claiming success, including in later turns. Every training answer is checked
 against the preceding tool results; no answer claims a success the tool did
 not report.
 
-## Evaluation (German v16)
+## Evaluation (German v17)
 
-- 300 held-out conversations in houses not seen during training: 98.0 %
-  correct tool calls (v15.1 had no music, timers or lists), 100 % grounded
-  answers.
-- Acceptance test on a real house (over 100 exposed entities, 42 scored
-  turns including music, timers, lists and weather): 40/42, v15.1 27/42.
-- End-to-end in Home Assistant 2026.12 (dev): weather, timers on a voice
-  satellite, Music Assistant playback, next track and stop.
+- 300 held-out conversations in houses not seen during training: 97.7 %
+  correct tool calls (v16 on the same set: 94.7 %), 97.2 % grounded answers.
+- Acceptance test on a real house (over 100 exposed entities, 55 scored
+  turns including the media library, covers and windows of the whole house
+  and two questions in one sentence): 53/55, v16 45/55.
+- End to end in Home Assistant 2026.12 (dev): media library, search, resume
+  and seeking on the speaker of a voice satellite.
 
-Known weaknesses: "Which covers are open?" in a house with many covers can
-query only some of them, a question with two parts can lose the second part,
-and "Next track" in a new conversation without a player in the room of the
-voice device can pick the wrong player.
+Known weaknesses: in a media library with many playlists (76 in the test
+house) "Spiel meine Lieblingssongs" or "Spiel eine Playlist zum Einschlafen"
+can miss the matching playlist and name a few others instead. Listing many
+open covers or lights can leave one out.
 
 ## Limitations
 
