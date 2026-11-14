@@ -23,7 +23,7 @@ SCHEMA_VERSION = 7
 DEFAULT_LANGUAGE = "de"
 # languages with a released model; the integration offers only these. The
 # other entries of LANGUAGES are ready for training (src/gen/<lang>/).
-MODEL_LANGUAGES = ["de"]
+MODEL_LANGUAGES = ["de", "en"]
 
 # --- services the model may call, with the data keys it may pass ------------
 # Services marked "virtual" are not Home Assistant services; the integration

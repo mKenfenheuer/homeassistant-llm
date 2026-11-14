@@ -1,0 +1,10 @@
+{
+  "version": "18",
+  "date": "2026-11-14",
+  "file": "en/qwen2.5-3b-ha-v18-Q4_K_M.gguf",
+  "sha256": "41ddd271353e72545ca96a2f4d59ea43e373132b19a5febb2f0d7e5c51f270e3",
+  "size": 1929902912,
+  "schema": 7,
+  "min_addon_version": "0.14.0",
+  "notes": "First English model: devices, music and media library, timers, lists, weather, time and broadcasts"
+}

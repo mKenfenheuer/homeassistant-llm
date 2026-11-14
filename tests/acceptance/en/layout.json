@@ -1,0 +1,537 @@
+[
+[
+"alarm_control_panel.alarm",
+"Burglar Siren",
+""
+],
+[
+"binary_sensor.french_door_breakfast",
+"Breakfast Room French Door",
+"Breakfast Room"
+],
+[
+"binary_sensor.french_door_sitting",
+"Sitting Room French Door",
+"Sitting Room"
+],
+[
+"binary_sensor.mmwave_01_occupancy",
+"Master Suite Occupancy",
+"Master Suite"
+],
+[
+"binary_sensor.mmwave_02_occupancy",
+"Occupancy Entrance Hall",
+"Entrance Hall"
+],
+[
+"binary_sensor.mmwave_03_occupancy",
+"Occupancy Washroom",
+"Washroom"
+],
+[
+"binary_sensor.mmwave_04_occupancy",
+"Occupancy Sitting Room",
+"Sitting Room"
+],
+[
+"binary_sensor.mmwave_06_occupancy",
+"Occupancy Galley",
+"Galley"
+],
+[
+"binary_sensor.mmwave_07_occupancy",
+"Occupancy Breakfast Room",
+"Breakfast Room"
+],
+[
+"binary_sensor.window_galley",
+"Galley Window",
+"Galley"
+],
+[
+"binary_sensor.window_master_suite",
+"Master Suite Window",
+"Master Suite"
+],
+[
+"binary_sensor.window_sitting_left",
+"Washroom Window",
+"Washroom"
+],
+[
+"binary_sensor.g4_bullet_motion",
+"Lean-to Motion",
+"Lean-to"
+],
+[
+"binary_sensor.g4_bullet_motion_2",
+"Front Yard Motion",
+"Front Yard"
+],
+[
+"binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+"Letterbox",
+"Outdoors"
+],
+[
+"binary_sensor.flat_door_state",
+"Flat Door",
+"Entrance Hall"
+],
+[
+"button.yard_irrigation",
+"Yard Irrigation",
+""
+],
+[
+"button.q_revo_deep_clean",
+"Q Revo Deep Clean",
+"Master Suite"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e501",
+"Galley Radiator",
+"Galley"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e502",
+"Washroom Radiator",
+"Washroom"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e503",
+"Sitting Room Radiator",
+"Sitting Room"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e504",
+"Breakfast Room Radiator",
+"Breakfast Room"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e505",
+"Entrance Hall Radiator",
+"Entrance Hall"
+],
+[
+"climate.sitting_room_split_unit",
+"Sitting Room Split Unit",
+"Sitting Room"
+],
+[
+"climate.home_zone_underfloor_circuit_0_climate",
+"Slab Heating",
+"Plant Room"
+],
+[
+"cover.every_shutter",
+"Every Shutter",
+""
+],
+[
+"cover.shutter_french_door_breakfast",
+"Breakfast Room French Door Shutter",
+"Breakfast Room"
+],
+[
+"cover.shutter_french_door_sitting",
+"Sitting Room French Door Shutter",
+"Sitting Room"
+],
+[
+"cover.shutter_window_breakfast",
+"Breakfast Room Window Shutter",
+"Breakfast Room"
+],
+[
+"cover.shutter_window_galley",
+"Galley Shutter",
+"Galley"
+],
+[
+"cover.shutter_window_sitting",
+"Sitting Room Bay Shutter",
+"Sitting Room"
+],
+[
+"cover.downstairs_shutters",
+"Downstairs Shutters",
+"Sitting Room"
+],
+[
+"cover.master_suite_2",
+"Master Suite Shutter",
+"Master Suite"
+],
+[
+"cover.somfy_io",
+"Sunshade",
+"Veranda"
+],
+[
+"input_boolean.holiday",
+"Holiday Mode",
+""
+],
+[
+"lawn_mower.yard_mowbot",
+"Mowbot",
+"Front Yard"
+],
+[
+"light.every_lamp",
+"Every Lamp",
+""
+],
+[
+"light.creality_k2_plus_chamber_light",
+"Creality K2 Plus Chamber light",
+"Breakfast Room"
+],
+[
+"light.washroom",
+"Washroom",
+"Washroom"
+],
+[
+"light.ceiling_sitting_room",
+"Sitting Room",
+"Sitting Room"
+],
+[
+"light.echo_show_3f2a_light_ring",
+"Echo Show 3f2a Light ring",
+"Studio"
+],
+[
+"light.breakfast_room",
+"Breakfast Room",
+"Breakfast Room"
+],
+[
+"light.entrance_hall",
+"Entrance Hall",
+"Entrance Hall"
+],
+[
+"light.hama_outdoor_01_relay",
+"Yard Lanterns",
+"Front Yard"
+],
+[
+"light.galley",
+"Galley",
+"Galley"
+],
+[
+"light.galley_left",
+"Galley Left",
+"Galley"
+],
+[
+"light.galley_right",
+"Galley Right",
+"Galley"
+],
+[
+"light.twig_tree",
+"Twig Tree",
+"Sitting Room"
+],
+[
+"light.star_lantern",
+"Star Lantern",
+"Galley"
+],
+[
+"light.master_suite",
+"Master Suite",
+"Master Suite"
+],
+[
+"light.shellydimmer2_a1b2c3d4e5f6",
+"Vanity Cabinet",
+"Washroom"
+],
+[
+"light.smpw701e_07_relay",
+"Bookcase Glow",
+"Sitting Room"
+],
+[
+"light.banister",
+"Banister Light",
+"Breakfast Room"
+],
+[
+"light.sitting_room_sofa",
+"Settee Lamp",
+"Sitting Room"
+],
+[
+"light.sitting_room_shelving",
+"Sitting Room Shelving",
+"Sitting Room"
+],
+[
+"media_player.echo_show_3f2a_media_player_2",
+"Echo Show Studio",
+"Studio"
+],
+[
+"sensor.4c21_9a0b_humidity",
+"4C21 9A0B Humidity",
+""
+],
+[
+"sensor.4c21_9a0b_temperature",
+"4C21 9A0B Temperature",
+""
+],
+[
+"sensor.cfs_box_temperature",
+"CFS Box temperature",
+"Breakfast Room"
+],
+[
+"sensor.cfs_humidity",
+"CFS Humidity",
+"Breakfast Room"
+],
+[
+"sensor.creality_k2_plus_bed_temperature",
+"Creality K2 Plus Bed temperature",
+"Breakfast Room"
+],
+[
+"sensor.creality_k2_plus_chamber_temperature",
+"Creality K2 Plus Chamber temperature",
+"Breakfast Room"
+],
+[
+"sensor.creality_k2_plus_nozzle_temperature",
+"Creality K2 Plus Nozzle temperature",
+"Breakfast Room"
+],
+[
+"sensor.ioniq_hv_state_of_charge",
+"Ioniq Charge",
+""
+],
+[
+"sensor.soil_moisture",
+"Bed Dampness",
+""
+],
+[
+"sensor.lemon_tree_moisture",
+"Lemon Tree Moisture",
+"Veranda"
+],
+[
+"sensor.yard_mowbot_battery",
+"Mowbot Battery",
+"Front Yard"
+],
+[
+"sensor.gw2000a_feels_like_temperature",
+"Apparent Temperature Veranda",
+"Veranda"
+],
+[
+"sensor.gw2000a_humidity",
+"Veranda Humidity",
+"Veranda"
+],
+[
+"sensor.gw2000a_indoor_humidity",
+"Rack Humidity",
+"Box Room"
+],
+[
+"sensor.gw2000a_indoor_temperature",
+"Rack Temperature",
+"Box Room"
+],
+[
+"sensor.gw2000a_outdoor_temperature",
+"Veranda Temperature",
+"Veranda"
+],
+[
+"sensor.gw2000a_rain_rate",
+"Rainfall Rate",
+"Veranda"
+],
+[
+"sensor.gw2000a_wind_gust",
+"Veranda Gust Peak",
+"Veranda"
+],
+[
+"sensor.gw2000a_wind_speed",
+"Veranda Breeze",
+"Veranda"
+],
+[
+"sensor.ioniq_remaining_range",
+"Ioniq Range",
+""
+],
+[
+"sensor.jane_example_org_home_hot_water_0_tank_temperature",
+"Cylinder Temperature",
+"Plant Room"
+],
+[
+"sensor.jane_example_org_home_outdoor_temperature",
+"Outside Temperature Home",
+"Plant Room"
+],
+[
+"sensor.nspanel_thermostat_03_temperature",
+"Sitting Room",
+"Sitting Room"
+],
+[
+"sensor.amd_radeon_rx_580_temperature",
+"AMD Radeon RX 580 Temperature",
+""
+],
+[
+"sensor.rosemary_moisture",
+"Rosemary Moisture",
+"Veranda"
+],
+[
+"sensor.plant_sensor_1a2b_moisture",
+"Mint Moisture",
+"Galley"
+],
+[
+"sensor.plant_sensor_3c4d_moisture",
+"Blueberries 2 Moisture",
+"Veranda"
+],
+[
+"sensor.plant_sensor_5e6f_moisture",
+"Peppers Moisture",
+"Veranda"
+],
+[
+"sensor.plant_sensor_7a8b_moisture",
+"Blueberries 1 Moisture",
+"Veranda"
+],
+[
+"sensor.rain_barrel_thread_volume",
+"Rain Barrel Level",
+"Veranda"
+],
+[
+"sensor.clothes_dryer",
+"Clothes Dryer",
+"Scullery"
+],
+[
+"sensor.forecast_temp_today",
+"forecast_high_millbrook",
+""
+],
+[
+"switch.cfs_auto_refill",
+"CFS Auto-refill",
+"Breakfast Room"
+],
+[
+"switch.cfs_drying",
+"CFS Drying",
+"Breakfast Room"
+],
+[
+"switch.echo_show_3f2a_bluetooth_pairing",
+"Echo Show 3f2a Bluetooth pairing",
+"Studio"
+],
+[
+"switch.echo_show_3f2a_do_not_disturb",
+"Echo Show 3f2a Do not disturb",
+"Studio"
+],
+[
+"switch.echo_show_3f2a_mute",
+"Echo Show 3f2a Mute",
+"Studio"
+],
+[
+"switch.yard_mowbot_enable_schedule",
+"Mowbot Enable schedule",
+"Front Yard"
+],
+[
+"switch.tasmota_plug_03_relay",
+"Tasmota Plug 03 Relay",
+""
+],
+[
+"switch.tasmota_plug_04_relay",
+"Booster Pump",
+"Garden Shed"
+],
+[
+"switch.tasmota_plug_05_relay",
+"TV Corner Tasmota Plug 05 Relay",
+"Sitting Room"
+],
+[
+"switch.router_enable_guest_wi_fi",
+"Router Enable guest Wi-Fi",
+""
+],
+[
+"switch.hmip_psm_00a1b2c3d4e5",
+"Hi-Fi",
+"Sitting Room"
+],
+[
+"switch.workstation",
+"Workstation",
+"Breakfast Room"
+],
+[
+"switch.jane_example_org_home_hot_water_0_boost",
+"Cylinder Boost",
+"Plant Room"
+],
+[
+"switch.nas_1",
+"DS920",
+"Box Room"
+],
+[
+"switch.clothes_dryer_power",
+"Clothes Dryer Power",
+"Scullery"
+],
+[
+"switch.home_away_mode",
+"Radiators Absence Mode",
+"Plant Room"
+],
+[
+"vacuum.q_revo",
+"Q Revo",
+"Master Suite"
+],
+[
+"valve.hama_outdoor_plug_02_relay",
+"Veranda Drip Line",
+"Veranda"
+],
+[
+"weather.millbrook",
+"Millbrook",
+"Outdoors"
+]
+]

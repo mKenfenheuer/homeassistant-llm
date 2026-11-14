@@ -1,0 +1,537 @@
+[
+[
+"alarm_control_panel.alarm",
+"Einbruchsirene",
+""
+],
+[
+"binary_sensor.french_door_breakfast",
+"Terrassentür Frühstücksraum",
+"Frühstücksraum"
+],
+[
+"binary_sensor.french_door_sitting",
+"Terrassentür Stube",
+"Stube"
+],
+[
+"binary_sensor.mmwave_01_occupancy",
+"Belegung Elternzimmer",
+"Elternzimmer"
+],
+[
+"binary_sensor.mmwave_02_occupancy",
+"Belegung Windfang",
+"Windfang"
+],
+[
+"binary_sensor.mmwave_03_occupancy",
+"Belegung Duschbad",
+"Duschbad"
+],
+[
+"binary_sensor.mmwave_04_occupancy",
+"Belegung Stube",
+"Stube"
+],
+[
+"binary_sensor.mmwave_06_occupancy",
+"Belegung Kochnische",
+"Kochnische"
+],
+[
+"binary_sensor.mmwave_07_occupancy",
+"Belegung Frühstücksraum",
+"Frühstücksraum"
+],
+[
+"binary_sensor.window_galley",
+"Fenster Kochnische",
+"Kochnische"
+],
+[
+"binary_sensor.window_master_suite",
+"Fenster Elternzimmer",
+"Elternzimmer"
+],
+[
+"binary_sensor.window_sitting_left",
+"Fenster Duschbad",
+"Duschbad"
+],
+[
+"binary_sensor.g4_bullet_motion",
+"Unterstand Bewegung",
+"Unterstand"
+],
+[
+"binary_sensor.g4_bullet_motion_2",
+"Vorgarten Bewegung",
+"Vorgarten"
+],
+[
+"binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+"Postkasten",
+"Außengelände"
+],
+[
+"binary_sensor.flat_door_state",
+"Etagentür",
+"Windfang"
+],
+[
+"button.yard_irrigation",
+"Beregnung Vorgarten",
+""
+],
+[
+"button.q_revo_deep_clean",
+"Q Revo Tiefenreinigung",
+"Elternzimmer"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e501",
+"Heizkörper Kochnische",
+"Kochnische"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e502",
+"Heizkörper Duschbad",
+"Duschbad"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e503",
+"Heizkörper Stube",
+"Stube"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e504",
+"Heizkörper Frühstücksraum",
+"Frühstücksraum"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e505",
+"Heizkörper Windfang",
+"Windfang"
+],
+[
+"climate.sitting_room_split_unit",
+"Splitgerät Stube",
+"Stube"
+],
+[
+"climate.home_zone_underfloor_circuit_0_climate",
+"Estrichheizung",
+"Technikraum"
+],
+[
+"cover.every_shutter",
+"Sämtliche Rollos",
+""
+],
+[
+"cover.shutter_french_door_breakfast",
+"Rollo Terrassentür Frühstücksraum",
+"Frühstücksraum"
+],
+[
+"cover.shutter_french_door_sitting",
+"Rollo Terrassentür Stube",
+"Stube"
+],
+[
+"cover.shutter_window_breakfast",
+"Rollo Fenster Frühstücksraum",
+"Frühstücksraum"
+],
+[
+"cover.shutter_window_galley",
+"Rollo Kochnische",
+"Kochnische"
+],
+[
+"cover.shutter_window_sitting",
+"Rollo Erker Stube",
+"Stube"
+],
+[
+"cover.downstairs_shutters",
+"Rollos Erdgeschoss",
+"Stube"
+],
+[
+"cover.master_suite_2",
+"Rollo Elternzimmer",
+"Elternzimmer"
+],
+[
+"cover.somfy_io",
+"Sonnensegel",
+"Loggia"
+],
+[
+"input_boolean.holiday",
+"Ferienmodus",
+""
+],
+[
+"lawn_mower.yard_mowbot",
+"Rasenrobbe",
+"Vorgarten"
+],
+[
+"light.every_lamp",
+"Sämtliche Lampen",
+""
+],
+[
+"light.creality_k2_plus_chamber_light",
+"Creality K2 Plus Chamber light",
+"Frühstücksraum"
+],
+[
+"light.washroom",
+"Duschbad",
+"Duschbad"
+],
+[
+"light.ceiling_sitting_room",
+"Stube",
+"Stube"
+],
+[
+"light.echo_show_3f2a_light_ring",
+"Echo Show 3f2a Light ring",
+"Atelier"
+],
+[
+"light.breakfast_room",
+"Frühstücksraum",
+"Frühstücksraum"
+],
+[
+"light.entrance_hall",
+"Windfang",
+"Windfang"
+],
+[
+"light.hama_outdoor_01_relay",
+"Vorgartenlaternen",
+"Vorgarten"
+],
+[
+"light.galley",
+"Kochnische",
+"Kochnische"
+],
+[
+"light.galley_left",
+"Kochnische Links",
+"Kochnische"
+],
+[
+"light.galley_right",
+"Kochnische Rechts",
+"Kochnische"
+],
+[
+"light.twig_tree",
+"Zweigbaum",
+"Stube"
+],
+[
+"light.star_lantern",
+"Sternlaterne",
+"Kochnische"
+],
+[
+"light.master_suite",
+"Elternzimmer",
+"Elternzimmer"
+],
+[
+"light.shellydimmer2_a1b2c3d4e5f6",
+"Waschtischschrank",
+"Duschbad"
+],
+[
+"light.smpw701e_07_relay",
+"Bücherwandleuchte",
+"Stube"
+],
+[
+"light.banister",
+"Geländerlicht",
+"Frühstücksraum"
+],
+[
+"light.sitting_room_sofa",
+"Ohrensessellampe",
+"Stube"
+],
+[
+"light.sitting_room_shelving",
+"Stube Vitrine",
+"Stube"
+],
+[
+"media_player.echo_show_3f2a_media_player_2",
+"Echo Show Atelier",
+"Atelier"
+],
+[
+"sensor.4c21_9a0b_humidity",
+"4C21 9A0B Humidity",
+""
+],
+[
+"sensor.4c21_9a0b_temperature",
+"4C21 9A0B Temperature",
+""
+],
+[
+"sensor.cfs_box_temperature",
+"CFS Box temperature",
+"Frühstücksraum"
+],
+[
+"sensor.cfs_humidity",
+"CFS Humidity",
+"Frühstücksraum"
+],
+[
+"sensor.creality_k2_plus_bed_temperature",
+"Creality K2 Plus Bed temperature",
+"Frühstücksraum"
+],
+[
+"sensor.creality_k2_plus_chamber_temperature",
+"Creality K2 Plus Chamber temperature",
+"Frühstücksraum"
+],
+[
+"sensor.creality_k2_plus_nozzle_temperature",
+"Creality K2 Plus Nozzle temperature",
+"Frühstücksraum"
+],
+[
+"sensor.ioniq_hv_state_of_charge",
+"Ioniq Akkustand",
+""
+],
+[
+"sensor.soil_moisture",
+"Beetnässe",
+""
+],
+[
+"sensor.lemon_tree_moisture",
+"Zitronenbaum Bodennässe",
+"Loggia"
+],
+[
+"sensor.yard_mowbot_battery",
+"Rasenrobbe Akku",
+"Vorgarten"
+],
+[
+"sensor.gw2000a_feels_like_temperature",
+"Empfundene Temperatur Loggia",
+"Loggia"
+],
+[
+"sensor.gw2000a_humidity",
+"Loggia Luftfeuchte",
+"Loggia"
+],
+[
+"sensor.gw2000a_indoor_humidity",
+"Rack Luftfeuchte",
+"Kammer"
+],
+[
+"sensor.gw2000a_indoor_temperature",
+"Rack Temperatur",
+"Kammer"
+],
+[
+"sensor.gw2000a_outdoor_temperature",
+"Loggia Temperatur",
+"Loggia"
+],
+[
+"sensor.gw2000a_rain_rate",
+"Niederschlagsrate",
+"Loggia"
+],
+[
+"sensor.gw2000a_wind_gust",
+"Loggia Böenspitze",
+"Loggia"
+],
+[
+"sensor.gw2000a_wind_speed",
+"Loggia Brise",
+"Loggia"
+],
+[
+"sensor.ioniq_remaining_range",
+"Ioniq Restreichweite",
+""
+],
+[
+"sensor.jane_example_org_home_hot_water_0_tank_temperature",
+"Speicher Temperatur",
+"Technikraum"
+],
+[
+"sensor.jane_example_org_home_outdoor_temperature",
+"Außenfühler Haus",
+"Technikraum"
+],
+[
+"sensor.nspanel_thermostat_03_temperature",
+"Stube",
+"Stube"
+],
+[
+"sensor.amd_radeon_rx_580_temperature",
+"AMD Radeon RX 580 Temperature",
+""
+],
+[
+"sensor.rosemary_moisture",
+"Rosmarin Bodennässe",
+"Loggia"
+],
+[
+"sensor.plant_sensor_1a2b_moisture",
+"Minze Bodennässe",
+"Kochnische"
+],
+[
+"sensor.plant_sensor_3c4d_moisture",
+"Heidelbeeren 2 Bodennässe",
+"Loggia"
+],
+[
+"sensor.plant_sensor_5e6f_moisture",
+"Paprika Bodennässe",
+"Loggia"
+],
+[
+"sensor.plant_sensor_7a8b_moisture",
+"Heidelbeeren 1 Bodennässe",
+"Loggia"
+],
+[
+"sensor.rain_barrel_thread_volume",
+"Regentonne Pegel",
+"Loggia"
+],
+[
+"sensor.clothes_dryer",
+"Kleidertrockner",
+"Wäschekammer"
+],
+[
+"sensor.forecast_temp_today",
+"prognose_hoechstwert_millbrook",
+""
+],
+[
+"switch.cfs_auto_refill",
+"CFS Auto-refill",
+"Frühstücksraum"
+],
+[
+"switch.cfs_drying",
+"CFS Drying",
+"Frühstücksraum"
+],
+[
+"switch.echo_show_3f2a_bluetooth_pairing",
+"Echo Show 3f2a Bluetooth pairing",
+"Atelier"
+],
+[
+"switch.echo_show_3f2a_do_not_disturb",
+"Echo Show 3f2a Do not disturb",
+"Atelier"
+],
+[
+"switch.echo_show_3f2a_mute",
+"Echo Show 3f2a Mute",
+"Atelier"
+],
+[
+"switch.yard_mowbot_enable_schedule",
+"Rasenrobbe Enable schedule",
+"Vorgarten"
+],
+[
+"switch.tasmota_plug_03_relay",
+"Tasmota Plug 03 Relay",
+""
+],
+[
+"switch.tasmota_plug_04_relay",
+"Druckerhöhungspumpe",
+"Gartenhütte"
+],
+[
+"switch.tasmota_plug_05_relay",
+"TV-Ecke Tasmota Plug 05 Relay",
+"Stube"
+],
+[
+"switch.router_enable_guest_wi_fi",
+"Router Enable guest Wi-Fi",
+""
+],
+[
+"switch.hmip_psm_00a1b2c3d4e5",
+"Stereoanlage",
+"Stube"
+],
+[
+"switch.workstation",
+"Workstation",
+"Frühstücksraum"
+],
+[
+"switch.jane_example_org_home_hot_water_0_boost",
+"Speicher Schnellladung",
+"Technikraum"
+],
+[
+"switch.nas_1",
+"DS920",
+"Kammer"
+],
+[
+"switch.clothes_dryer_power",
+"Kleidertrockner Strom",
+"Wäschekammer"
+],
+[
+"switch.home_away_mode",
+"Heizkörper Abwesenheitsmodus",
+"Technikraum"
+],
+[
+"vacuum.q_revo",
+"Q Revo",
+"Elternzimmer"
+],
+[
+"valve.hama_outdoor_plug_02_relay",
+"Tropfschlauch Loggia",
+"Loggia"
+],
+[
+"weather.millbrook",
+"Millbrook",
+"Außengelände"
+]
+]

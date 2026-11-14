@@ -29,10 +29,11 @@ with AVX2 (about 16 tokens/s output on 4 cores) or on small GPUs (GTX 1060
 | Language | Folder | Version |
 |----------|--------|---------|
 | German | `de/` | v18 |
+| English | `en/` | v18 |
 
-Models for English, Spanish, French, Italian and Dutch are trained from the
-same generator (see the dataset) and are added to this repository as they
-pass their tests.
+Models for Spanish, French, Italian and Dutch are trained from the same
+generator (see the dataset) and are added to this repository as they pass
+their tests.
 
 | File | Content |
 |------|---------|
@@ -184,6 +185,18 @@ the add-on supports is skipped until the add-on is updated.
 - Quantization: Q4_K_M with an importance matrix computed from 300 training
   conversations.
 
+## Training (English v18)
+
+- Data: the rows with `locale` = `en` of the same dataset, 27,568
+  conversations of the English generator (the same 117 cases as German,
+  English names, rooms and phrasing).
+- Continued from the German v18 adapter with lr 1e-4, then lr 3e-5 in
+  [AI Studio](https://github.com/mKenfenheuer/ai-studio) on an RTX 3090,
+  early stop on the eval loss of 100 held-out conversations. Released step:
+  eval loss 0.0339.
+- Quantization: Q4_K_M with an importance matrix from 300 English training
+  conversations, rendered with the model's chat template and tools.
+
 ## Honest answers
 
 The training data teaches the model to report failed devices instead of
@@ -206,6 +219,32 @@ not report.
 
 Known weaknesses: very long entity ids (Homematic serials) are sometimes
 shortened. Listing many open covers or lights can leave one out.
+
+## Evaluation (English v18)
+
+- 300 held-out conversations of the English generator in houses not seen
+  during training: 98.7 % correct tool calls, 95.8 % grounded answers
+  (68/71), 0.44 s per conversation on an RTX 3090.
+
+## Acceptance test (public)
+
+A house built like a real installation -- 107 entities in 15 areas, cryptic
+entity ids (Homematic, Shelly, Tasmota), groups, ten offline devices,
+plants, a car, a mower, a 3D printer and a weather station -- in which every
+device and area name is new to the training data of the language. 40
+scenarios (41 scored turns): switching by name and by room, groups, shutter
+positions, a follow-up ("dim it to 30 percent"), offline devices, state
+questions, a missing device, timers, broadcasts, time and small talk. The
+house, the names and the sentences are in the GitHub repository
+([tests/acceptance](https://github.com/mKenfenheuer/homeassistant-llm/tree/main/tests/acceptance));
+run it with `src/agent_sim.py`.
+
+| Model | Passed | Failed turn |
+|-------|--------|-------------|
+| German v18 | 40/41 | "Mach das Licht am Waschtischschrank an" took the device for an area |
+| English v18 | 40/41 | "What's the temperature outside?" read the car's charge level |
+
+No answer of either model contained a word of the other language.
 
 ## Limitations
 

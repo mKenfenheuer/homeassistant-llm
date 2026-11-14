@@ -1,0 +1,1628 @@
+{
+ "lang": "de",
+ "house": "layout.json",
+ "groups": [
+  "light.every_lamp",
+  "cover.every_shutter",
+  "cover.downstairs_shutters"
+ ],
+ "states": {
+  "alarm_control_panel.alarm": "disarmed",
+  "binary_sensor.french_door_breakfast": "off",
+  "binary_sensor.french_door_sitting": "off",
+  "binary_sensor.mmwave_02_occupancy": "off",
+  "binary_sensor.mmwave_03_occupancy": "on",
+  "binary_sensor.mmwave_04_occupancy": "off",
+  "binary_sensor.mmwave_06_occupancy": "off",
+  "binary_sensor.mmwave_07_occupancy": "off",
+  "binary_sensor.window_galley": "off",
+  "binary_sensor.window_master_suite": "off",
+  "binary_sensor.window_sitting_left": "off",
+  "binary_sensor.g4_bullet_motion": "off",
+  "binary_sensor.g4_bullet_motion_2": "off",
+  "binary_sensor.flat_door_state": "off",
+  "button.yard_irrigation": "2026-08-30T16:05:44+00:00",
+  "climate.hmip_etrv_b_2_r4m_00a1b2c3d4e501": "heat",
+  "climate.hmip_etrv_b_2_r4m_00a1b2c3d4e502": "heat",
+  "climate.hmip_etrv_b_2_r4m_00a1b2c3d4e503": "heat",
+  "climate.hmip_etrv_b_2_r4m_00a1b2c3d4e504": "heat",
+  "climate.hmip_etrv_b_2_r4m_00a1b2c3d4e505": "heat",
+  "climate.sitting_room_split_unit": "off",
+  "climate.home_zone_underfloor_circuit_0_climate": "heat_cool",
+  "cover.every_shutter": "open",
+  "cover.shutter_french_door_breakfast": "open",
+  "cover.shutter_french_door_sitting": "open",
+  "cover.shutter_window_breakfast": "open",
+  "cover.shutter_window_galley": "open",
+  "cover.shutter_window_sitting": "open",
+  "cover.downstairs_shutters": "open",
+  "cover.master_suite_2": "open",
+  "cover.somfy_io": "closed",
+  "input_boolean.holiday": "off",
+  "lawn_mower.yard_mowbot": "docked",
+  "light.every_lamp": "off",
+  "light.creality_k2_plus_chamber_light": "off",
+  "light.washroom": "off",
+  "light.ceiling_sitting_room": "off",
+  "light.echo_show_3f2a_light_ring": "off",
+  "light.breakfast_room": "off",
+  "light.entrance_hall": "off",
+  "light.hama_outdoor_01_relay": "off",
+  "light.galley": "off",
+  "light.galley_left": "off",
+  "light.galley_right": "off",
+  "light.twig_tree": "off",
+  "light.master_suite": "off",
+  "light.shellydimmer2_a1b2c3d4e5f6": "off",
+  "light.smpw701e_07_relay": "off",
+  "light.banister": "off",
+  "light.sitting_room_sofa": "off",
+  "light.sitting_room_shelving": "off",
+  "media_player.echo_show_3f2a_media_player_2": "idle",
+  "sensor.4c21_9a0b_humidity": "87.8",
+  "sensor.4c21_9a0b_temperature": "4.6",
+  "sensor.cfs_box_temperature": "27",
+  "sensor.cfs_humidity": "29",
+  "sensor.creality_k2_plus_bed_temperature": "21",
+  "sensor.creality_k2_plus_chamber_temperature": "29",
+  "sensor.creality_k2_plus_nozzle_temperature": "27",
+  "sensor.ioniq_hv_state_of_charge": "81",
+  "sensor.soil_moisture": "34.1666666666667",
+  "sensor.lemon_tree_moisture": "40",
+  "sensor.yard_mowbot_battery": "97",
+  "sensor.gw2000a_feels_like_temperature": "4.1",
+  "sensor.gw2000a_humidity": "93",
+  "sensor.gw2000a_indoor_humidity": "34",
+  "sensor.gw2000a_indoor_temperature": "23.4",
+  "sensor.gw2000a_outdoor_temperature": "4.1",
+  "sensor.gw2000a_rain_rate": "0.0",
+  "sensor.gw2000a_wind_gust": "5.4",
+  "sensor.gw2000a_wind_speed": "2.9",
+  "sensor.ioniq_remaining_range": "241",
+  "sensor.jane_example_org_home_hot_water_0_tank_temperature": "25.8125",
+  "sensor.jane_example_org_home_outdoor_temperature": "6.9",
+  "sensor.nspanel_thermostat_03_temperature": "21.1625709533691",
+  "sensor.amd_radeon_rx_580_temperature": "18.0",
+  "sensor.rosemary_moisture": "40",
+  "sensor.plant_sensor_1a2b_moisture": "20",
+  "sensor.plant_sensor_3c4d_moisture": "32",
+  "sensor.plant_sensor_5e6f_moisture": "35",
+  "sensor.plant_sensor_7a8b_moisture": "38",
+  "sensor.clothes_dryer": "off",
+  "sensor.forecast_temp_today": "7.4",
+  "switch.cfs_auto_refill": "on",
+  "switch.cfs_drying": "off",
+  "switch.echo_show_3f2a_bluetooth_pairing": "off",
+  "switch.echo_show_3f2a_do_not_disturb": "off",
+  "switch.echo_show_3f2a_mute": "off",
+  "switch.yard_mowbot_enable_schedule": "off",
+  "switch.tasmota_plug_04_relay": "off",
+  "switch.tasmota_plug_05_relay": "off",
+  "switch.router_enable_guest_wi_fi": "off",
+  "switch.jane_example_org_home_hot_water_0_boost": "off",
+  "switch.clothes_dryer_power": "off",
+  "switch.home_away_mode": "off",
+  "valve.hama_outdoor_plug_02_relay": "closed",
+  "weather.millbrook": "cloudy"
+ },
+ "attrs": {
+  "binary_sensor.french_door_breakfast": {
+   "device_class": "door"
+  },
+  "binary_sensor.french_door_sitting": {
+   "device_class": "door"
+  },
+  "binary_sensor.mmwave_01_occupancy": {
+   "device_class": "occupancy"
+  },
+  "binary_sensor.mmwave_02_occupancy": {
+   "device_class": "occupancy"
+  },
+  "binary_sensor.mmwave_03_occupancy": {
+   "device_class": "occupancy"
+  },
+  "binary_sensor.mmwave_04_occupancy": {
+   "device_class": "occupancy"
+  },
+  "binary_sensor.mmwave_06_occupancy": {
+   "device_class": "occupancy"
+  },
+  "binary_sensor.mmwave_07_occupancy": {
+   "device_class": "occupancy"
+  },
+  "binary_sensor.window_galley": {
+   "device_class": "window"
+  },
+  "binary_sensor.window_master_suite": {
+   "device_class": "window"
+  },
+  "binary_sensor.window_sitting_left": {
+   "device_class": "window"
+  },
+  "binary_sensor.g4_bullet_motion": {
+   "device_class": "motion"
+  },
+  "binary_sensor.g4_bullet_motion_2": {
+   "device_class": "motion"
+  },
+  "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact": {
+   "device_class": "opening"
+  },
+  "binary_sensor.flat_door_state": {
+   "device_class": "door"
+  },
+  "sensor.4c21_9a0b_humidity": {
+   "device_class": "humidity"
+  },
+  "sensor.4c21_9a0b_temperature": {
+   "device_class": "temperature"
+  },
+  "sensor.cfs_box_temperature": {
+   "device_class": "temperature"
+  },
+  "sensor.cfs_humidity": {
+   "device_class": "humidity"
+  },
+  "sensor.creality_k2_plus_bed_temperature": {
+   "device_class": "temperature"
+  },
+  "sensor.creality_k2_plus_chamber_temperature": {
+   "device_class": "temperature"
+  },
+  "sensor.creality_k2_plus_nozzle_temperature": {
+   "device_class": "temperature"
+  },
+  "sensor.ioniq_hv_state_of_charge": {
+   "device_class": "battery"
+  },
+  "sensor.soil_moisture": {
+   "device_class": "moisture"
+  },
+  "sensor.lemon_tree_moisture": {
+   "device_class": "moisture"
+  },
+  "sensor.yard_mowbot_battery": {
+   "device_class": "battery"
+  },
+  "sensor.gw2000a_feels_like_temperature": {
+   "device_class": "temperature"
+  },
+  "sensor.gw2000a_humidity": {
+   "device_class": "humidity"
+  },
+  "sensor.gw2000a_indoor_humidity": {
+   "device_class": "humidity"
+  },
+  "sensor.gw2000a_indoor_temperature": {
+   "device_class": "temperature"
+  },
+  "sensor.gw2000a_outdoor_temperature": {
+   "device_class": "temperature"
+  },
+  "sensor.jane_example_org_home_hot_water_0_tank_temperature": {
+   "device_class": "temperature"
+  },
+  "sensor.jane_example_org_home_outdoor_temperature": {
+   "device_class": "temperature"
+  },
+  "sensor.nspanel_thermostat_03_temperature": {
+   "device_class": "temperature"
+  },
+  "sensor.amd_radeon_rx_580_temperature": {
+   "device_class": "temperature"
+  },
+  "sensor.rosemary_moisture": {
+   "device_class": "moisture"
+  },
+  "sensor.plant_sensor_1a2b_moisture": {
+   "device_class": "moisture"
+  },
+  "sensor.plant_sensor_3c4d_moisture": {
+   "device_class": "moisture"
+  },
+  "sensor.plant_sensor_5e6f_moisture": {
+   "device_class": "moisture"
+  },
+  "sensor.plant_sensor_7a8b_moisture": {
+   "device_class": "moisture"
+  }
+ },
+ "scenarios": [
+  {
+   "name": "galley light",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Mach das Licht in der Kochnische an",
+     "any_of": [
+      [
+       [
+        "control",
+        {
+         "service": "light.turn_on",
+         "entity_id": [
+          "light.galley"
+         ]
+        }
+       ]
+      ],
+      [
+       [
+        "control",
+        {
+         "service": "light.turn_on",
+         "area": "Kochnische"
+        }
+       ]
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "master suite shutter",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Schließ das Rollo im Elternzimmer",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "cover.close_cover",
+        "entity_id": [
+         "cover.master_suite_2"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "sitting room radiator",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Stell den Heizkörper in der Stube auf 22 Grad",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "climate.set_temperature",
+        "entity_id": [
+         "climate.hmip_etrv_b_2_r4m_00a1b2c3d4e503"
+        ],
+        "data": {
+         "temperature": 22
+        }
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "settee lamp, then dim it",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Schalte die Ohrensessellampe ein",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "light.turn_on",
+        "entity_id": [
+         "light.sitting_room_sofa"
+        ]
+       }
+      ]
+     ]
+    },
+    {
+     "text": "Dimm sie auf 30 Prozent",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "light.turn_on",
+        "entity_id": [
+         "light.sitting_room_sofa"
+        ],
+        "data": {
+         "brightness_pct": 30
+        }
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "vanity cabinet",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Mach das Licht am Waschtischschrank an",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "light.turn_on",
+        "entity_id": [
+         "light.shellydimmer2_a1b2c3d4e5f6"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "banister",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Schalte das Geländerlicht ein",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "light.turn_on",
+        "entity_id": [
+         "light.banister"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "bookcase glow",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Mach die Bücherwandleuchte an",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "light.turn_on",
+        "entity_id": [
+         "light.smpw701e_07_relay"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "twig tree",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Schalte den Zweigbaum ein",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "light.turn_on",
+        "entity_id": [
+         "light.twig_tree"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "yard lanterns",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Mach die Vorgartenlaternen an",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "light.turn_on",
+        "entity_id": [
+         "light.hama_outdoor_01_relay"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "every lamp off",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Mach alle Lichter aus",
+     "any_of": [
+      [
+       [
+        "control",
+        {
+         "service": "light.turn_off",
+         "entity_id": [
+          "light.every_lamp"
+         ]
+        }
+       ]
+      ],
+      [
+       [
+        "control",
+        {
+         "service": "light.turn_off",
+         "area": "*"
+        }
+       ]
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "every shutter down",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Lass alle Rollos runter",
+     "any_of": [
+      [
+       [
+        "control",
+        {
+         "service": "cover.close_cover",
+         "entity_id": [
+          "cover.every_shutter"
+         ]
+        }
+       ]
+      ],
+      [
+       [
+        "control",
+        {
+         "service": "cover.close_cover",
+         "area": "*"
+        }
+       ]
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "downstairs shutters half",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Stell die Rollos im Erdgeschoss auf 50 Prozent",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "cover.set_cover_position",
+        "entity_id": [
+         "cover.downstairs_shutters"
+        ],
+        "data": {
+         "position": 50
+        }
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "sunshade",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Fahr das Sonnensegel aus",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "cover.open_cover",
+        "entity_id": [
+         "cover.somfy_io"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "split unit",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Schalte das Splitgerät ein",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "climate.turn_on",
+        "entity_id": [
+         "climate.sitting_room_split_unit"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "cylinder boost",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Schalte die Speicher Schnellladung ein",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "switch.turn_on",
+        "entity_id": [
+         "switch.jane_example_org_home_hot_water_0_boost"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "booster pump",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Schalte die Druckerhöhungspumpe aus",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "switch.turn_off",
+        "entity_id": [
+         "switch.tasmota_plug_04_relay"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "clothes dryer",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Schalte den Kleidertrockner aus",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "switch.turn_off",
+        "entity_id": [
+         "switch.clothes_dryer_power"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "holiday mode",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Schalte den Ferienmodus ein",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "input_boolean.turn_on",
+        "entity_id": [
+         "input_boolean.holiday"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "drip line",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Bewässere die Pflanzen auf der Loggia",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "valve.open_valve",
+        "entity_id": [
+         "valve.hama_outdoor_plug_02_relay"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "mowbot",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Starte die Rasenrobbe",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "lawn_mower.start_mowing",
+        "entity_id": [
+         "lawn_mower.yard_mowbot"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "echo do not disturb",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Schalte Nicht stören am Echo ein",
+     "calls": [
+      [
+       "control",
+       {
+        "service": "switch.turn_on",
+        "entity_id": [
+         "switch.echo_show_3f2a_do_not_disturb"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "star lantern offline",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Mach die Sternlaterne an",
+     "any_of": [
+      [
+       [
+        "control",
+        {
+         "service": "light.turn_on",
+         "entity_id": [
+          "light.star_lantern"
+         ]
+        }
+       ]
+      ],
+      [
+       [
+        "get_state",
+        {
+         "entity_ids": [
+          "light.star_lantern"
+         ]
+        }
+       ]
+      ]
+     ],
+     "contains": [
+      "nicht"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "vacuum offline",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Starte den Saugroboter",
+     "any_of": [
+      [
+       [
+        "control",
+        {
+         "service": "vacuum.start",
+         "entity_id": [
+          "vacuum.q_revo"
+         ]
+        }
+       ]
+      ],
+      [
+       [
+        "get_state",
+        {
+         "entity_ids": [
+          "vacuum.q_revo"
+         ]
+        }
+       ]
+      ]
+     ],
+     "contains": [
+      "nicht"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "french door",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Ist die Terrassentür im Frühstücksraum offen?",
+     "calls": [
+      [
+       "get_state",
+       {
+        "entity_ids": [
+         "binary_sensor.french_door_breakfast"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "flat door",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Ist die Etagentür zu?",
+     "calls": [
+      [
+       "get_state",
+       {
+        "entity_ids": [
+         "binary_sensor.flat_door_state"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "washroom occupancy",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Ist jemand im Duschbad?",
+     "calls": [
+      [
+       "get_state",
+       {
+        "entity_ids": [
+         "binary_sensor.mmwave_03_occupancy"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "outside",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Wie warm ist es draußen?",
+     "any_of": [
+      [
+       [
+        "get_state",
+        {
+         "entity_ids": [
+          "sensor.gw2000a_outdoor_temperature"
+         ]
+        }
+       ]
+      ],
+      [
+       [
+        "get_state",
+        {
+         "entity_ids": [
+          "sensor.jane_example_org_home_outdoor_temperature"
+         ]
+        }
+       ]
+      ],
+      [
+       [
+        "get_state",
+        {
+         "entity_ids": [
+          "weather.millbrook"
+         ]
+        }
+       ]
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "mowbot battery",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Wie voll ist der Akku der Rasenrobbe?",
+     "calls": [
+      [
+       "get_state",
+       {
+        "entity_ids": [
+         "sensor.yard_mowbot_battery"
+        ]
+       }
+      ]
+     ],
+     "contains": [
+      "97"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "rack humidity",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Wie hoch ist die Luftfeuchte am Rack?",
+     "calls": [
+      [
+       "get_state",
+       {
+        "entity_ids": [
+         "sensor.gw2000a_indoor_humidity"
+        ]
+       }
+      ]
+     ],
+     "contains": [
+      "34"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "mint",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Braucht die Minze Wasser?",
+     "calls": [
+      [
+       "get_state",
+       {
+        "entity_ids": [
+         "sensor.plant_sensor_1a2b_moisture"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ioniq range",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Wie weit komme ich noch mit dem Ioniq?",
+     "calls": [
+      [
+       "get_state",
+       {
+        "entity_ids": [
+         "sensor.ioniq_remaining_range"
+        ]
+       }
+      ]
+     ],
+     "contains": [
+      "241"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "ioniq charge",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Wie voll ist der Ioniq?",
+     "calls": [
+      [
+       "get_state",
+       {
+        "entity_ids": [
+         "sensor.ioniq_hv_state_of_charge"
+        ]
+       }
+      ]
+     ],
+     "contains": [
+      "81"
+     ]
+    }
+   ]
+  },
+  {
+   "name": "galley radiator",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Worauf steht der Heizkörper in der Kochnische?",
+     "calls": [
+      [
+       "get_state",
+       {
+        "entity_ids": [
+         "climate.hmip_etrv_b_2_r4m_00a1b2c3d4e501"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "weather",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Wie ist das Wetter?",
+     "calls": [
+      [
+       "get_state",
+       {
+        "entity_ids": [
+         "weather.millbrook"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "letterbox offline",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Ist Post im Postkasten?",
+     "calls": [
+      [
+       "get_state",
+       {
+        "entity_ids": [
+         "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact"
+        ]
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "no dishwasher",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Schalte die Spülmaschine ein",
+     "calls": []
+    }
+   ]
+  },
+  {
+   "name": "timer",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Stell einen Timer auf 10 Minuten",
+     "calls": [
+      [
+       "timer",
+       {
+        "action": "start",
+        "minutes": 10
+       }
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "broadcast",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Sag allen, dass das Essen fertig ist",
+     "calls": [
+      [
+       "broadcast",
+       {}
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "time",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Wie spät ist es?",
+     "calls": [
+      [
+       "get_time",
+       {}
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "thanks",
+   "unavailable": [
+    "binary_sensor.mmwave_01_occupancy",
+    "binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+    "button.q_revo_deep_clean",
+    "light.star_lantern",
+    "sensor.rain_barrel_thread_volume",
+    "switch.tasmota_plug_03_relay",
+    "switch.hmip_psm_00a1b2c3d4e5",
+    "switch.workstation",
+    "switch.nas_1",
+    "vacuum.q_revo"
+   ],
+   "location": "Atelier",
+   "player": "media_player.echo_show_3f2a_media_player_2",
+   "turns": [
+    {
+     "text": "Danke",
+     "no_tool": true
+    }
+   ]
+  }
+ ]
+}
