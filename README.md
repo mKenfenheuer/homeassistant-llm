@@ -16,7 +16,7 @@ text-to-speech.
 
 The conversation model is Qwen2.5-3B-Instruct with LoRA (Built with Qwen,
 Qwen RESEARCH LICENSE, non-commercial use only). It is 1.9 GB (GGUF, Q4_K_M)
-and available in German, English and Spanish today. The app has a `language` option, so
+and available in German, English, Spanish and French today. The app has a `language` option, so
 models for more languages can be added.
 
 ## Installation
@@ -172,9 +172,9 @@ all apps with `auto_update` update themselves.
 
 ## Languages
 
-Generators exist for German (`de`), English (`en`) and Spanish (`es`), each
-with a released model, French (`fr`), Italian (`it`) and Dutch (`nl`). Every language has its
-own model. Service names, tool names and JSON keys are the same for all
+Generators exist for German (`de`), English (`en`), Spanish (`es`), French
+(`fr`), Italian (`it`) and Dutch (`nl`); de, en, es and fr have a released
+model. Every language has its own model. Service names, tool names and JSON keys are the same for all
 languages; the texts differ:
 
 | Part | Where |
@@ -210,7 +210,7 @@ every push together with the consistency check of each generator.
 
 ## Limits
 
-- The conversation model speaks German, English and Spanish so far and only uses the services in
+- The conversation model speaks German, English, Spanish and French so far and only uses the services in
   `llm_schema.SERVICES`. It doesn't create automations, doesn't set alarms
   for a clock time and doesn't answer general knowledge questions.
 - Timers and broadcasts need a voice device as the source; typed requests in

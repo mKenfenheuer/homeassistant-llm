@@ -1,0 +1,10 @@
+{
+  "version": "18",
+  "date": "2026-11-15",
+  "file": "fr/qwen2.5-3b-ha-v18-Q4_K_M.gguf",
+  "sha256": "155512c91fffdc25f12703ef41509f9d69355d5378611fa218da605bf8a3ad85",
+  "size": 1929902912,
+  "schema": 7,
+  "min_addon_version": "0.14.0",
+  "notes": "Premier modèle en français : appareils, musique et médiathèque, minuteurs, listes, météo, heure et annonces"
+}
