@@ -1,0 +1,10 @@
+{
+  "version": "18",
+  "date": "2026-11-15",
+  "file": "it/qwen2.5-3b-ha-v18-Q4_K_M.gguf",
+  "sha256": "ece72e3c6dcd27d30672b12dd37e5185480f87e91896e61234000381f69b7a87",
+  "size": 1929902912,
+  "schema": 7,
+  "min_addon_version": "0.14.0",
+  "notes": "Primo modello in italiano: dispositivi, musica e libreria multimediale, timer, liste, meteo, ora e annunci"
+}

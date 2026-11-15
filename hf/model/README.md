@@ -32,10 +32,11 @@ with AVX2 (about 16 tokens/s output on 4 cores) or on small GPUs (GTX 1060
 | English | `en/` | v18 |
 | Spanish | `es/` | v18 |
 | French | `fr/` | v18 |
+| Italian | `it/` | v18 |
 
-Models for Italian and Dutch are trained from the same
+A model for Dutch is trained from the same
 generator (see the dataset) and are added to this repository as they pass
-their tests.
+its tests.
 
 | File | Content |
 |------|---------|
@@ -221,6 +222,16 @@ the add-on supports is skipped until the add-on is updated.
 - Quantization: Q4_K_M with an importance matrix from 300 French training
   conversations.
 
+## Training (Italian v18)
+
+- Data: the rows with `locale` = `it` of the same dataset, 26,921
+  conversations of the Italian generator.
+- Continued from the German v18 adapter with lr 1e-4 in AI Studio on an
+  RTX 3090, early stop on the eval loss of 100 held-out conversations.
+  Released step: 1220, eval loss 0.0266.
+- Quantization: Q4_K_M with an importance matrix from 300 Italian training
+  conversations.
+
 ## Honest answers
 
 The training data teaches the model to report failed devices instead of
@@ -266,6 +277,14 @@ shortened. Listing many open covers or lights can leave one out.
   running at the same time). Weakest: weather forecasts and lists of many
   lights.
 
+## Evaluation (Italian v18)
+
+- 300 held-out conversations of the Italian generator in houses not seen
+  during training: 99.3 % correct tool calls, 100 % grounded answers
+  (69/69), 0.66 s per conversation on an RTX 3090 (shared with an export
+  running at the same time). Both misses read a thermostat or the outdoor
+  sensor instead of the room's temperature sensor.
+
 ## Acceptance test (public)
 
 A house built like a real installation -- 107 entities in 15 areas, cryptic
@@ -285,6 +304,7 @@ run it with `src/agent_sim.py`.
 | English v18 | 40/41 | "What's the temperature outside?" read the car's charge level |
 | Spanish v18 | 38/41 | "Enciende la luz del pasamanos" switched on its whole room; "Activa no molestar en el Echo" muted the speaker; the mower's battery question read the mower instead of its battery sensor |
 | French v18 | 38/41 | "Allume l'éclairage de la rampe" and "les volets du rez-de-chaussée" were taken for rooms; "le radiateur de la salle commune" set the split unit |
+| Italian v18 | 40/41 | "le tapparelle del pianterreno" was taken for a room |
 
 No answer of any model contained a word of another language.
 
