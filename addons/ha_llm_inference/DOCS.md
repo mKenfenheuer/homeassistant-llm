@@ -8,11 +8,13 @@ host name is `<prefix>-ha-llm-inference`, shown on the info page of the app.
 
 ## Language
 
-`language` selects the language of the model. Every language has its own
-model on Hugging Face (`mkenfenheuer/qwen2.5-3b-homeassistant-<language>-GGUF`),
-the app downloads the one of the selected language. Available today: German
-(`de`). German models stay in `/share/ha_llm/`, other languages go to
-`/share/ha_llm/<language>/`.
+`language` selects the language of the model: German (`de`), English
+(`en`), Spanish (`es`), French (`fr`), Italian (`it`) or Dutch (`nl`). Every
+language has its own model in the Hugging Face repository
+`mkenfenheuer/qwen2.5-3b-homeassistant-GGUF` (`<language>/` folder,
+listed in `models.json`); the app downloads the one of the selected
+language. German models stay in `/share/ha_llm/`, other languages go to
+`/share/ha_llm/<language>/`. Set the same language in the integration.
 
 ## Model
 

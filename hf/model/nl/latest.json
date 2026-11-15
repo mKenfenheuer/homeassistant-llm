@@ -1,0 +1,10 @@
+{
+  "version": "18",
+  "date": "2026-11-15",
+  "file": "nl/qwen2.5-3b-ha-v18-Q4_K_M.gguf",
+  "sha256": "11f7a129c1a02f106736b2f014921a68732b91dfce15ea49314f8033742d3892",
+  "size": 1929902912,
+  "schema": 7,
+  "min_addon_version": "0.14.0",
+  "notes": "Eerste Nederlandse model: apparaten, muziek en mediabibliotheek, timers, lijsten, weer, tijd en omroepberichten"
+}

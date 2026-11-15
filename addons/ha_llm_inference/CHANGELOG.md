@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.15.0
+
+- Models in six languages: the `language` option takes German (`de`),
+  English (`en`), Spanish (`es`), French (`fr`), Italian (`it`) and Dutch
+  (`nl`); 0.14.x only took `de`. All are v18 (prompt schema 7). On 300
+  held-out conversations each: 97.7 to 99.3 % correct tool calls; in the
+  public acceptance house (tests/acceptance, names new to the training
+  data) 38 to 40 of 41 turns. Results per language are on the model card.
+
 ## 0.14.1
 
 - Model v18 (prompt schema 7, trained on from v17). It finds the fitting

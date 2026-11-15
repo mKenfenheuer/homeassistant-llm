@@ -11,8 +11,8 @@ in a house it has never seen.
 - `build.py`: writes `<lang>/layout.json` and `<lang>/scenarios.json`
 
 ```sh
-python tests/acceptance/check_names.py en de
-python tests/acceptance/build.py en de
+python tests/acceptance/check_names.py de en es fr it nl
+python tests/acceptance/build.py de en es fr it nl
 python src/agent_sim.py http://localhost:8080 tests/acceptance/en/scenarios.json
 ```
 

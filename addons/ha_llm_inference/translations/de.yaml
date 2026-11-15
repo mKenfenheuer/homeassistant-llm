@@ -1,7 +1,7 @@
 configuration:
   language:
     name: Sprache
-    description: "Sprache des Modells. Das App lädt das Modell dieser Sprache. Heute verfügbar: Deutsch (de)."
+    description: "Sprache des Modells. Das App lädt das Modell dieser Sprache. Deutsch (de), Englisch (en), Spanisch (es), Französisch (fr), Italienisch (it) oder Niederländisch (nl)."
   auto_update:
     name: Modell automatisch aktualisieren
     description: Lädt neue Modelle von Hugging Face, sobald sie erscheinen. Gilt nur, wenn Modell-URL und lokale Modelldatei leer sind.
