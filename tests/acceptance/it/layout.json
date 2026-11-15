@@ -1,0 +1,537 @@
+[
+[
+"alarm_control_panel.alarm",
+"Sirena antifurto",
+""
+],
+[
+"binary_sensor.french_door_breakfast",
+"Portafinestra Sala colazione",
+"Sala colazione"
+],
+[
+"binary_sensor.french_door_sitting",
+"Portafinestra Salottino",
+"Salottino"
+],
+[
+"binary_sensor.mmwave_01_occupancy",
+"Presenza Camera padronale",
+"Camera padronale"
+],
+[
+"binary_sensor.mmwave_02_occupancy",
+"Presenza Vestibolo",
+"Vestibolo"
+],
+[
+"binary_sensor.mmwave_03_occupancy",
+"Presenza Bagnetto",
+"Bagnetto"
+],
+[
+"binary_sensor.mmwave_04_occupancy",
+"Presenza Salottino",
+"Salottino"
+],
+[
+"binary_sensor.mmwave_06_occupancy",
+"Presenza Angolo cottura",
+"Angolo cottura"
+],
+[
+"binary_sensor.mmwave_07_occupancy",
+"Presenza Sala colazione",
+"Sala colazione"
+],
+[
+"binary_sensor.window_galley",
+"Finestra Angolo cottura",
+"Angolo cottura"
+],
+[
+"binary_sensor.window_master_suite",
+"Finestra Camera padronale",
+"Camera padronale"
+],
+[
+"binary_sensor.window_sitting_left",
+"Finestra Bagnetto",
+"Bagnetto"
+],
+[
+"binary_sensor.g4_bullet_motion",
+"Pensilina Movimento",
+"Pensilina"
+],
+[
+"binary_sensor.g4_bullet_motion_2",
+"Giardinetto Movimento",
+"Giardinetto"
+],
+[
+"binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+"Buca delle lettere",
+"Esterni"
+],
+[
+"binary_sensor.flat_door_state",
+"Porta blindata",
+"Vestibolo"
+],
+[
+"button.yard_irrigation",
+"Irrigazione Giardinetto",
+""
+],
+[
+"button.q_revo_deep_clean",
+"Q Revo Pulizia profonda",
+"Camera padronale"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e501",
+"Termosifone Angolo cottura",
+"Angolo cottura"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e502",
+"Termosifone Bagnetto",
+"Bagnetto"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e503",
+"Termosifone Salottino",
+"Salottino"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e504",
+"Termosifone Sala colazione",
+"Sala colazione"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e505",
+"Termosifone Vestibolo",
+"Vestibolo"
+],
+[
+"climate.sitting_room_split_unit",
+"Split Salottino",
+"Salottino"
+],
+[
+"climate.home_zone_underfloor_circuit_0_climate",
+"Riscaldamento a massetto",
+"Vano tecnico"
+],
+[
+"cover.every_shutter",
+"Ogni tapparella",
+""
+],
+[
+"cover.shutter_french_door_breakfast",
+"Tapparella Portafinestra Sala colazione",
+"Sala colazione"
+],
+[
+"cover.shutter_french_door_sitting",
+"Tapparella Portafinestra Salottino",
+"Salottino"
+],
+[
+"cover.shutter_window_breakfast",
+"Tapparella Finestra Sala colazione",
+"Sala colazione"
+],
+[
+"cover.shutter_window_galley",
+"Tapparella Angolo cottura",
+"Angolo cottura"
+],
+[
+"cover.shutter_window_sitting",
+"Tapparella Bovindo Salottino",
+"Salottino"
+],
+[
+"cover.downstairs_shutters",
+"Tapparelle Pianterreno",
+"Salottino"
+],
+[
+"cover.master_suite_2",
+"Tapparella Camera padronale",
+"Camera padronale"
+],
+[
+"cover.somfy_io",
+"Vela ombreggiante",
+"Loggia"
+],
+[
+"input_boolean.holiday",
+"Modalità ferie",
+""
+],
+[
+"lawn_mower.yard_mowbot",
+"Brucaerba",
+"Giardinetto"
+],
+[
+"light.every_lamp",
+"Ogni lampada",
+""
+],
+[
+"light.creality_k2_plus_chamber_light",
+"Creality K2 Plus Chamber light",
+"Sala colazione"
+],
+[
+"light.washroom",
+"Bagnetto",
+"Bagnetto"
+],
+[
+"light.ceiling_sitting_room",
+"Salottino",
+"Salottino"
+],
+[
+"light.echo_show_3f2a_light_ring",
+"Echo Show 3f2a Light ring",
+"Atelier"
+],
+[
+"light.breakfast_room",
+"Sala colazione",
+"Sala colazione"
+],
+[
+"light.entrance_hall",
+"Vestibolo",
+"Vestibolo"
+],
+[
+"light.hama_outdoor_01_relay",
+"Lanterne del giardinetto",
+"Giardinetto"
+],
+[
+"light.galley",
+"Angolo cottura",
+"Angolo cottura"
+],
+[
+"light.galley_left",
+"Angolo cottura Sinistra",
+"Angolo cottura"
+],
+[
+"light.galley_right",
+"Angolo cottura Destra",
+"Angolo cottura"
+],
+[
+"light.twig_tree",
+"Albero di rametti",
+"Salottino"
+],
+[
+"light.star_lantern",
+"Lanterna a stella",
+"Angolo cottura"
+],
+[
+"light.master_suite",
+"Camera padronale",
+"Camera padronale"
+],
+[
+"light.shellydimmer2_a1b2c3d4e5f6",
+"Mobile lavabo",
+"Bagnetto"
+],
+[
+"light.smpw701e_07_relay",
+"Applique libreria",
+"Salottino"
+],
+[
+"light.banister",
+"Luce corrimano",
+"Sala colazione"
+],
+[
+"light.sitting_room_sofa",
+"Lampada bergère",
+"Salottino"
+],
+[
+"light.sitting_room_shelving",
+"Salottino Vetrinetta",
+"Salottino"
+],
+[
+"media_player.echo_show_3f2a_media_player_2",
+"Echo Show Atelier",
+"Atelier"
+],
+[
+"sensor.4c21_9a0b_humidity",
+"4C21 9A0B Humidity",
+""
+],
+[
+"sensor.4c21_9a0b_temperature",
+"4C21 9A0B Temperature",
+""
+],
+[
+"sensor.cfs_box_temperature",
+"CFS Box temperature",
+"Sala colazione"
+],
+[
+"sensor.cfs_humidity",
+"CFS Humidity",
+"Sala colazione"
+],
+[
+"sensor.creality_k2_plus_bed_temperature",
+"Creality K2 Plus Bed temperature",
+"Sala colazione"
+],
+[
+"sensor.creality_k2_plus_chamber_temperature",
+"Creality K2 Plus Chamber temperature",
+"Sala colazione"
+],
+[
+"sensor.creality_k2_plus_nozzle_temperature",
+"Creality K2 Plus Nozzle temperature",
+"Sala colazione"
+],
+[
+"sensor.ioniq_hv_state_of_charge",
+"Ioniq Carica batteria",
+""
+],
+[
+"sensor.soil_moisture",
+"Umidità aiuola",
+""
+],
+[
+"sensor.lemon_tree_moisture",
+"Limone Umidità terreno",
+"Loggia"
+],
+[
+"sensor.yard_mowbot_battery",
+"Brucaerba Batteria",
+"Giardinetto"
+],
+[
+"sensor.gw2000a_feels_like_temperature",
+"Temperatura percepita Loggia",
+"Loggia"
+],
+[
+"sensor.gw2000a_humidity",
+"Loggia Umidità",
+"Loggia"
+],
+[
+"sensor.gw2000a_indoor_humidity",
+"Rack Umidità",
+"Stanzino"
+],
+[
+"sensor.gw2000a_indoor_temperature",
+"Rack Temperatura",
+"Stanzino"
+],
+[
+"sensor.gw2000a_outdoor_temperature",
+"Loggia Temperatura",
+"Loggia"
+],
+[
+"sensor.gw2000a_rain_rate",
+"Intensità pioggia",
+"Loggia"
+],
+[
+"sensor.gw2000a_wind_gust",
+"Loggia Raffica max",
+"Loggia"
+],
+[
+"sensor.gw2000a_wind_speed",
+"Loggia Brezza",
+"Loggia"
+],
+[
+"sensor.ioniq_remaining_range",
+"Ioniq Autonomia residua",
+""
+],
+[
+"sensor.jane_example_org_home_hot_water_0_tank_temperature",
+"Bollitore Temperatura",
+"Vano tecnico"
+],
+[
+"sensor.jane_example_org_home_outdoor_temperature",
+"Sonda esterna Casa",
+"Vano tecnico"
+],
+[
+"sensor.nspanel_thermostat_03_temperature",
+"Salottino",
+"Salottino"
+],
+[
+"sensor.amd_radeon_rx_580_temperature",
+"AMD Radeon RX 580 Temperature",
+""
+],
+[
+"sensor.rosemary_moisture",
+"Rosmarino Umidità terreno",
+"Loggia"
+],
+[
+"sensor.plant_sensor_1a2b_moisture",
+"Menta Umidità terreno",
+"Angolo cottura"
+],
+[
+"sensor.plant_sensor_3c4d_moisture",
+"Mirtilli 2 Umidità terreno",
+"Loggia"
+],
+[
+"sensor.plant_sensor_5e6f_moisture",
+"Peperoni Umidità terreno",
+"Loggia"
+],
+[
+"sensor.plant_sensor_7a8b_moisture",
+"Mirtilli 1 Umidità terreno",
+"Loggia"
+],
+[
+"sensor.rain_barrel_thread_volume",
+"Cisterna piovana Livello",
+"Loggia"
+],
+[
+"sensor.clothes_dryer",
+"Asciugapanni",
+"Stireria"
+],
+[
+"sensor.forecast_temp_today",
+"previsione_max_millbrook",
+""
+],
+[
+"switch.cfs_auto_refill",
+"CFS Auto-refill",
+"Sala colazione"
+],
+[
+"switch.cfs_drying",
+"CFS Drying",
+"Sala colazione"
+],
+[
+"switch.echo_show_3f2a_bluetooth_pairing",
+"Echo Show 3f2a Bluetooth pairing",
+"Atelier"
+],
+[
+"switch.echo_show_3f2a_do_not_disturb",
+"Echo Show 3f2a Do not disturb",
+"Atelier"
+],
+[
+"switch.echo_show_3f2a_mute",
+"Echo Show 3f2a Mute",
+"Atelier"
+],
+[
+"switch.yard_mowbot_enable_schedule",
+"Brucaerba Enable schedule",
+"Giardinetto"
+],
+[
+"switch.tasmota_plug_03_relay",
+"Tasmota Plug 03 Relay",
+""
+],
+[
+"switch.tasmota_plug_04_relay",
+"Pompa di pressurizzazione",
+"Casetta degli attrezzi"
+],
+[
+"switch.tasmota_plug_05_relay",
+"Angolo TV Tasmota Plug 05 Relay",
+"Salottino"
+],
+[
+"switch.router_enable_guest_wi_fi",
+"Router Enable guest Wi-Fi",
+""
+],
+[
+"switch.hmip_psm_00a1b2c3d4e5",
+"Impianto stereo",
+"Salottino"
+],
+[
+"switch.workstation",
+"Workstation",
+"Sala colazione"
+],
+[
+"switch.jane_example_org_home_hot_water_0_boost",
+"Bollitore Riscaldamento rapido",
+"Vano tecnico"
+],
+[
+"switch.nas_1",
+"DS920",
+"Stanzino"
+],
+[
+"switch.clothes_dryer_power",
+"Asciugapanni Alimentazione",
+"Stireria"
+],
+[
+"switch.home_away_mode",
+"Termosifoni Modalità assenza",
+"Vano tecnico"
+],
+[
+"vacuum.q_revo",
+"Q Revo",
+"Camera padronale"
+],
+[
+"valve.hama_outdoor_plug_02_relay",
+"Gocciolatore Loggia",
+"Loggia"
+],
+[
+"weather.millbrook",
+"Millbrook",
+"Esterni"
+]
+]

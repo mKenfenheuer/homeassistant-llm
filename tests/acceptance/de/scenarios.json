@@ -1020,7 +1020,9 @@
       ]
      ],
      "contains": [
-      "nicht"
+      [
+       "nicht"
+      ]
      ]
     }
    ]
@@ -1068,7 +1070,9 @@
       ]
      ],
      "contains": [
-      "nicht"
+      [
+       "nicht"
+      ]
      ]
     }
    ]

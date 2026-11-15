@@ -20,6 +20,8 @@ attributes (weather: later_today/forecast in model format), "verbosity",
 A turn is a sentence or {"text": ..., "calls": [[tool, spec], ...] (or
 "any_of": [calls, calls, ...] when several answers are right),
 "no_tool": true, "contains": [...]}: with expectations the turn is scored.
+"contains" lists words the answer must have; a word given as a list passes
+with any one of them.
 control spec: {"service", "entity_id" (or "area"), "data" (subset, case-
 insensitive)}; get_state spec: {"entity_ids": [...]} (subset); other tools:
 argument subset. Extra control calls fail the turn. The summary counts the
@@ -318,7 +320,9 @@ def run(url, layout, sc, groups=(), results=None, attrs=None):
         if exp and ("calls" in exp or "any_of" in exp or "no_tool" in exp or "contains" in exp):
             ok, why = score(house, exp, raw_calls)
             if ok and exp.get("contains"):
-                miss = [c for c in exp["contains"] if c.lower() not in (answer or "").lower()]
+                low = (answer or "").lower()
+                miss = [c for c in exp["contains"]
+                        if not any(w.lower() in low for w in (c if isinstance(c, list) else [c]))]
                 ok, why = not miss, f"answer lacks {miss}" if miss else ""
             print(f"  {'PASS' if ok else 'FAIL ' + why}")
             if results is not None:

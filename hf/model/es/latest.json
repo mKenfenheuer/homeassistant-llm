@@ -1,0 +1,10 @@
+{
+  "version": "18",
+  "date": "2026-11-15",
+  "file": "es/qwen2.5-3b-ha-v18-Q4_K_M.gguf",
+  "sha256": "1f7b9623f414cca3531f7fc77d4cb0cc1646b5836e090e0e06a30963430e8846",
+  "size": 1929902912,
+  "schema": 7,
+  "min_addon_version": "0.14.0",
+  "notes": "Primer modelo en español: dispositivos, música y biblioteca multimedia, temporizadores, listas, tiempo, hora y avisos"
+}

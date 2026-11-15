@@ -30,8 +30,9 @@ with AVX2 (about 16 tokens/s output on 4 cores) or on small GPUs (GTX 1060
 |----------|--------|---------|
 | German | `de/` | v18 |
 | English | `en/` | v18 |
+| Spanish | `es/` | v18 |
 
-Models for Spanish, French, Italian and Dutch are trained from the same
+Models for French, Italian and Dutch are trained from the same
 generator (see the dataset) and are added to this repository as they pass
 their tests.
 
@@ -197,6 +198,18 @@ the add-on supports is skipped until the add-on is updated.
 - Quantization: Q4_K_M with an importance matrix from 300 English training
   conversations, rendered with the model's chat template and tools.
 
+## Training (Spanish v18)
+
+- Data: the rows with `locale` = `es` of the same dataset, 27,165
+  conversations of the Spanish generator (the same cases as German, Spanish
+  names, rooms and phrasing).
+- Continued from the German v18 adapter with lr 1e-4 in
+  [AI Studio](https://github.com/mKenfenheuer/ai-studio) on an RTX 3090,
+  early stop on the eval loss of 100 held-out conversations. Released step:
+  840, eval loss 0.0208.
+- Quantization: Q4_K_M with an importance matrix from 300 Spanish training
+  conversations, rendered with the model's chat template and tools.
+
 ## Honest answers
 
 The training data teaches the model to report failed devices instead of
@@ -226,6 +239,14 @@ shortened. Listing many open covers or lights can leave one out.
   during training: 98.7 % correct tool calls, 95.8 % grounded answers
   (68/71), 0.44 s per conversation on an RTX 3090.
 
+## Evaluation (Spanish v18)
+
+- 300 held-out conversations of the Spanish generator in houses not seen
+  during training: 98.0 % correct tool calls, 98.6 % grounded answers
+  (71/72), 0.44 s per conversation on an RTX 3090. Weakest category:
+  compound questions (4/6), where one of two devices is left out or
+  confused.
+
 ## Acceptance test (public)
 
 A house built like a real installation -- 107 entities in 15 areas, cryptic
@@ -243,8 +264,9 @@ run it with `src/agent_sim.py`.
 |-------|--------|-------------|
 | German v18 | 40/41 | "Mach das Licht am Waschtischschrank an" took the device for an area |
 | English v18 | 40/41 | "What's the temperature outside?" read the car's charge level |
+| Spanish v18 | 38/41 | "Enciende la luz del pasamanos" switched on its whole room; "Activa no molestar en el Echo" muted the speaker; the mower's battery question read the mower instead of its battery sensor |
 
-No answer of either model contained a word of the other language.
+No answer of any model contained a word of another language.
 
 ## Limitations
 

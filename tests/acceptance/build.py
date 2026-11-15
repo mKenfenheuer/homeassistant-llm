@@ -66,9 +66,9 @@ SCENARIOS = [
     ("echo do not disturb", [{"calls": [C("switch.turn_on", "switch.echo_show_3f2a_do_not_disturb")]}]),
     # offline devices: trying and reporting it, or looking first, are both fine
     ("star lantern offline", [{"any_of": [[C("light.turn_on", "light.star_lantern")], [G("light.star_lantern")]],
-                               "contains": "@offline"}]),
+                               "contains": ["@offline"]}]),
     ("vacuum offline", [{"any_of": [[C("vacuum.start", "vacuum.q_revo")], [G("vacuum.q_revo")]],
-                         "contains": "@offline"}]),
+                         "contains": ["@offline"]}]),
     ("french door", [{"calls": [G("binary_sensor.french_door_breakfast")]}]),
     ("flat door", [{"calls": [G("binary_sensor.flat_door_state")]}]),
     ("washroom occupancy", [{"calls": [G("binary_sensor.mmwave_03_occupancy")]}]),

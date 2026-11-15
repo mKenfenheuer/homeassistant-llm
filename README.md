@@ -16,7 +16,7 @@ text-to-speech.
 
 The conversation model is Qwen2.5-3B-Instruct with LoRA (Built with Qwen,
 Qwen RESEARCH LICENSE, non-commercial use only). It is 1.9 GB (GGUF, Q4_K_M)
-and available in German and English today. The app has a `language` option, so
+and available in German, English and Spanish today. The app has a `language` option, so
 models for more languages can be added.
 
 ## Installation
@@ -156,7 +156,7 @@ HA_LANG=de ./run_train.sh                              # 27,612 synthetic conver
 HA_LANG=de ./run_export.sh output/de/merged qwen2.5-3b-ha-vX  # GGUF Q4_K_M with importance matrix and chat template
 HA_LANG=de ./run_test.sh model/de/qwen2.5-3b-ha-vX-Q4_K_M.gguf  # evaluation on data/de/eval.jsonl
 python src/agent_sim.py URL scenarios.json             # scored dialogues against a simulated house
-python tests/acceptance/build.py en de                 # public acceptance house, then:
+python tests/acceptance/build.py en de es               # public acceptance house, then:
 python src/agent_sim.py URL tests/acceptance/en/scenarios.json
 ```
 
@@ -172,9 +172,8 @@ all apps with `auto_update` update themselves.
 
 ## Languages
 
-Generators exist for German (`de`) and English (`en`), both with a released
-model, Spanish
-(`es`), French (`fr`), Italian (`it`) and Dutch (`nl`). Every language has its
+Generators exist for German (`de`), English (`en`) and Spanish (`es`), each
+with a released model, French (`fr`), Italian (`it`) and Dutch (`nl`). Every language has its
 own model. Service names, tool names and JSON keys are the same for all
 languages; the texts differ:
 
@@ -211,7 +210,7 @@ every push together with the consistency check of each generator.
 
 ## Limits
 
-- The conversation model speaks German and English so far and only uses the services in
+- The conversation model speaks German, English and Spanish so far and only uses the services in
   `llm_schema.SERVICES`. It doesn't create automations, doesn't set alarms
   for a clock time and doesn't answer general knowledge questions.
 - Timers and broadcasts need a voice device as the source; typed requests in

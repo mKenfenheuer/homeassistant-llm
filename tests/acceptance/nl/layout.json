@@ -1,0 +1,537 @@
+[
+[
+"alarm_control_panel.alarm",
+"Inbraaksirene",
+""
+],
+[
+"binary_sensor.french_door_breakfast",
+"Openslaande deur Ontbijtkamer",
+"Ontbijtkamer"
+],
+[
+"binary_sensor.french_door_sitting",
+"Openslaande deur Voorkamer",
+"Voorkamer"
+],
+[
+"binary_sensor.mmwave_01_occupancy",
+"Aanwezigheid Ouderslaapkamer",
+"Ouderslaapkamer"
+],
+[
+"binary_sensor.mmwave_02_occupancy",
+"Aanwezigheid Tochtportaal",
+"Tochtportaal"
+],
+[
+"binary_sensor.mmwave_03_occupancy",
+"Aanwezigheid Natte cel",
+"Natte cel"
+],
+[
+"binary_sensor.mmwave_04_occupancy",
+"Aanwezigheid Voorkamer",
+"Voorkamer"
+],
+[
+"binary_sensor.mmwave_06_occupancy",
+"Aanwezigheid Kookhoek",
+"Kookhoek"
+],
+[
+"binary_sensor.mmwave_07_occupancy",
+"Aanwezigheid Ontbijtkamer",
+"Ontbijtkamer"
+],
+[
+"binary_sensor.window_galley",
+"Raam Kookhoek",
+"Kookhoek"
+],
+[
+"binary_sensor.window_master_suite",
+"Raam Ouderslaapkamer",
+"Ouderslaapkamer"
+],
+[
+"binary_sensor.window_sitting_left",
+"Raam Natte cel",
+"Natte cel"
+],
+[
+"binary_sensor.g4_bullet_motion",
+"Afdak Beweging",
+"Afdak"
+],
+[
+"binary_sensor.g4_bullet_motion_2",
+"Voortuintje Beweging",
+"Voortuintje"
+],
+[
+"binary_sensor.hmip_swdm_2_00a1b2c3d4e5f6_contact",
+"Brievenbus",
+"Buitenterrein"
+],
+[
+"binary_sensor.flat_door_state",
+"Appartementsdeur",
+"Tochtportaal"
+],
+[
+"button.yard_irrigation",
+"Besproeiing Voortuintje",
+""
+],
+[
+"button.q_revo_deep_clean",
+"Q Revo Dieptereiniging",
+"Ouderslaapkamer"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e501",
+"Radiator Kookhoek",
+"Kookhoek"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e502",
+"Radiator Natte cel",
+"Natte cel"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e503",
+"Radiator Voorkamer",
+"Voorkamer"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e504",
+"Radiator Ontbijtkamer",
+"Ontbijtkamer"
+],
+[
+"climate.hmip_etrv_b_2_r4m_00a1b2c3d4e505",
+"Radiator Tochtportaal",
+"Tochtportaal"
+],
+[
+"climate.sitting_room_split_unit",
+"Splitunit Voorkamer",
+"Voorkamer"
+],
+[
+"climate.home_zone_underfloor_circuit_0_climate",
+"Dekvloerverwarming",
+"Technische ruimte"
+],
+[
+"cover.every_shutter",
+"Ieder rolluik",
+""
+],
+[
+"cover.shutter_french_door_breakfast",
+"Rolluik Openslaande deur Ontbijtkamer",
+"Ontbijtkamer"
+],
+[
+"cover.shutter_french_door_sitting",
+"Rolluik Openslaande deur Voorkamer",
+"Voorkamer"
+],
+[
+"cover.shutter_window_breakfast",
+"Rolluik Raam Ontbijtkamer",
+"Ontbijtkamer"
+],
+[
+"cover.shutter_window_galley",
+"Rolluik Kookhoek",
+"Kookhoek"
+],
+[
+"cover.shutter_window_sitting",
+"Rolluik Erker Voorkamer",
+"Voorkamer"
+],
+[
+"cover.downstairs_shutters",
+"Rolluiken Benedenverdieping",
+"Voorkamer"
+],
+[
+"cover.master_suite_2",
+"Rolluik Ouderslaapkamer",
+"Ouderslaapkamer"
+],
+[
+"cover.somfy_io",
+"Schaduwdoek",
+"Loggia"
+],
+[
+"input_boolean.holiday",
+"Vakantiestand",
+""
+],
+[
+"lawn_mower.yard_mowbot",
+"Grasgrazer",
+"Voortuintje"
+],
+[
+"light.every_lamp",
+"Iedere lamp",
+""
+],
+[
+"light.creality_k2_plus_chamber_light",
+"Creality K2 Plus Chamber light",
+"Ontbijtkamer"
+],
+[
+"light.washroom",
+"Natte cel",
+"Natte cel"
+],
+[
+"light.ceiling_sitting_room",
+"Voorkamer",
+"Voorkamer"
+],
+[
+"light.echo_show_3f2a_light_ring",
+"Echo Show 3f2a Light ring",
+"Atelier"
+],
+[
+"light.breakfast_room",
+"Ontbijtkamer",
+"Ontbijtkamer"
+],
+[
+"light.entrance_hall",
+"Tochtportaal",
+"Tochtportaal"
+],
+[
+"light.hama_outdoor_01_relay",
+"Voortuinlantaarns",
+"Voortuintje"
+],
+[
+"light.galley",
+"Kookhoek",
+"Kookhoek"
+],
+[
+"light.galley_left",
+"Kookhoek Links",
+"Kookhoek"
+],
+[
+"light.galley_right",
+"Kookhoek Rechts",
+"Kookhoek"
+],
+[
+"light.twig_tree",
+"Takkenboom",
+"Voorkamer"
+],
+[
+"light.star_lantern",
+"Sterlantaarn",
+"Kookhoek"
+],
+[
+"light.master_suite",
+"Ouderslaapkamer",
+"Ouderslaapkamer"
+],
+[
+"light.shellydimmer2_a1b2c3d4e5f6",
+"Wastafelkast",
+"Natte cel"
+],
+[
+"light.smpw701e_07_relay",
+"Boekenwandlamp",
+"Voorkamer"
+],
+[
+"light.banister",
+"Leuninglicht",
+"Ontbijtkamer"
+],
+[
+"light.sitting_room_sofa",
+"Oorfauteuillamp",
+"Voorkamer"
+],
+[
+"light.sitting_room_shelving",
+"Voorkamer Vitrine",
+"Voorkamer"
+],
+[
+"media_player.echo_show_3f2a_media_player_2",
+"Echo Show Atelier",
+"Atelier"
+],
+[
+"sensor.4c21_9a0b_humidity",
+"4C21 9A0B Humidity",
+""
+],
+[
+"sensor.4c21_9a0b_temperature",
+"4C21 9A0B Temperature",
+""
+],
+[
+"sensor.cfs_box_temperature",
+"CFS Box temperature",
+"Ontbijtkamer"
+],
+[
+"sensor.cfs_humidity",
+"CFS Humidity",
+"Ontbijtkamer"
+],
+[
+"sensor.creality_k2_plus_bed_temperature",
+"Creality K2 Plus Bed temperature",
+"Ontbijtkamer"
+],
+[
+"sensor.creality_k2_plus_chamber_temperature",
+"Creality K2 Plus Chamber temperature",
+"Ontbijtkamer"
+],
+[
+"sensor.creality_k2_plus_nozzle_temperature",
+"Creality K2 Plus Nozzle temperature",
+"Ontbijtkamer"
+],
+[
+"sensor.ioniq_hv_state_of_charge",
+"Ioniq Accuniveau",
+""
+],
+[
+"sensor.soil_moisture",
+"Bodemvocht border",
+""
+],
+[
+"sensor.lemon_tree_moisture",
+"Citroenboom Bodemvocht",
+"Loggia"
+],
+[
+"sensor.yard_mowbot_battery",
+"Grasgrazer Accu",
+"Voortuintje"
+],
+[
+"sensor.gw2000a_feels_like_temperature",
+"Gevoelstemperatuur Loggia",
+"Loggia"
+],
+[
+"sensor.gw2000a_humidity",
+"Loggia Luchtvochtigheid",
+"Loggia"
+],
+[
+"sensor.gw2000a_indoor_humidity",
+"Rack Luchtvochtigheid",
+"Rommelhok"
+],
+[
+"sensor.gw2000a_indoor_temperature",
+"Rack Temperatuur",
+"Rommelhok"
+],
+[
+"sensor.gw2000a_outdoor_temperature",
+"Loggia Temperatuur",
+"Loggia"
+],
+[
+"sensor.gw2000a_rain_rate",
+"Neerslagintensiteit",
+"Loggia"
+],
+[
+"sensor.gw2000a_wind_gust",
+"Loggia Windstoot max",
+"Loggia"
+],
+[
+"sensor.gw2000a_wind_speed",
+"Loggia Bries",
+"Loggia"
+],
+[
+"sensor.ioniq_remaining_range",
+"Ioniq Restbereik",
+""
+],
+[
+"sensor.jane_example_org_home_hot_water_0_tank_temperature",
+"Boilervat Temperatuur",
+"Technische ruimte"
+],
+[
+"sensor.jane_example_org_home_outdoor_temperature",
+"Buitenvoeler Huis",
+"Technische ruimte"
+],
+[
+"sensor.nspanel_thermostat_03_temperature",
+"Voorkamer",
+"Voorkamer"
+],
+[
+"sensor.amd_radeon_rx_580_temperature",
+"AMD Radeon RX 580 Temperature",
+""
+],
+[
+"sensor.rosemary_moisture",
+"Rozemarijn Bodemvocht",
+"Loggia"
+],
+[
+"sensor.plant_sensor_1a2b_moisture",
+"Munt Bodemvocht",
+"Kookhoek"
+],
+[
+"sensor.plant_sensor_3c4d_moisture",
+"Blauwe bessen 2 Bodemvocht",
+"Loggia"
+],
+[
+"sensor.plant_sensor_5e6f_moisture",
+"Paprika Bodemvocht",
+"Loggia"
+],
+[
+"sensor.plant_sensor_7a8b_moisture",
+"Blauwe bessen 1 Bodemvocht",
+"Loggia"
+],
+[
+"sensor.rain_barrel_thread_volume",
+"Regenton Peil",
+"Loggia"
+],
+[
+"sensor.clothes_dryer",
+"Kledingdroger",
+"Strijkkamer"
+],
+[
+"sensor.forecast_temp_today",
+"verwachting_max_millbrook",
+""
+],
+[
+"switch.cfs_auto_refill",
+"CFS Auto-refill",
+"Ontbijtkamer"
+],
+[
+"switch.cfs_drying",
+"CFS Drying",
+"Ontbijtkamer"
+],
+[
+"switch.echo_show_3f2a_bluetooth_pairing",
+"Echo Show 3f2a Bluetooth pairing",
+"Atelier"
+],
+[
+"switch.echo_show_3f2a_do_not_disturb",
+"Echo Show 3f2a Do not disturb",
+"Atelier"
+],
+[
+"switch.echo_show_3f2a_mute",
+"Echo Show 3f2a Mute",
+"Atelier"
+],
+[
+"switch.yard_mowbot_enable_schedule",
+"Grasgrazer Enable schedule",
+"Voortuintje"
+],
+[
+"switch.tasmota_plug_03_relay",
+"Tasmota Plug 03 Relay",
+""
+],
+[
+"switch.tasmota_plug_04_relay",
+"Drukverhogingspomp",
+"Tuinhuisje"
+],
+[
+"switch.tasmota_plug_05_relay",
+"TV-hoek Tasmota Plug 05 Relay",
+"Voorkamer"
+],
+[
+"switch.router_enable_guest_wi_fi",
+"Router Enable guest Wi-Fi",
+""
+],
+[
+"switch.hmip_psm_00a1b2c3d4e5",
+"Stereo-installatie",
+"Voorkamer"
+],
+[
+"switch.workstation",
+"Workstation",
+"Ontbijtkamer"
+],
+[
+"switch.jane_example_org_home_hot_water_0_boost",
+"Boilervat Snelverwarmen",
+"Technische ruimte"
+],
+[
+"switch.nas_1",
+"DS920",
+"Rommelhok"
+],
+[
+"switch.clothes_dryer_power",
+"Kledingdroger Stroom",
+"Strijkkamer"
+],
+[
+"switch.home_away_mode",
+"Radiatoren Afwezigheidsstand",
+"Technische ruimte"
+],
+[
+"vacuum.q_revo",
+"Q Revo",
+"Ouderslaapkamer"
+],
+[
+"valve.hama_outdoor_plug_02_relay",
+"Druppelslang Loggia",
+"Loggia"
+],
+[
+"weather.millbrook",
+"Millbrook",
+"Buitenterrein"
+]
+]
