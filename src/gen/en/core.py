@@ -130,6 +130,7 @@ TYPES = {
         ("Thermostat", "s", ["thermostat", "trv"], False),
         ("Air Conditioner", "s", ["air_conditioner", "ac"], False),
         ("Underfloor Heating", "s", ["underfloor_heating", "floor_heating"], False),
+        ("Radiator", "s", ["radiator", "radiator_valve"], False),
     ],
     "fan": [
         ("Fan", "s", ["fan", "desk_fan"], False),
@@ -175,6 +176,7 @@ def voice_media_name():
     hx = "".join(R.choice("0123456789abcdef") for _ in range(6))
     return R.choice([f"Home Assistant Voice {hx} Media Player", f"Home Assistant Voice {hx[:6]}",
                      f"ESPHome Voice {hx[:4]} Media Player", "Echo Show", "Nest Mini",
+                     f"Echo Dot {hx[:4]}", f"Echo Show {hx[:4]} Media Player",
                      f"Atom Echo {hx[:6]} Media Player"])
 
 
@@ -298,6 +300,7 @@ class Ent:
     attrs: dict = field(default_factory=dict)
     hidden: str = ""         # type label that the name no longer shows
     voice: bool = False      # media player of a voice satellite
+    obj: str = ""            # "by the fireplace": fixture or floor in the name
 
     @property
     def plural(self) -> bool:
@@ -385,6 +388,15 @@ class House:
         self.ents.append(e)
         return e
 
+    def _own_id(self, e, base):
+        """Entities of a device take its id ("sensor.robot_mower_battery"),
+        not room + device id + suffix; vendor ids stay."""
+        eid = f"{e.domain}.{base}"
+        if base in e.eid and eid not in self.used_ids:
+            self.used_ids.discard(e.eid)
+            e.eid = eid
+            self.used_ids.add(eid)
+
     def add_voice_media(self, room):
         name = voice_media_name()
         if name in self.used_names:
@@ -439,6 +451,23 @@ class House:
                         lt.hidden, lt.label = lt.label or lt.hidden, ""
                         lt.gender = "s"
                         self.used_names.add(lt.name)
+            # a lamp named after its fixture: "Fireplace", "Light Staircase",
+            # "Kitchen Island Light"
+            plain = [lt for lt in room_lights if lt.label]
+            if plain and R.random() < 0.35:
+                lt = R.choice(plain)
+                objs = [o for o in OBJ_LIGHTS if o[0] not in ROOM_BY_NAME
+                        and (o[0] in OUTDOOR_OBJ) == outdoor and not any(o[0].lower() in n.lower() for n in self.used_names)]
+                if objs:
+                    obj, phrase = R.choice(objs)
+                    self.used_names.discard(lt.name)
+                    nm = R.choice([obj, f"{obj} Light", f"{obj} Light", f"{obj} Lamp",
+                                   f"Light {obj}"]
+                                  + ([f"{room} {obj}"] if room.split()[0] not in obj else []))
+                    lt.name = cap(low(nm)) if self.sentence_case else nm
+                    lt.hidden, lt.label, lt.obj = lt.label, "", phrase
+                    lt.gender = "s"
+                    self.used_names.add(lt.name)
             if not outdoor and room not in ("Hallway", "Stairs", "Guest Toilet") \
                     and room not in UTILITY and R.random() < 0.55:
                 ct = R.choice(TYPES["cover"][:4])
@@ -466,13 +495,26 @@ class House:
                          state=(st := R.choice(["open", "closed"])),
                          attrs={"current_position": 100 if st == "open" else 0})
             if not outdoor and room not in UTILITY and R.random() < 0.5:
-                ct = R.choice(TYPES["climate"][:3] if room != "Bathroom" else TYPES["climate"])
+                # underfloor heating only in bathrooms
+                ct = R.choice([t for t in TYPES["climate"]
+                               if room in ("Bathroom", "Main Bathroom")
+                               or t[0] != "Underfloor Heating"])
                 target = R.choice([18, 19, 20, 20.5, 21, 21.5, 22, 23])
                 cur = round(target + R.uniform(-2, 1.5), 1)
                 self.add("climate", room, ct[0], ct[1], ct[2], ct[3],
                          state=R.choice(["heat", "heat", "off", "auto"]),
                          attrs={"current_temperature": cur, "temperature": target,
                                 "hvac_action": R.choice(["heating", "idle"])})
+                # radiator and split unit in one room: "the heating" is the
+                # radiator, "the air conditioning" the split unit (v18 set the
+                # split unit for "the radiator")
+                if ct[0] != "Air Conditioner" and R.random() < 0.3:
+                    self.add("climate", room, "Air Conditioner", "s",
+                             ["air_conditioner", "split_unit"],
+                             name=R.choice([None, f"Split {room}", f"{room} Split Unit"]),
+                             state=R.choice(["off", "off", "cool", "heat_cool"]),
+                             attrs={"current_temperature": cur,
+                                    "temperature": R.choice([21, 22, 23, 24])})
             if not outdoor and R.random() < 0.45:
                 t = round(R.uniform(17, 24.5), 1)
                 self.add("sensor", room, "Temperature", "s",
@@ -579,7 +621,9 @@ class House:
             if orooms and R.random() < 0.4:
                 # weather stations sit on the balcony or in the garden
                 room = R.choice(orooms)
-                names = [f"{room} Outdoor Temperature", f"{room} Temperature"]
+                # "Patio Temperature" is outside although its name does not say so
+                names = [f"{room} Outdoor Temperature", f"{room} Temperature",
+                         f"{room} Thermometer", f"Temperature {room}"]
             self.add("sensor", room, "Outdoor Temperature", "s",
                      ["outdoor_temperature", "outside_temperature"],
                      name=R.choice(names), state=f"{out_t:.1f}",
@@ -634,6 +678,31 @@ class House:
                                                 f"{app} Socket"]),
                                  state="off" if kind == "off" and R.random() < 0.5 else "on")
                 self.appliances.append((app, g, sensor, power))
+        # robots report their battery as a sensor of its own ("Automower
+        # Battery"); "How much battery does the mower have left?" reads that
+        # sensor, not the robot
+        for robot in [e for e in self.ents if e.domain in ("vacuum", "lawn_mower")]:
+            if R.random() < 0.6:
+                e = self.add("sensor", robot.area, "Battery", "s",
+                         [robot.eid.split(".")[1] + "_battery"],
+                         name=R.choice([f"{robot.name} Battery", f"{robot.name} Battery Level",
+                                        f"{robot.name} Battery"]),
+                         state=str(R.randint(8, 100)),
+                         attrs={"device_class": "battery", "unit_of_measurement": "%",
+                                "_robot": robot.eid})
+                self._own_id(e, robot.eid.split(".")[1] + "_battery")
+        # Alexa devices bring switches the integration names in English
+        # ("Echo Show Do not disturb"); "do not disturb" is that switch,
+        # muting the speaker is something else (v18 muted the speaker)
+        for mp in [e for e in self.ents if e.domain == "media_player" and e.name.startswith("Echo")]:
+            if R.random() < 0.7:
+                base = mp.name.replace(" Media Player", "")
+                for suffix, slug in (("Do not disturb", "do_not_disturb"), ("Mute", "mute")):
+                    if f"{base} {suffix}" not in self.used_names:
+                        e = self.add("switch", mp.area, "", "s",
+                                     [base.lower().replace(" ", "_") + "_" + slug],
+                                     name=f"{base} {suffix}", state=R.choice(["on", "off", "off"]))
+                        self._own_id(e, base.lower().replace(" ", "_") + "_" + slug)
         vac = [e for e in self.ents if e.domain == "vacuum"]
         if vac and R.random() < 0.45:
             v = vac[0]
@@ -707,6 +776,23 @@ class House:
             self.add("cover", None, "__group__", "pl", ["all_shutters", "all_covers"],
                      name=R.choice(["All Shutters", "All Blinds", "House Shutters"]),
                      state=R.choice(["open", "closed"]))
+        # floor groups: "Shutters 1F", "Upstairs Lights"; "the shutters upstairs"
+        # names the group, there is no area "Upstairs"
+        if R.random() < 0.35:
+            floor, phrase, abbr = R.choice(FLOORS)
+            dom = R.choice(["cover", "light"])
+            word = R.choice(["Shutters", "Blinds", "Roller Shutters"]
+                            if dom == "cover" else ["Lights", "Lighting", "Lamps"])
+            fname = R.choice([floor, floor, abbr])
+            name = R.choice([f"{word} {fname}", f"{fname} {word}"])
+            if len(self.of(dom, plain=True)) >= 2 and name not in self.used_names:
+                st = R.choice(["open", "closed"] if dom == "cover" else ["on", "off"])
+                e = self.add(dom, None, "__floor__", "pl",
+                             [f"{word.lower().replace(' ', '_')}_{abbr.lower().replace(' ', '_')}",
+                              f"{dom}s_{floor.lower().replace(' ', '_')}"], name=name, state=st,
+                             attrs={"current_position": 100 if st == "open" else 0}
+                             if dom == "cover" else {})
+                e.obj = phrase
         # read-only distractors and odd names; fill up to the target size
         while len(self.ents) < size:
             self._distractor()
@@ -763,9 +849,14 @@ class House:
                 self.add("switch", room, nm, "s", [nm.lower().replace(" ", "_")
                          .replace("-", "_")], name=nm, state=R.choice(["on", "off"]))
         else:
-            self.add("sensor", room, "Temperature", "s", ["temperature"],
-                     name=R.choice([f"{rname} Temperature", f"{rname} Temp",
-                                    f"{rname} Thermometer"]),
+            names = [n for n in [f"{rname} Temperature", f"{rname} Temp",
+                                    f"{rname} Thermometer"] if n not in self.used_names]
+            if not names:
+                return
+            # in the garden or on the patio this is an outdoor sensor
+            self.add("sensor", room, "Outdoor Temperature" if room in OUTDOOR else "Temperature",
+                     "s", ["temperature"],
+                     name=R.choice(names),
                      state=str(round(R.uniform(15, 26), 1)),
                      attrs={"device_class": "temperature", "unit_of_measurement": "°C"})
 
@@ -841,7 +932,15 @@ class Ref:
     area: str | None = None   # set for "the light in the bathroom": control by area
 
 
+def ref_obj(e: Ent) -> Ref:
+    """'the light by the fireplace', 'the shutters on the first floor'."""
+    noun, pl = R.choice(OBJ_NOUN[(e.domain, e.label == "__floor__")])
+    return Ref(f"{noun} {e.obj}", f"{noun} {e.obj}", pl, [e])
+
+
 def ref_single(h: House, e: Ent, allow_room_ref=True) -> Ref:
+    if e.obj and R.random() < 0.6:
+        return ref_obj(e)
     same_type_in_room = [x for x in h.ents if x.domain == e.domain
                          and x.area == e.area and x.label == e.label]
     same_type = [x for x in h.ents if x.domain == e.domain and x.label == e.label]
@@ -854,7 +953,8 @@ def ref_single(h: House, e: Ent, allow_room_ref=True) -> Ref:
     if allow_room_ref and e.label and e.area and len(same_type_in_room) == 1 \
             and not generic:
         opts += ["type_room", "type_room"]
-    if e.label and e.label != "__group__" and len(same_type) == 1 and e.name != e.label:
+    if e.label and e.label not in ("__group__", "__floor__") and len(same_type) == 1 \
+            and e.name != e.label:
         opts += ["type_only"]           # "the TV" for "LG webOS Smart TV"
     choice = R.choice(opts)
     if choice == "type_only":
@@ -1299,6 +1399,35 @@ FREE_LIGHT_NAMES = ["Starry Sky", "Salt Lamp", "Lava Lamp", "Picture Light", "Di
                     "Hanging Lamp", "Light Arch", "Neon Sign", "Govee Strip", "Table Lamp",
                     "Dresser Light", "Vanity Light", "Reading Light", "Accent Lamp"]
 
+# lamps named after the fixture they light. People say "the light by the
+# fireplace"; the fixture is part of the name, never an area (v18 asked for
+# an area named after the fixture). (fixture, phrase after the noun)
+# The fixtures of the public acceptance house and its floor group stay out
+# of training, so the test still measures whether the model generalises.
+OBJ_LIGHTS = [("Mirror Cabinet", "by the mirror cabinet"), ("Staircase", "on the staircase"),
+              ("Kitchen Island", "over the kitchen island"),
+              ("Bar Counter", "at the bar counter"), ("Fireplace", "by the fireplace"),
+              ("Desk", "at the desk"), ("Aquarium", "in the aquarium"),
+              ("Wardrobe", "in the wardrobe"), ("Bunk Bed", "on the bunk bed"),
+              ("Picture Wall", "on the picture wall"), ("Sideboard", "on the sideboard"),
+              ("Dining Table", "over the dining table"), ("Cooker Hood", "on the cooker hood"),
+              ("Porch", "on the porch"), ("Pergola", "on the pergola")]
+GENERIC_ROBOTS = ("Robot Mower", "Lawn Robot", "Robot Vacuum", "Vacuum")
+OUTDOOR_OBJ = ("Porch", "Pergola")      # only in outdoor areas, and they only these
+# floors are no areas in the device list; groups carry them in the name
+# ("Shutters 1F"). (floor, phrase, abbreviation)
+FLOORS = [("First Floor", "on the first floor", "1F"), ("Upstairs", "upstairs", "Upstairs"),
+          ("Second Floor", "on the second floor", "2F"),
+          ("Top Floor", "on the top floor", "Top Floor"),
+          ("Lower Level", "on the lower level", "LL")]
+# the noun in front of the phrase: (phrase, plural)
+OBJ_NOUN = {("light", False): [("the light", False), ("the lamp", False),
+                               ("the lighting", False), ("the light", False)],
+            ("light", True): [("the light", False), ("the lights", True),
+                              ("the lighting", False)],
+            ("cover", True): [("the shutters", True), ("the blinds", True),
+                              ("the roller shutters", True)]}
+
 DOOR_ROOMS = ("Living Room", "Dining Room", "Kitchen", "Bedroom", "Study")
 # (name, article, slug)
 CARS = [("Enyaq", "the", "enyaq_iv80"), ("ID.3", "the", "id3"), ("Model 3", "the", "model_3"),
@@ -1424,13 +1553,14 @@ def i_climate(h, loc):
     ents = h.of("climate")
     if not ents:
         return None
-    rooms = sorted({e.area for e in ents if e.area})
+    # "the heating in the living room" is the radiator, never the split unit
+    rooms = sorted({e.area for e in ents if e.area and e.label != "Air Conditioner"})
     r = R.random()
     if r < 0.75:
         t = R.choice([17, 18, 19, 19.5, 20, 20.5, 21, 21.5, 22, 22.5, 23, 24, 25])
         if R.random() < 0.4 and rooms:
             room = loc if loc in rooms and R.random() < 0.5 else R.choice(rooms)
-            tgt = h.of("climate", room)
+            tgt = [e for e in h.of("climate", room) if e.label != "Air Conditioner"]
             prep = ROOM_BY_NAME[room][1]
             user = R.choice([f"Set the heating {prep} to {{t}} degrees",
                              f"Heating {prep} to {{t}} degrees",
@@ -1595,7 +1725,7 @@ def i_scene(h, loc):
 
 def i_all(h, loc):
     domain = R.choice(["light", "light", "cover"])
-    ents = h.of(domain, plain=True)
+    ents = [e for e in h.of(domain, plain=True) if e.label != "__floor__"]
     if len(ents) < 2:
         return None
     # a group entity ("All Lights") replaces the list of members
@@ -1623,13 +1753,75 @@ def i_all(h, loc):
         [f"{nom} are open.", "Done, everything is open."])
 
 
+def i_fixture(h, loc):
+    """'Turn on the light by the fireplace', 'Close the shutters upstairs':
+    the words after the preposition belong to a device name, not to an
+    area. v18 asked for an area named after the fixture or said the house
+    had no areas."""
+    ents = [e for e in h.ents if e.obj]
+    if not ents:
+        return None
+    e = R.choice(ents)
+    ref = ref_obj(e)
+    if e.domain == "light":
+        if R.random() < 0.55:
+            user = R.choice(["Turn on {r}", "Switch on {r}", "{R} on", "Can you turn on {r}?",
+                             "Please switch on {r}"])
+            return (user.format(r=ref.acc, R=cap(ref.acc)), [action("light.turn_on", [e])],
+                    confirm(ref, "on", "turned on"))
+        user = R.choice(["Turn off {r}", "Switch off {r}", "{R} off", "Can you turn off {r}?"])
+        return (user.format(r=ref.acc, R=cap(ref.acc)), [action("light.turn_off", [e])],
+                confirm(ref, "off", "turned off"))
+    r = R.random()
+    if r < 0.35:
+        user = R.choice(["Open {r}", "Raise {r}", "Put {r} up", "{R} up"])
+        return (user.format(r=ref.acc, R=cap(ref.acc)), [action("cover.open_cover", [e])],
+                confirm(ref, "open", "opened"))
+    if r < 0.7:
+        user = R.choice(["Close {r}", "Lower {r}", "Put {r} down", "{R} down"])
+        return (user.format(r=ref.acc, R=cap(ref.acc)), [action("cover.close_cover", [e])],
+                confirm(ref, "closed", "closed"))
+    p = R.choice([20, 30, 50, 70])
+    user = R.choice(["Set {r} to {p} percent", "Move {r} to {p} percent"]).format(
+        r=ref.acc, p=p)
+    return user, [action("cover.set_cover_position", [e], {"position": p})], \
+        R.choice([f"{cap(ref.nom)} {be(ref.plural)} now at {p} percent.", "Done."])
+
+
+def i_dnd(h, loc):
+    """'Turn on do not disturb on the Echo' -> the Do-not-disturb switch the
+    Alexa integration adds, not muting the speaker (v18 muted it)."""
+    sws = [e for e in h.of("switch") if e.name.endswith(" Do not disturb")]
+    if not sws:
+        return None
+    e = R.choice(sws)
+    base = e.name[:-len(" Do not disturb")]
+    dev = "on the Echo" if len(sws) == 1 else f"on the {base}"
+    on = R.random() < 0.6
+    if on:
+        user = R.choice([f"Turn on do not disturb {dev}", f"Enable do not disturb {dev}",
+                         f"Switch on do not disturb {dev}", f"Put the {base} on do not disturb",
+                         f"Set the {base} to do not disturb"]
+                        + (["Enable do not disturb", "Turn on do not disturb"]
+                           if len(sws) == 1 else []))
+        conf = R.choice([f"Do not disturb is now on {dev.replace('on the', 'for the', 1)}.", "Do not disturb is enabled.",
+                         "Done."])
+    else:
+        user = R.choice([f"Turn off do not disturb {dev}", f"Disable do not disturb {dev}",
+                         f"Switch off do not disturb {dev}"]
+                        + (["Disable do not disturb"] if len(sws) == 1 else []))
+        conf = R.choice([f"Do not disturb is now off {dev.replace('on the', 'for the', 1)}.", "Do not disturb is off.",
+                         "Done."])
+    return user, [action(f"switch.turn_{'on' if on else 'off'}", [e])], conf
+
+
 COMMANDS = [
     (i_light_onoff, 14), (i_light_room_phrase, 6), (i_light_brightness, 6),
     (i_light_color, 4), (i_switch, 6), (i_fan_pct, 1), (i_cover, 9),
     (i_climate, 7), (i_lock, 3), (i_alarm, 3), (i_media, 5), (i_vacuum, 3),
     (i_scene, 4), (i_all, 6), (i_awning, 2), (i_mower, 2), (i_valve, 1),
     (i_toggle, 2), (i_appliance, 3), (i_button, 2), (i_irrigation, 12), (i_irrigation_pair, 2),
-    (i_heating_mode, 4),
+    (i_heating_mode, 4), (i_fixture, 4), (i_dnd, 2),
 ]
 
 
@@ -1777,6 +1969,8 @@ def s_question(h, loc):
         kinds += ["power"]
     if [e for e in h.of("sensor") if e.attrs.get("device_class") in ("moisture", "battery")]:
         kinds += ["generic"] * 2
+    if [e for e in h.of("sensor") if e.attrs.get("_robot")]:
+        kinds += ["robot_battery"]
     kind = R.choice(kinds)
     # list questions read a whole domain by area (q_area, "*" = whole house)
     # instead of listing entity_ids: in a house with many covers the model
@@ -1797,8 +1991,9 @@ def s_question(h, loc):
             ans = R.choice([f"It's {vals[0]} degrees outside.",
                             f"The outside temperature is {vals[0]} degrees."])
         else:
-            ans = (f"{outs[0].name} reads {vals[0]} degrees and "
-                   f"{outs[1].name} reads {vals[1]} degrees.")
+            parts = [f"{o.name} reads {v} degrees" for o, v in zip(outs, vals)]
+            ans = (", ".join(parts[:-1]) + (", and " if len(parts) > 2 else " and ")
+                   + parts[-1] + ".")
         ids, must = outs, vals
     elif kind == "forecast":
         if h.of("weather"):
@@ -1855,6 +2050,22 @@ def s_question(h, loc):
                              f"What does {e.name} show?"])
             ans = f"{e.name} is at {e.state} percent."
         ids, must = [e], [e.state]
+    elif kind == "robot_battery":
+        # the robot itself only says docked or mowing; its battery is a sensor
+        e = R.choice([e for e in h.of("sensor") if e.attrs.get("_robot")])
+        robot = next(x for x in h.ents if x.eid == e.attrs["_robot"])
+        word = R.choice(["mower", "robot mower", "lawn mower"]) \
+            if robot.domain == "lawn_mower" else R.choice(["vacuum", "robot vacuum"])
+        # "Robot Mower" is a noun, "Worx Landroid" a name
+        own = f"the {low(robot.name)}" if robot.name in GENERIC_ROBOTS else robot.name
+        nom = R.choice([own, f"the {word}"])
+        user = R.choice([f"How much battery does {nom} have left?",
+                         f"What's the battery level of {nom}?",
+                         f"How charged is {nom}?", f"Does {nom} need charging?",
+                         f"How full is the battery of {nom}?"])
+        ans = R.choice([f"The battery of {nom} is at {e.state} percent.",
+                        f"{cap(nom)} has {e.state} percent battery left."])
+        ids, must = [e], [e.state]
     elif kind == "power":
         e = R.choice([e for e in h.of("sensor") if e.attrs.get("device_class") == "power"])
         user = R.choice([f"What's {e.name} showing right now?",
@@ -1875,7 +2086,8 @@ def s_question(h, loc):
                 prep = ROOM_BY_NAME[e.area][1]
                 user = R.choice([f"How warm is it {prep}?", f"How many degrees is it {prep}?"])
                 if [s for s in h.of("sensor", e.area)
-                        if s.attrs.get("device_class") == "temperature"]:
+                        if s.attrs.get("device_class") == "temperature"] \
+                        or len(h.of("climate", e.area)) > 1:
                     return None   # ambiguous: sensor and thermostat in same room
             else:
                 user = f"What temperature does {ref.nom} measure?"
@@ -3335,7 +3547,7 @@ def history_prefix(h, loc):
 
 QKINDS = ["temp", "outdoor", "forecast", "climate", "onoff", "which_lights", "which_covers", "windows",
           "door", "car", "lock",
-          "alarm", "media", "humidity", "power", "generic"]
+          "alarm", "media", "humidity", "power", "generic", "robot_battery"]
 
 
 def build_cases():
