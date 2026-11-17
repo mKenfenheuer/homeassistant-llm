@@ -1,10 +1,10 @@
 {
-  "version": "18",
-  "date": "2026-11-15",
-  "file": "fr/qwen2.5-3b-ha-v18-Q4_K_M.gguf",
-  "sha256": "155512c91fffdc25f12703ef41509f9d69355d5378611fa218da605bf8a3ad85",
+  "version": "19",
+  "date": "2026-11-17",
+  "file": "fr/qwen2.5-3b-ha-v19-Q4_K_M.gguf",
+  "sha256": "af6fb2df4ed2e081d549c03eb122972f3bbc558fbf1fd0f695eff6d1c5047236",
   "size": 1929902912,
   "schema": 7,
   "min_addon_version": "0.14.0",
-  "notes": "Premier modèle en français : appareils, musique et médiathèque, minuteurs, listes, météo, heure et annonces"
+  "notes": "Appareils nommés d'après leur meuble ou leur étage (\"la lumière au-dessus de la table\"), ne pas déranger sur l'Echo, batterie des robots, radiateur à côté du split"
 }

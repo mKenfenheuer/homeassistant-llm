@@ -86,7 +86,7 @@ the URL of that server in the integration under "Reconfigure":
 docker run -d --name ha-llm --restart unless-stopped --gpus all \
   -p 8080:8080 -v $PWD/model:/models:ro \
   ghcr.io/ggml-org/llama.cpp:server-cuda-b12063 \
-  -m /models/de/qwen2.5-3b-ha-v18-Q4_K_M.gguf --host 0.0.0.0 --port 8080 \
+  -m /models/de/qwen2.5-3b-ha-v19-Q4_K_M.gguf --host 0.0.0.0 --port 8080 \
   --alias ha-llm --jinja -ngl 99 -fa on -c 16384 -np 1 --cache-reuse 256
 ```
 
@@ -133,17 +133,20 @@ with rules.
 
 ## Results
 
-| Test | Model v18 | Model v17 |
+| Test (German) | Model v19 | Model v18 |
 |------|-----------|-----------|
-| 300 test conversations in unseen houses: correct tool calls | 98.7 % | 97.0 % |
-| same conversations: answers matching the tool result | 100 % | 98.6 % |
-| Real house, 60 scored turns incl. seven playlist requests on 76 playlists, covers and windows of the whole house, two questions in one sentence | 57/60 | 53/60 |
+| 300 test conversations in unseen houses: correct tool calls | 98.3 % | 96.7 % |
+| same conversations: answers matching the tool result | 97.2 % | 95.8 % |
+| Public acceptance house, 41 scored turns, every name new to the training data | 41/41 | 40/41 |
+| Real house, 36 scored turns | 32/36 | 28/36 |
 
-Both models were measured on the v18 test conversations. The playlist names
-of the real house are not in the training data: v18 picks the fitting one in
-6 of 7 requests, v17 in none.
+Both models were measured on the v19 test conversations. v19 learned that
+"das Licht am Spiegelschrank" or "die Rollläden im Obergeschoss" name a
+device and not a room, which v18 got wrong in five of six languages. English,
+Spanish, French and Dutch improved the same way; Italian v19 did not beat
+v18 and stays on v18. The model card on Hugging Face lists every language.
 
-On the same 300 conversations Claude Opus 5.5 (effort low, same prompt and
+On the v18 test conversations Claude Opus 5.5 (effort low, same prompt and
 tools, via the Anthropic API) reaches 90.7 % correct tool calls and 74.0 %
 matching answers, with a median of 1.46 s per call. v17 on an RTX 3090 takes
 0.40 s.
@@ -151,7 +154,7 @@ matching answers, with a median of 1.46 s per call. v17 on an RTX 3090 takes
 ## Training
 
 ```bash
-HA_LANG=de ./run_train.sh                              # 27,612 synthetic conversations, continues from the last LoRA adapter, stops when the eval loss no longer drops
+HA_LANG=de ./run_train.sh                              # about 28,000 synthetic conversations, continues from the last LoRA adapter, stops when the eval loss no longer drops
 HA_LANG=de ./run_export.sh output/de/merged qwen2.5-3b-ha-vX  # GGUF Q4_K_M with importance matrix and chat template
 HA_LANG=de ./run_test.sh model/de/qwen2.5-3b-ha-vX-Q4_K_M.gguf  # evaluation on data/de/eval.jsonl
 python src/agent_sim.py URL scenarios.json             # scored dialogues against a simulated house
@@ -160,7 +163,7 @@ python src/agent_sim.py URL tests/acceptance/en/scenarios.json
 ```
 
 `src/gen_dataset.py --lang de` creates every conversation in a newly
-randomized house. Each of the 117 cases (intents, question kinds, errors,
+randomized house. Each of the 120 cases (intents, question kinds, errors,
 conversation turns) gets the same share. `src/soup.py` averages the LoRA
 weights of several runs. Training and integration read the same prompt from
 `llm_schema.py`. If this file changes, the model must be trained again.

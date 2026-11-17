@@ -1,10 +1,10 @@
 {
-  "version": "18",
-  "date": "2026-11-14",
-  "file": "en/qwen2.5-3b-ha-v18-Q4_K_M.gguf",
-  "sha256": "41ddd271353e72545ca96a2f4d59ea43e373132b19a5febb2f0d7e5c51f270e3",
+  "version": "19",
+  "date": "2026-11-17",
+  "file": "en/qwen2.5-3b-ha-v19-Q4_K_M.gguf",
+  "sha256": "171d992f1e0fa879081d02552457f576efa2c96923c56f570d4b7e65bc6907aa",
   "size": 1929902912,
   "schema": 7,
   "min_addon_version": "0.14.0",
-  "notes": "First English model: devices, music and media library, timers, lists, weather, time and broadcasts"
+  "notes": "Devices named after their fixture or floor (\"the light over the dining table\"), Do Not Disturb on the Echo, robot batteries, radiator next to a split unit, outdoor sensors named after the patio"
 }

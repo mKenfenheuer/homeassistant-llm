@@ -28,12 +28,12 @@ with AVX2 (about 16 tokens/s output on 4 cores) or on small GPUs (GTX 1060
 
 | Language | Folder | Version |
 |----------|--------|---------|
-| German | `de/` | v18 |
-| English | `en/` | v18 |
-| Spanish | `es/` | v18 |
-| French | `fr/` | v18 |
+| German | `de/` | v19 |
+| English | `en/` | v19 |
+| Spanish | `es/` | v19 |
+| French | `fr/` | v19 |
 | Italian | `it/` | v18 |
-| Dutch | `nl/` | v18 |
+| Dutch | `nl/` | v19 |
 
 All six languages are trained from the same generator (see the dataset).
 
@@ -60,7 +60,7 @@ answer length (short, medium, long, detailed).
 ## Usage
 
 ```bash
-llama-server -m de/qwen2.5-3b-ha-v18-Q4_K_M.gguf --jinja -c 8192 --port 8080
+llama-server -m de/qwen2.5-3b-ha-v19-Q4_K_M.gguf --jinja -c 8192 --port 8080
 ```
 
 `--jinja` is required: it activates the embedded chat template, which renders
@@ -145,10 +145,10 @@ matched timers or an error such as `timers are not supported on this device`.
 {
   "languages": {
     "de": {
-      "version": "18",
-      "file": "de/qwen2.5-3b-ha-v18-Q4_K_M.gguf",
+      "version": "19",
+      "file": "de/qwen2.5-3b-ha-v19-Q4_K_M.gguf",
       "sha256": "...",
-      "size": 1929902976,
+      "size": 1929902880,
       "schema": 7,
       "min_addon_version": "0.14.0"
     }
@@ -162,66 +162,40 @@ downloads a new file while the server keeps running, checks the SHA-256,
 switches over and deletes the old file. A model with a higher `schema` than
 the add-on supports is skipped until the add-on is updated.
 
-## Training (German v18)
+## Training (v19: German, English, Spanish, French, Dutch)
 
-- Data: [__DATASET_REPO__](https://huggingface.co/datasets/__DATASET_REPO__)
-  (rows with `locale` = `de`): 27,612 synthetic conversations over randomly
-  generated houses, up to 236 per generator case for each of the 117 cases
-  (rare cases get the same share). Besides device control and state
-  questions: music and the media library, the speaker of the voice device,
-  seeking and resuming, timers, lists, weather reports per answer length,
-  time, broadcasts, unreachable devices, missing devices and multi-turn
+- Data: [__DATASET_REPO__](https://huggingface.co/datasets/__DATASET_REPO__),
+  one generator per language, up to 236 conversations for each of 120 cases
+  (rare cases get the same share), about 28,000 per language. Besides device
+  control and state questions: music and the media library, the speaker of
+  the voice device, timers, lists, weather reports per answer length, time,
+  broadcasts, unreachable devices, missing devices and multi-turn
   conversations. The answer length of each conversation is sampled (short
   20 %, medium 40 %, long 20 %, detailed 20 %).
-- Media libraries are generated like real ones: built-in mixes, artist
-  radios, "This Is ..." lists, genre and festival playlists, soundtracks and
-  personal names with emojis, 2 to 100 entries, with exactly one playlist
-  that fits a request such as "Spiel meine Lieblingssongs".
-- Continued from the LoRA adapter of v17 (r=32, alpha=64, all linear layers,
-  Qwen2.5-3B-Instruct), lr 3e-5, loss on assistant tokens only, RTX 3090. A
-  first run with lr 1e-4 drove the eval loss up from the v17 level and was
-  stopped. The eval loss on 99 held-out conversations was measured every 10
-  steps; the run stopped at step 630 of 1,698 when it had not dropped by 2 %
-  for 30 measurements, after about 5 hours. The released file is the step
-  with the lowest eval loss (460, 0.0228).
-- Quantization: Q4_K_M with an importance matrix computed from 300 training
-  conversations.
-
-## Training (English v18)
-
-- Data: the rows with `locale` = `en` of the same dataset, 27,568
-  conversations of the English generator (the same 117 cases as German,
-  English names, rooms and phrasing).
-- Continued from the German v18 adapter with lr 1e-4, then lr 3e-5 in
+- New in v19, from the failures of v18 in the acceptance test: lamps named
+  after the fixture they light and groups named after a floor ("the light
+  over the dining table", "the shutters upstairs"), whose words are part of
+  a device name and not an area; the Do-not-disturb and Mute switches of
+  Echo devices; battery sensors of mowers and vacuums; a radiator and a split
+  unit in one room ("the heating" is the radiator); temperature sensors in
+  outdoor areas count as outdoor sensors. The fixtures and the ground floor
+  of the public acceptance house are kept out of the training data.
+- Each language continued from its own v18 LoRA adapter (r=32, alpha=64, all
+  linear layers, Qwen2.5-3B-Instruct) with lr 1e-4 in
   [AI Studio](https://github.com/mKenfenheuer/ai-studio) on an RTX 3090,
-  early stop on the eval loss of 100 held-out conversations. Released step:
-  eval loss 0.0339.
-- Quantization: Q4_K_M with an importance matrix from 300 English training
-  conversations, rendered with the model's chat template and tools.
-
-## Training (Spanish v18)
-
-- Data: the rows with `locale` = `es` of the same dataset, 27,165
-  conversations of the Spanish generator (the same cases as German, Spanish
-  names, rooms and phrasing).
-- Continued from the German v18 adapter with lr 1e-4 in
-  [AI Studio](https://github.com/mKenfenheuer/ai-studio) on an RTX 3090,
-  early stop on the eval loss of 100 held-out conversations. Released step:
-  840, eval loss 0.0208.
-- Quantization: Q4_K_M with an importance matrix from 300 Spanish training
-  conversations, rendered with the model's chat template and tools.
-
-## Training (French v18)
-
-- Data: the rows with `locale` = `fr` of the same dataset, 27,142
-  conversations of the French generator.
-- Continued from the German v18 adapter with lr 1e-4 in AI Studio on an
-  RTX 3090, early stop on the eval loss of 100 held-out conversations.
-  Released step: 720, eval loss 0.0276.
-- Quantization: Q4_K_M with an importance matrix from 300 French training
-  conversations.
+  loss on assistant tokens only, eval loss on about 100 held-out
+  conversations every 20 steps, stop after 10 checks without improvement.
+  Released steps (eval loss): German 500 (0.0281), English 700 (0.0290),
+  Spanish 300 (0.0228), French 460 (0.0248), Dutch 180 (0.0255).
+- Quantization: Q4_K_M with an importance matrix from 300 training
+  conversations of the language, rendered with the model's chat template and
+  tools.
 
 ## Training (Italian v18)
+
+The Italian v19 run did not beat v18 in the acceptance test (39/41
+against 40/41), so Italian stays on v18.
+
 
 - Data: the rows with `locale` = `it` of the same dataset, 26,921
   conversations of the Italian generator.
@@ -231,17 +205,6 @@ the add-on supports is skipped until the add-on is updated.
 - Quantization: Q4_K_M with an importance matrix from 300 Italian training
   conversations.
 
-## Training (Dutch v18)
-
-- Data: the rows with `locale` = `nl` of the same dataset, 26,949
-  conversations of the Dutch generator.
-- Continued from the German v18 adapter with lr 1e-4 in AI Studio on an
-  RTX 3090, early stop on the eval loss of 100 held-out conversations; the
-  run was resumed once from its checkpoint at step 500. Released step: 780,
-  eval loss 0.0237.
-- Quantization: Q4_K_M with an importance matrix from 300 Dutch training
-  conversations.
-
 ## Honest answers
 
 The training data teaches the model to report failed devices instead of
@@ -249,43 +212,27 @@ claiming success, including in later turns. Every training answer is checked
 against the preceding tool results; no answer claims a success the tool did
 not report.
 
-## Evaluation (German v18)
+## Evaluation (v19)
 
-- 300 held-out conversations in houses not seen during training: 98.7 %
-  correct tool calls (v17 on the same set: 97.0 %), 100 % grounded answers
-  (v17: 98.6 %).
-- Acceptance test on a real house (over 100 exposed entities, 60 scored
-  turns including seven playlist requests on a library of 76 playlists whose
-  names are not in the training data): 57/60, v17 53/60. Playlist requests:
-  6/7, v17 0/7.
-- Same 300 conversations with Claude Opus 5.5 (effort low, same prompt and
-  tools): 90.7 % correct tool calls, 74.0 % grounded answers, median 1.46 s
-  per call; v17 on an RTX 3090: median 0.40 s.
+300 held-out conversations per language in houses not seen during training,
+from the v19 generators; v18 was measured on the same conversations.
 
-Known weaknesses: very long entity ids (Homematic serials) are sometimes
-shortened. Listing many open covers or lights can leave one out.
+| Language | Tool calls v19 | Tool calls v18 | Grounded answers v19 | Grounded answers v18 |
+|----------|----------------|----------------|----------------------|----------------------|
+| German | 98.3 % | 96.7 % | 97.2 % (69/71) | 95.8 % (68/71) |
+| English | 98.0 % | 96.3 % | 95.8 % (69/72) | 97.2 % (69/71) |
+| Spanish | 99.0 % | 97.3 % | 98.6 % (72/73) | 98.6 % (72/73) |
+| French | 99.7 % | 98.0 % | 97.3 % (72/74) | 97.3 % (71/73) |
+| Dutch | 97.3 % | 97.0 % | 98.6 % (69/70) | 98.6 % (70/71) |
+| Italian | 97.0 % | 97.3 % | 98.6 % (72/73) | 98.6 % (71/72) |
 
-## Evaluation (English v18)
+German was also tested on a real house (over 100 exposed entities, 36
+scored turns): v19 32/36, v18 28/36. v19 no longer finds the air conditioner
+of the living room when asked for "die Klimaanlage", which v18 did.
 
-- 300 held-out conversations of the English generator in houses not seen
-  during training: 98.7 % correct tool calls, 95.8 % grounded answers
-  (68/71), 0.44 s per conversation on an RTX 3090.
-
-## Evaluation (Spanish v18)
-
-- 300 held-out conversations of the Spanish generator in houses not seen
-  during training: 98.0 % correct tool calls, 98.6 % grounded answers
-  (71/72), 0.44 s per conversation on an RTX 3090. Weakest category:
-  compound questions (4/6), where one of two devices is left out or
-  confused.
-
-## Evaluation (French v18)
-
-- 300 held-out conversations of the French generator in houses not seen
-  during training: 97.7 % correct tool calls, 95.5 % grounded answers
-  (64/67), 0.62 s per conversation on an RTX 3090 (shared with an export
-  running at the same time). Weakest: weather forecasts and lists of many
-  lights.
+Weakest categories in v19: compound questions in English (4/6) and German
+(5/6), where one of two devices is left out; state questions in Dutch
+(73/77).
 
 ## Evaluation (Italian v18)
 
@@ -294,12 +241,6 @@ shortened. Listing many open covers or lights can leave one out.
   (69/69), 0.66 s per conversation on an RTX 3090 (shared with an export
   running at the same time). Both misses read a thermostat or the outdoor
   sensor instead of the room's temperature sensor.
-
-## Evaluation (Dutch v18)
-
-- 300 held-out conversations of the Dutch generator in houses not seen
-  during training: 98.7 % correct tool calls, 100 % grounded answers
-  (73/73), 0.55 s per conversation on an RTX 3090.
 
 ## Acceptance test (public)
 
@@ -316,12 +257,12 @@ run it with `src/agent_sim.py`.
 
 | Model | Passed | Failed turn |
 |-------|--------|-------------|
-| German v18 | 40/41 | "Mach das Licht am Waschtischschrank an" took the device for an area |
-| English v18 | 40/41 | "What's the temperature outside?" read the car's charge level |
-| Spanish v18 | 38/41 | "Enciende la luz del pasamanos" switched on its whole room; "Activa no molestar en el Echo" muted the speaker; the mower's battery question read the mower instead of its battery sensor |
-| French v18 | 38/41 | "Allume l'éclairage de la rampe" and "les volets du rez-de-chaussée" were taken for rooms; "le radiateur de la salle commune" set the split unit |
-| Italian v18 | 40/41 | "le tapparelle del pianterreno" was taken for a room |
-| Dutch v18 | 40/41 | "Doe het licht bij de wastafelkast aan" took the device for a room |
+| German v19 | 41/41 | (v18: 40/41, "Mach das Licht am Waschtischschrank an" took the device for an area) |
+| English v19 | 41/41 | (v18: 40/41, "What's the temperature outside?" read the car's charge level) |
+| Spanish v19 | 41/41 | (v18: 38/41, fixture lamp, Do not disturb, mower battery) |
+| French v19 | 39/41 | "le radiateur de la salle commune" set the split unit; "la menthe" read the lemon tree's soil moisture (v18: 38/41) |
+| Italian v18 | 40/41 | "le tapparelle del pianterreno" was taken for a room (v19: 39/41, not released) |
+| Dutch v19 | 41/41 | (v18: 40/41, "Doe het licht bij de wastafelkast aan" took the device for a room) |
 
 No answer of any model contained a word of another language.
 

@@ -1,10 +1,10 @@
 {
-  "version": "18",
-  "date": "2026-11-13",
-  "file": "de/qwen2.5-3b-ha-v18-Q4_K_M.gguf",
-  "sha256": "ff8d0a7468ffa30a5cfb2c40d80fc8096b84390068fe42e8279538bfdc90b3cb",
-  "size": 1929902976,
+  "version": "19",
+  "date": "2026-11-17",
+  "file": "de/qwen2.5-3b-ha-v19-Q4_K_M.gguf",
+  "sha256": "3fef0c8c0cb9fe1ce4f93b557f50fb4fa76e76323f6060d44842fd76fb949027",
+  "size": 1929902880,
   "schema": 7,
   "min_addon_version": "0.14.0",
-  "notes": "Passende Playlist in langen Medienbibliotheken (Lieblingssongs, Stimmungen), genauere Antworten"
+  "notes": "Geräte nach ihrem Möbel oder Stockwerk benannt (\"das Licht am Spiegelschrank\"), Nicht stören am Echo, Akku von Mäh- und Saugroboter, Heizkörper neben Klimaanlage"
 }

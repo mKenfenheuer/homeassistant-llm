@@ -1,10 +1,10 @@
 {
-  "version": "18",
-  "date": "2026-11-15",
-  "file": "nl/qwen2.5-3b-ha-v18-Q4_K_M.gguf",
-  "sha256": "11f7a129c1a02f106736b2f014921a68732b91dfce15ea49314f8033742d3892",
+  "version": "19",
+  "date": "2026-11-17",
+  "file": "nl/qwen2.5-3b-ha-v19-Q4_K_M.gguf",
+  "sha256": "44a7987fdd3de6fc6711bd2683fa9129d92192a979b0d4c629985bb20beda95d",
   "size": 1929902912,
   "schema": 7,
   "min_addon_version": "0.14.0",
-  "notes": "Eerste Nederlandse model: apparaten, muziek en mediabibliotheek, timers, lijsten, weer, tijd en omroepberichten"
+  "notes": "Apparaten genoemd naar hun meubel of verdieping (\"het licht bij de spiegelkast\"), niet storen op de Echo, accu van robots, radiator naast de airco"
 }
